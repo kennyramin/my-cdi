@@ -6,7 +6,7 @@ import { buildActivityTiles } from '@frequentation/presenters/ActivityGridPresen
 import { buildActivityTileNodes } from '@frequentation/presenters/ActivityGridPresenter/helpers/buildActivityTileNodes'
 import { buildInitials } from '@frequentation/helpers/buildInitials'
 import { useJournalPage } from './hooks/useJournalPage'
-import { PageGrid, SideColumn } from './JournalPage.styles'
+import { FormColumn, ListColumn, PageGrid } from './JournalPage.styles'
 
 export function JournalPage() {
   const {
@@ -23,13 +23,13 @@ export function JournalPage() {
 
   return (
     <PageGrid>
-      <SideColumn>
+      <FormColumn>
         <CalendarContainer selectedDate={selectedDate} onSelectDate={setSelectedDate} />
         <JournalEntryFormContainer selectedDate={selectedDate} />
-      </SideColumn>
-      <SideColumn>
+      </FormColumn>
+      <ListColumn>
         <JournalEntryListContainer selectedDate={selectedDate} onEditEntry={startEditing} />
-      </SideColumn>
+      </ListColumn>
       {editingEntry && editingActivity ? (
         <JournalEntryEditDialogPresenter
           open

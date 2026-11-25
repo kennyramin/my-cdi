@@ -22,3 +22,13 @@ export const FutureDateHelperText = styled(Typography, {
 })(({ theme }) => ({
   color: theme.palette.error.main
 }))
+
+export const SubmitBar = styled('div', {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  position: 'sticky',
+  bottom: 0,
+  zIndex: 1,
+  backgroundColor: theme.palette.background.paper,
+  paddingBlock: theme.spacing(1)
+}))

@@ -18,7 +18,12 @@ import type { AutocompleteOption } from '@ui/components/Autocomplete'
 import { TimeRowPresenter } from './presenters/TimeRowPresenter'
 import { periodFromTime } from './presenters/TimeRowPresenter/helpers/periodFromTime'
 
-import { EntryForm, FutureDateHelperText, SectionLabel } from './JournalEntryFormContainer.styles'
+import {
+  EntryForm,
+  FutureDateHelperText,
+  SectionLabel,
+  SubmitBar
+} from './JournalEntryFormContainer.styles'
 
 const TIME_FORMAT = 'HH:mm'
 const FUTURE_DATE_HELPER_ID = 'journal-future-date-helper'
@@ -141,16 +146,18 @@ export function JournalEntryFormContainer({
             />
           )}
         />
-        <Button
-          type="submit"
-          variant="primary"
-          fullWidth
-          disabled={isDisabled}
-          aria-describedby={isFutureDate ? FUTURE_DATE_HELPER_ID : undefined}
-          iconLeft={<Icon name="check_circle" />}
-        >
-          {t('form.submit')}
-        </Button>
+        <SubmitBar>
+          <Button
+            type="submit"
+            variant="primary"
+            fullWidth
+            disabled={isDisabled}
+            aria-describedby={isFutureDate ? FUTURE_DATE_HELPER_ID : undefined}
+            iconLeft={<Icon name="check_circle" />}
+          >
+            {t('form.submit')}
+          </Button>
+        </SubmitBar>
         {isFutureDate && (
           <FutureDateHelperText id={FUTURE_DATE_HELPER_ID} variant="caption" role="status">
             {t('form.futureNotAllowed')}

@@ -63,6 +63,12 @@ export const TableRoot = styled(Box, {
   }
 }))
 
+export const TableScroll = styled('div', {
+  shouldForwardProp: shouldForwardStyledProp
+})({
+  overflowX: 'auto'
+})
+
 export const TableElement = styled('table', {
   shouldForwardProp: shouldForwardStyledProp
 })({

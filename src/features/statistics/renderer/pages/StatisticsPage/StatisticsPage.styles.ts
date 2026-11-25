@@ -25,10 +25,10 @@ export const StatisticsChartGrid = styled(Box, {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
   display: 'grid',
-  gridTemplateColumns: '2fr 1fr',
+  gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
   gap: theme.spacing(2.5),
   [theme.breakpoints.down('lg')]: {
-    gridTemplateColumns: '1fr'
+    gridTemplateColumns: 'minmax(0, 1fr)'
   }
 }))
 
@@ -36,7 +36,7 @@ export const StatisticsFullGrid = styled(Box, {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
   display: 'grid',
-  gridTemplateColumns: '1fr',
+  gridTemplateColumns: 'minmax(0, 1fr)',
   gap: theme.spacing(2.5)
 }))
 

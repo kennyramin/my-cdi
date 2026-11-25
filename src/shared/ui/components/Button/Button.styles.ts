@@ -13,7 +13,8 @@ const DANGER_HOVER_ALPHA = TINT_ALPHAS.hover
 export const ButtonRoot = styled(MuiButton, {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
-  height: `${PRIMARY_HEIGHT_PX}px`,
+  minHeight: `${PRIMARY_HEIGHT_PX}px`,
+  whiteSpace: 'nowrap',
   borderRadius: theme.shape.borderRadius,
   fontSize: theme.typography.body1.fontSize,
   '&[data-variant="primary"]': {
@@ -33,7 +34,7 @@ export const ButtonRoot = styled(MuiButton, {
     }
   },
   '&[data-variant="secondary"]': {
-    height: `${SECONDARY_HEIGHT_PX}px`,
+    minHeight: `${SECONDARY_HEIGHT_PX}px`,
     fontWeight: FONT_WEIGHTS.medium,
     paddingInline: theme.spacing(2),
     backgroundColor: theme.palette.surface,
@@ -50,7 +51,7 @@ export const ButtonRoot = styled(MuiButton, {
     }
   },
   '&[data-variant="danger"]': {
-    height: `${DANGER_HEIGHT_PX}px`,
+    minHeight: `${DANGER_HEIGHT_PX}px`,
     fontWeight: FONT_WEIGHTS.medium,
     paddingInline: theme.spacing(2),
     backgroundColor: alpha(theme.palette.error.main, TINT_ALPHAS.surface),
