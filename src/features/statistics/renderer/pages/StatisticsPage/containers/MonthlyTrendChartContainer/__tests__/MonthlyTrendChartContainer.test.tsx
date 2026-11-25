@@ -94,6 +94,16 @@ describe('MonthlyTrendChartContainer', () => {
     ).toEqual(['01/11 : 4 visites', '02/11 : 2 visites'])
   })
 
+  it('uses the singular tooltip for a single visit', () => {
+    const { container } = render(
+      <MonthlyTrendChartContainer
+        dailyCounts={[{ date: '2026-11-01', count: ONE }]}
+        range={NOV_RANGE}
+      />
+    )
+    expect(container.querySelector('circle > title')?.textContent).toBe('01/11 : 1 visite')
+  })
+
   it('renders repeated y values without duplicate-key warnings', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     render(
@@ -103,5 +113,15 @@ describe('MonthlyTrendChartContainer', () => {
       />
     )
     expect(consoleError.mock.calls.flat().join(' ')).not.toContain('same key')
+  })
+
+  it('describes the chart through a visually hidden summary', () => {
+    render(<MonthlyTrendChartContainer dailyCounts={NOV_COUNTS} range={NOV_RANGE} />)
+    const chart = screen.getByRole('img', { name: 'Évolution sur la période' })
+    const describedBy = chart.getAttribute('aria-describedby')
+    expect(describedBy).toBeTruthy()
+    expect(document.getElementById(describedBy ?? '')).toHaveTextContent(
+      'Du 01/11 au 11/11 : 6 visites sur 2 jours avec visites, maximum 4 le 01/11'
+    )
   })
 })

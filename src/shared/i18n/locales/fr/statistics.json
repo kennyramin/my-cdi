@@ -22,7 +22,13 @@
     "trend": "Évolution sur la période",
     "visits": "visites",
     "dotTooltip_one": "{{date}} : {{count}} visite",
-    "dotTooltip_other": "{{date}} : {{count}} visites"
+    "dotTooltip_other": "{{date}} : {{count}} visites",
+    "trendSummary": "Du {{start}} au {{end}} : {{visits}} sur {{days}}, maximum {{max}} le {{maxDate}}",
+    "trendSummaryEmpty": "Du {{start}} au {{end}} : aucune visite",
+    "visitsCount_one": "{{count}} visite",
+    "visitsCount_other": "{{count}} visites",
+    "activeDays_one": "{{count}} jour avec visites",
+    "activeDays_other": "{{count}} jours avec visites"
   },
   "customRange": {
     "start": "Date de début",

@@ -497,6 +497,7 @@ Per [React docs](https://react.dev/learn/you-might-not-need-an-effect), `useEffe
 - `usePageTitle` — syncs with `document.title`
 - `useKeyboardShortcuts` — syncs with `document` key events
 - `useAutoUpdater` — syncs with Electron auto-updater
+- `useElementWidth` — syncs with the browser `ResizeObserver` (measured chart width)
 
 **Forbidden in all other cases** — derive state during render, not in effects.
 
@@ -549,6 +550,7 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 - **Storage**: visit start times stored as local wall-clock strings `YYYY-MM-DDTHH:mm:ss` (no timezone suffix) in SQLite; time-of-day stored as `HH:mm` strings.
 - **Display**: `formatDate` (`DD/MM/YYYY`) and `formatDateTime` (`DD/MM/YYYY HH:mm`) via `dayjs` with French locale.
 - **UI**: MUI X Date Pickers wrapped in `LocalizationProvider` with `AdapterDayjs` and `adapterLocale="fr"`.
+- **Legacy rows**: a few development databases (written 2026-04-30 to 2026-05-03) hold `…Z` suffixed timestamps; statistics read them as a UTC hour while the Journal reads them as local time. No migration — production data uses local wall-clock strings only.
 - **Cleanup**: `CLEANUP_RETENTION_YEARS = 2` — old frequentations deleted on startup (local cutoff, single `DELETE … WHERE starts_at < ?`).
 
 ---
@@ -583,11 +585,14 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 **Frontend pure helpers transform DTOs into SVG primitives:**
 
 - `buildDonutSlices(activityCounts)` → SVG path `d` strings + colors
-- `buildTrendPath(dailyCounts, dimensions)` → SVG path `M...L...`, area path, dot coordinates, Y-axis labels
+- `buildTrendPath(dailyCounts, range, dimensions)` → time-scaled SVG path `M...L...`, area path, dot coordinates, zero-based Y-axis labels and first/last-day X labels (`dimensions.width` comes from `useElementWidth`, the measured container width)
 - `buildWeeklyBars(dailyCounts)` → bar heights in px, weekday labels, weekend vs weekday colors
+- `buildClassBars(classCounts)` → top-10 class rows with proportional bar widths (non-zero shares keep a minimum visible width); rendered as plain styled boxes in the "visits by class" card
 - `svgArc()` computes SVG arc paths for donut slices
 
 Presenters (`ActivityDonutChart`, `MonthlyTrendChart`, `WeeklyBarChart`) render raw `<svg>` elements from these helpers.
+
+**Range travels with the data.** `useStatsForPeriod` returns `{ range, stats }`; with `keepPreviousData`, the page passes the range of the *displayed* data (`dataRange`) to the trend chart and marks the content `data-stale` / `aria-busy` while placeholder data is shown or the custom range is invalid. Custom ranges treat years outside `MIN_CUSTOM_YEAR`..`MAX_CUSTOM_YEAR` as `incomplete` (announced politely with `role="status"`; only `endBeforeStart` is a `role="alert"`).
 
 ---
 

@@ -17,7 +17,7 @@ function renderChart(classCounts: { classe: string; count: number }[]) {
 }
 
 describe('ClassBarChartContainer', () => {
-  it('renders the card title', () => {
+  it('renders the card title even without data', () => {
     renderChart([])
     expect(screen.getByText('Fréquentation par classe')).toBeInTheDocument()
   })

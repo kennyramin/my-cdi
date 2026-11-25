@@ -11,7 +11,9 @@ import {
   Y_LABEL_FONT_SIZE,
   Y_LABEL_TEXT_OFFSET,
   ChartArea,
-  ChartSvg
+  ChartSummary,
+  ChartSvg,
+  TREND_SUMMARY_ID
 } from './MonthlyTrendChartContainer.styles'
 import { DEFAULT_TREND_DIMENSIONS, Y_LABEL_OFFSET_X } from './helpers/buildTrendPath'
 import { useMonthlyTrendChart } from './hooks/useMonthlyTrendChart'
@@ -23,12 +25,20 @@ export function MonthlyTrendChartContainer({
 }: MonthlyTrendChartContainerProps) {
   const { t } = useTranslation('statistics')
   const theme = useTheme()
-  const { chartRef, trend, paddingLeft, innerRight } = useMonthlyTrendChart(dailyCounts, range)
+  const { chartRef, trend, paddingLeft, innerRight, summary } = useMonthlyTrendChart(
+    dailyCounts,
+    range
+  )
 
   return (
     <ChartCardPresenter titleIcon="show_chart" title={t('charts.trend')}>
       <ChartArea ref={chartRef}>
-        <ChartSvg viewBox={trend.viewBox} role="img" aria-label={t('charts.trend')}>
+        <ChartSvg
+          viewBox={trend.viewBox}
+          role="img"
+          aria-label={t('charts.trend')}
+          aria-describedby={TREND_SUMMARY_ID}
+        >
           <defs>
             <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
               <stop
@@ -100,6 +110,7 @@ export function MonthlyTrendChartContainer({
             </circle>
           ))}
         </ChartSvg>
+        <ChartSummary id={TREND_SUMMARY_ID}>{summary}</ChartSummary>
       </ChartArea>
     </ChartCardPresenter>
   )

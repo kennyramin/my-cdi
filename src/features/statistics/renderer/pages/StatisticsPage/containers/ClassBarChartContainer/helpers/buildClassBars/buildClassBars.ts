@@ -7,8 +7,16 @@ export interface ClassBar {
 }
 
 export const MAX_CLASS_BARS = 10
+export const MIN_BAR_PERCENT = 2
 const PERCENT = 100
 const CLASS_COLLATOR = new Intl.Collator('fr', { numeric: true })
+
+function toWidthPercent(count: number, topCount: number): number {
+  if (topCount <= 0 || count <= 0) {
+    return 0
+  }
+  return Math.max(MIN_BAR_PERCENT, Math.round((count / topCount) * PERCENT))
+}
 
 export function buildClassBars(classCounts: ClassCountDto[]): ClassBar[] {
   const top = [...classCounts]
@@ -18,6 +26,6 @@ export function buildClassBars(classCounts: ClassCountDto[]): ClassBar[] {
   return top.map(({ classe, count }) => ({
     classe,
     count,
-    widthPercent: topCount > 0 ? Math.round((count / topCount) * PERCENT) : 0
+    widthPercent: toWidthPercent(count, topCount)
   }))
 }
