@@ -18,6 +18,7 @@
     "build": "npm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
     "test": "node scripts/align-better-sqlite3-abi.mjs --runtime=node && vitest run",
+    "check:layout": "node scripts/align-better-sqlite3-abi.mjs --runtime=electron && electron-vite build && node scripts/check-layout.mjs",
     "rebuild:app": "node scripts/align-better-sqlite3-abi.mjs --runtime=electron",
     "rebuild:tests": "node scripts/align-better-sqlite3-abi.mjs --runtime=node",
     "build:unpack": "npm run build && electron-builder --dir",
