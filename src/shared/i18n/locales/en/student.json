@@ -15,6 +15,8 @@
     "visitCount": "Visits",
     "actions": "Actions"
   },
+  "batch.selectedCount_one": "{{count}} student selected",
+  "batch.selectedCount_other": "{{count}} students selected",
   "deleteConfirm_one": "Deleting {{count}} student also deletes their entire visit history. This action cannot be undone.",
   "deleteConfirm_other": "Deleting {{count}} students also deletes their entire visit history. This action cannot be undone.",
   "row.confirmDelete": "Deleting this student also deletes their entire visit history. This action cannot be undone.",
@@ -32,7 +34,7 @@
     "dropzoneTitle": "Drag and drop the CSV file here",
     "dropzoneSubtitle": "or click to browse",
     "expectedColumns": "Expected columns:",
-    "expectedColumnsList": "Last name, First name, INE, Division (class)",
+    "expectedColumnsList": "\"Nom de famille\" (last name), \"Prénom 1\" (first name), \"INE\", \"Division\" (class)",
     "expectedColumnsHint": "Other columns (address, phone…) are ignored and not saved.",
     "columns": {
       "nom": "Nom de famille",

@@ -15,6 +15,8 @@
     "visitCount": "Visites",
     "actions": "Actions"
   },
+  "batch.selectedCount_one": "{{count}} élève sélectionné",
+  "batch.selectedCount_other": "{{count}} élèves sélectionnés",
   "deleteConfirm_one": "Supprimer {{count}} élève supprimera aussi tout son historique de fréquentation. Cette action est irréversible.",
   "deleteConfirm_other": "Supprimer {{count}} élèves supprimera aussi tout leur historique de fréquentation. Cette action est irréversible.",
   "row.confirmDelete": "Supprimer cet élève supprimera aussi tout son historique de fréquentation. Cette action est irréversible.",

@@ -1,7 +1,7 @@
+import { useTranslation } from 'react-i18next'
 import { Button } from '@ui/components/Button'
 import { ConfirmDialog } from '@ui/components/ConfirmDialog'
 import { useStudentBatchActions } from './hooks/useStudentBatchActions'
-import { formatBatchMessage } from './helpers/formatBatchMessage'
 import {
   NO_SELECTION,
   BatchActionsStrip,
@@ -25,6 +25,7 @@ export function StudentBatchActionsContainer({
   onClearSelection,
   onAfterDelete
 }: StudentBatchActionsContainerProps) {
+  const { t: tStudent } = useTranslation('student')
   const {
     showConfirm,
     isPending,
@@ -61,7 +62,9 @@ export function StudentBatchActionsContainer({
           {batchDeleteLabel}
         </Button>
         {hasSelection ? (
-          <BatchCountLabel variant="body2">{formatBatchMessage(selectedCount)}</BatchCountLabel>
+          <BatchCountLabel variant="body2">
+            {tStudent('batch.selectedCount', { count: selectedCount })}
+          </BatchCountLabel>
         ) : null}
       </BatchActionsStrip>
 
