@@ -10,3 +10,7 @@ export interface StatDelta {
   sign: 'up' | 'down'
   text: string
 }
+
+export type PresetPeriodKey = Exclude<PeriodKey, 'custom'>
+
+export type CustomRangeError = 'incomplete' | 'endBeforeStart'

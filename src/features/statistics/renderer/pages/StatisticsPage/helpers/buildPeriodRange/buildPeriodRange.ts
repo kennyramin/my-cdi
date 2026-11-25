@@ -1,6 +1,6 @@
 import { formatLocalDate } from '@lib/localDateTime'
 import type { PeriodRangeDto } from '@statistics-shared'
-import type { PeriodKey } from '@statistics/types'
+import type { PresetPeriodKey } from '@statistics/types'
 
 const FIRST_DAY = 1
 const MONTH_OFFSET = 1
@@ -64,7 +64,7 @@ function buildSchoolYearRange(today: Date): PeriodRangeDto {
   }
 }
 
-export function buildPeriodRange(key: PeriodKey, today: Date = new Date()): PeriodRangeDto {
+export function buildPeriodRange(key: PresetPeriodKey, today: Date = new Date()): PeriodRangeDto {
   if (key === 'week') {
     return buildWeekRange(today)
   }

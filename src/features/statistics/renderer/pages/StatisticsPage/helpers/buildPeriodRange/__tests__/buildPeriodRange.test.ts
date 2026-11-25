@@ -112,10 +112,4 @@ describe('buildPeriodRange', () => {
     const range = buildPeriodRange('semester', today)
     expect(range).toEqual({ startDate: '2026-07-01', endDate: '2026-12-31' })
   })
-
-  it('falls back to the current month for "custom"', () => {
-    const today = new Date('2026-04-15T12:00:00.000Z')
-    const range = buildPeriodRange('custom', today)
-    expect(range).toEqual({ startDate: '2026-04-01', endDate: '2026-04-30' })
-  })
 })

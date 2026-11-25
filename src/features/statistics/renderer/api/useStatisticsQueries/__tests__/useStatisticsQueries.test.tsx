@@ -79,4 +79,13 @@ describe('useStatsForPeriod', () => {
     })
     await waitFor(() => expect(window.electronAPI.statistics.getStats).toHaveBeenCalledTimes(2))
   })
+
+  it('does not call getStats when disabled', async () => {
+    const { result } = renderHook(
+      () => useStatsForPeriod({ startDate: '2026-11-01', endDate: '2026-11-30' }, false),
+      { wrapper: createWrapper() }
+    )
+    await waitFor(() => expect(result.current.fetchStatus).toBe('idle'))
+    expect(window.electronAPI.statistics.getStats).not.toHaveBeenCalled()
+  })
 })

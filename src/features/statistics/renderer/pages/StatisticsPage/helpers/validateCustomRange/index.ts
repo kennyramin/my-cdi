@@ -1,0 +1,1 @@
+export { validateCustomRange } from './validateCustomRange'

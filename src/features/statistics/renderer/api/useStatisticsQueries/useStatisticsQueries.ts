@@ -1,10 +1,10 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { resolveIpcErrorMessage } from '@lib/ipc/resolveIpcErrorMessage'
 import { statisticsKeys } from '../statisticsKeys'
 import type { StatsForPeriodDto, PeriodRangeDto } from '@statistics-shared'
 
-export function useStatsForPeriod(range: PeriodRangeDto) {
+export function useStatsForPeriod(range: PeriodRangeDto, isEnabled: boolean = true) {
   const { t } = useTranslation('common')
   return useQuery({
     queryKey: statisticsKeys.period(range),
@@ -15,7 +15,8 @@ export function useStatsForPeriod(range: PeriodRangeDto) {
       }
       return result.data
     },
-    enabled: Boolean(range.startDate && range.endDate),
+    enabled: isEnabled && Boolean(range.startDate && range.endDate),
+    placeholderData: keepPreviousData,
     // Route components unmount on navigation; remounting the statistics page
     // must refetch even when cached data is still fresh (staleTime 60s).
     refetchOnMount: 'always'
