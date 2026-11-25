@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Loader } from '@ui/components/Loader'
 import {
   StatisticsChartGrid,
+  StatisticsContent,
   StatisticsFullGrid,
   StatisticsLayout,
   StatisticsLoadingShell
@@ -18,7 +19,8 @@ export function StatisticsPage() {
   const {
     period,
     selectPeriod,
-    range,
+    dataRange,
+    isStale,
     customRange,
     setCustomRange,
     customRangeError,
@@ -35,7 +37,9 @@ export function StatisticsPage() {
   }
   return (
     <StatisticsLayout>
-      <StatsKpiCardsContainer stats={stats} />
+      <StatisticsContent data-stale={isStale} aria-busy={isStale}>
+        <StatsKpiCardsContainer stats={stats} />
+      </StatisticsContent>
       <PeriodFilterContainer
         value={period}
         onChange={selectPeriod}
@@ -43,14 +47,16 @@ export function StatisticsPage() {
         customRangeError={customRangeError}
         onCustomRangeChange={setCustomRange}
       />
-      <StatisticsChartGrid>
-        <WeeklyBarChartContainer dailyCounts={stats.dailyCounts} />
-        <ActivityDonutChartContainer activityCounts={stats.activityCounts} />
-      </StatisticsChartGrid>
-      <StatisticsFullGrid>
-        <MonthlyTrendChartContainer dailyCounts={stats.dailyCounts} range={range} />
-        <ClassBarChartContainer classCounts={stats.classCounts} />
-      </StatisticsFullGrid>
+      <StatisticsContent data-stale={isStale} aria-busy={isStale}>
+        <StatisticsChartGrid>
+          <WeeklyBarChartContainer dailyCounts={stats.dailyCounts} />
+          <ActivityDonutChartContainer activityCounts={stats.activityCounts} />
+        </StatisticsChartGrid>
+        <StatisticsFullGrid>
+          <MonthlyTrendChartContainer dailyCounts={stats.dailyCounts} range={dataRange} />
+          <ClassBarChartContainer classCounts={stats.classCounts} />
+        </StatisticsFullGrid>
+      </StatisticsContent>
     </StatisticsLayout>
   )
 }

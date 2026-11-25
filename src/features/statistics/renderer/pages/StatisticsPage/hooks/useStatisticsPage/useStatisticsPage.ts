@@ -27,7 +27,9 @@ export function useStatisticsPage() {
     customRange,
     setCustomRange,
     customRangeError,
-    stats: query.data,
+    dataRange: query.data?.range ?? range,
+    stats: query.data?.stats,
+    isStale: query.isPlaceholderData || customRangeError !== null,
     isLoading: query.isLoading,
     error: query.error
   }

@@ -1,3 +1,5 @@
+import type { PeriodRangeDto, StatsForPeriodDto } from '@statistics-shared'
+
 export type PeriodKey = 'week' | 'month' | 'quarter' | 'semester' | 'schoolYear' | 'custom'
 
 export interface PeriodOption {
@@ -14,3 +16,8 @@ export interface StatDelta {
 export type PresetPeriodKey = Exclude<PeriodKey, 'custom'>
 
 export type CustomRangeError = 'incomplete' | 'endBeforeStart'
+
+export interface StatsForRange {
+  range: PeriodRangeDto
+  stats: StatsForPeriodDto
+}

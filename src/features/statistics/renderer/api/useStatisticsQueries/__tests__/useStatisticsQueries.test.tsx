@@ -40,7 +40,8 @@ describe('useStatsForPeriod', () => {
       { wrapper: createWrapper() }
     )
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.data?.totalVisits).toBe(SAMPLE_TOTAL)
+    expect(result.current.data?.stats.totalVisits).toBe(SAMPLE_TOTAL)
+    expect(result.current.data?.range).toEqual({ startDate: '2026-04-01', endDate: '2026-04-30' })
     expect(window.electronAPI.statistics.getStats).toHaveBeenCalledWith({
       startDate: '2026-04-01',
       endDate: '2026-04-30'

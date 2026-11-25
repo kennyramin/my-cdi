@@ -82,7 +82,7 @@ describe('useStatisticsPage', () => {
     )
   })
 
-  it('reports endBeforeStart and never queries an inverted range', () => {
+  it('reports endBeforeStart and never queries an inverted range', async () => {
     const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
     act(() => {
       result.current.selectPeriod('custom')
@@ -91,6 +91,9 @@ describe('useStatisticsPage', () => {
       result.current.setCustomRange({ startDate: '2026-11-20', endDate: '2026-11-10' })
     })
     expect(result.current.customRangeError).toBe('endBeforeStart')
+    await act(async () => {
+      await Promise.resolve()
+    })
     expect(window.electronAPI.statistics.getStats).not.toHaveBeenCalledWith({
       startDate: '2026-11-20',
       endDate: '2026-11-10'
@@ -108,5 +111,53 @@ describe('useStatisticsPage', () => {
     })
     expect(result.current.customRangeError).toBe('endBeforeStart')
     expect(result.current.stats?.totalVisits).toBe(SAMPLE_TOTAL)
+  })
+
+  it('keeps the range of the displayed data while an invalid range is typed', async () => {
+    const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
+    await waitFor(() => expect(result.current.stats).toBeDefined())
+    act(() => {
+      result.current.selectPeriod('custom')
+    })
+    act(() => {
+      result.current.setCustomRange({ startDate: '2026-11-20', endDate: '2026-11-10' })
+    })
+    expect(result.current.range).toEqual({ startDate: '2026-11-20', endDate: '2026-11-10' })
+    expect(result.current.dataRange).toEqual({ startDate: '2026-11-01', endDate: '2026-11-30' })
+    expect(result.current.isStale).toBe(true)
+  })
+
+  it('keeps the old data range while a new preset is pending, then switches', async () => {
+    const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
+    await waitFor(() => expect(result.current.stats).toBeDefined())
+    expect(result.current.isStale).toBe(false)
+    let resolveWeek: (value: unknown) => void = () => undefined
+    vi.mocked(window.electronAPI.statistics.getStats).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveWeek = resolve
+      })
+    )
+    act(() => {
+      result.current.selectPeriod('week')
+    })
+    expect(result.current.dataRange).toEqual({ startDate: '2026-11-01', endDate: '2026-11-30' })
+    expect(result.current.range).not.toEqual(result.current.dataRange)
+    expect(result.current.isStale).toBe(true)
+    await act(async () => {
+      resolveWeek({
+        success: true,
+        data: {
+          totalVisits: 1,
+          averagePerDay: 1,
+          morningRate: 0,
+          afternoonRate: 0,
+          dailyCounts: [],
+          activityCounts: [],
+          classCounts: []
+        }
+      })
+    })
+    await waitFor(() => expect(result.current.isStale).toBe(false))
+    expect(result.current.dataRange).toEqual(result.current.range)
   })
 })

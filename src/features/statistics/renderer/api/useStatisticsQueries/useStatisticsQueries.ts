@@ -2,18 +2,21 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { resolveIpcErrorMessage } from '@lib/ipc/resolveIpcErrorMessage'
 import { statisticsKeys } from '../statisticsKeys'
-import type { StatsForPeriodDto, PeriodRangeDto } from '@statistics-shared'
+import type { PeriodRangeDto } from '@statistics-shared'
+import type { StatsForRange } from '@statistics/types'
 
 export function useStatsForPeriod(range: PeriodRangeDto, isEnabled: boolean = true) {
   const { t } = useTranslation('common')
   return useQuery({
     queryKey: statisticsKeys.period(range),
-    queryFn: async (): Promise<StatsForPeriodDto> => {
+    // The range travels with the data so placeholder (previous) data is never
+    // drawn against the newly requested range.
+    queryFn: async (): Promise<StatsForRange> => {
       const result = await window.electronAPI.statistics.getStats(range)
       if (!result.success) {
         throw new Error(resolveIpcErrorMessage(result, t))
       }
-      return result.data
+      return { range, stats: result.data }
     },
     enabled: isEnabled && Boolean(range.startDate && range.endDate),
     placeholderData: keepPreviousData,

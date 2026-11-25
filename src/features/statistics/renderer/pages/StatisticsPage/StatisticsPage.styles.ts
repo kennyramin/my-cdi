@@ -39,3 +39,15 @@ export const StatisticsFullGrid = styled(Box, {
   gridTemplateColumns: '1fr',
   gap: theme.spacing(2.5)
 }))
+
+export const StatisticsContent = styled(Box, {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(3),
+  transition: theme.transitions.create('opacity'),
+  '&[data-stale="true"]': {
+    opacity: theme.palette.action.disabledOpacity
+  }
+}))
