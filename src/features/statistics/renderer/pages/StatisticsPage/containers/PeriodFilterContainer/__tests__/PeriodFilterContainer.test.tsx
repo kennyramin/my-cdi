@@ -76,17 +76,54 @@ describe('PeriodFilterContainer', () => {
     })
   })
 
-  it('shows the inline error for an inverted range', () => {
+  it('shows the inverted-range error as an alert linked to the end input', () => {
     renderFilter({ value: 'custom', customRangeError: 'endBeforeStart' })
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent(
       'La date de fin doit être postérieure ou égale à la date de début'
     )
-    expect(screen.getByLabelText('Date de fin')).toHaveAttribute('aria-invalid', 'true')
+    const end = screen.getByLabelText('Date de fin')
+    expect(end).toHaveAttribute('aria-invalid', 'true')
+    expect(end).toHaveAttribute('aria-describedby', alert.id)
+    expect(screen.getByLabelText('Date de début')).toHaveAttribute('aria-invalid', 'false')
   })
 
-  it('shows no alert when the range is valid', () => {
+  it('announces an incomplete range politely, never as an alert', () => {
+    renderFilter({
+      value: 'custom',
+      customRange: { startDate: '2026-11-01', endDate: '0002-11-30' },
+      customRangeError: 'incomplete'
+    })
+    expect(screen.queryByRole('alert')).toBeNull()
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('Renseignez les deux dates')
+    const end = screen.getByLabelText('Date de fin')
+    expect(end).toHaveAttribute('aria-invalid', 'true')
+    expect(end).toHaveAttribute('aria-describedby', status.id)
+    expect(screen.getByLabelText('Date de début')).toHaveAttribute('aria-invalid', 'false')
+  })
+
+  it('flags the start input when the start date is the incomplete one', () => {
+    renderFilter({
+      value: 'custom',
+      customRange: { startDate: '', endDate: '2026-11-30' },
+      customRangeError: 'incomplete'
+    })
+    expect(screen.getByLabelText('Date de début')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('Date de fin')).toHaveAttribute('aria-invalid', 'false')
+  })
+
+  it('shows no message when the range is valid', () => {
     renderFilter({ value: 'custom' })
     expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByRole('status')).toBeNull()
     expect(screen.getByLabelText('Date de fin')).toHaveAttribute('aria-invalid', 'false')
+    expect(screen.getByLabelText('Date de fin')).not.toHaveAttribute('aria-describedby')
+  })
+
+  it('bounds both inputs to the plausible years', () => {
+    renderFilter({ value: 'custom' })
+    expect(screen.getByLabelText('Date de début')).toHaveAttribute('min', '2000-01-01')
+    expect(screen.getByLabelText('Date de fin')).toHaveAttribute('max', '2100-12-31')
   })
 })

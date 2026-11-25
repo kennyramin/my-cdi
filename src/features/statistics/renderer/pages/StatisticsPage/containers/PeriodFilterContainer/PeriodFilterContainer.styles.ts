@@ -8,6 +8,7 @@ export const BTN_HEIGHT_PX = 32
 
 export const CUSTOM_START_INPUT_ID = 'statistics-custom-start'
 export const CUSTOM_END_INPUT_ID = 'statistics-custom-end'
+export const CUSTOM_RANGE_MESSAGE_ID = 'statistics-custom-range-message'
 
 export const PeriodFilterWrapper = styled('div', {
   shouldForwardProp: shouldForwardStyledProp

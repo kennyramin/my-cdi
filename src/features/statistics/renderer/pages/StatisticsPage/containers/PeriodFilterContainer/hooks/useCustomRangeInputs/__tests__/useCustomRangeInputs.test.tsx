@@ -19,6 +19,7 @@ function Harness({ onCustomRangeChange, error }: HarnessProps) {
       <input aria-label="start" value={inputs.startDate} onChange={inputs.onStartDateChange} />
       <input aria-label="end" value={inputs.endDate} onChange={inputs.onEndDateChange} />
       <p data-testid="message">{inputs.errorMessage ?? 'none'}</p>
+      <p data-testid="invalid">{`${inputs.isStartInvalid}/${inputs.isEndInvalid}`}</p>
     </div>
   )
 }
@@ -65,5 +66,15 @@ describe('useCustomRangeInputs', () => {
     expect(screen.getByTestId('message')).toHaveTextContent(
       'La date de fin doit être postérieure ou égale à la date de début'
     )
+  })
+
+  it('flags only the end input for endBeforeStart', () => {
+    render(<Harness onCustomRangeChange={vi.fn()} error="endBeforeStart" />)
+    expect(screen.getByTestId('invalid')).toHaveTextContent('false/true')
+  })
+
+  it('flags nothing without error', () => {
+    render(<Harness onCustomRangeChange={vi.fn()} error={null} />)
+    expect(screen.getByTestId('invalid')).toHaveTextContent('false/false')
   })
 })

@@ -1,5 +1,6 @@
 import {
   CUSTOM_END_INPUT_ID,
+  CUSTOM_RANGE_MESSAGE_ID,
   CUSTOM_START_INPUT_ID,
   CustomRangeError,
   CustomRangeField,
@@ -25,8 +26,19 @@ export function PeriodFilterContainer({
 }: PeriodFilterContainerProps) {
   const { t } = useTranslation('statistics')
   const periodButtons = usePeriodFilter(value, onChange)
-  const { startDate, endDate, onStartDateChange, onEndDateChange, errorMessage } =
-    useCustomRangeInputs(customRange, onCustomRangeChange, customRangeError)
+  const {
+    startDate,
+    endDate,
+    minDate,
+    maxDate,
+    onStartDateChange,
+    onEndDateChange,
+    errorMessage,
+    errorRole,
+    isStartInvalid,
+    isEndInvalid
+  } = useCustomRangeInputs(customRange, onCustomRangeChange, customRangeError)
+  const describedBy = errorMessage === null ? undefined : CUSTOM_RANGE_MESSAGE_ID
 
   return (
     <PeriodFilterWrapper>
@@ -52,7 +64,10 @@ export function PeriodFilterContainer({
             <CustomRangeInput
               id={CUSTOM_START_INPUT_ID}
               type="date"
-              aria-label={t('customRange.start')}
+              aria-invalid={isStartInvalid}
+              aria-describedby={isStartInvalid ? describedBy : undefined}
+              min={minDate}
+              max={maxDate}
               value={startDate}
               onChange={onStartDateChange}
             />
@@ -64,14 +79,18 @@ export function PeriodFilterContainer({
             <CustomRangeInput
               id={CUSTOM_END_INPUT_ID}
               type="date"
-              aria-label={t('customRange.end')}
-              aria-invalid={errorMessage !== null}
+              aria-invalid={isEndInvalid}
+              aria-describedby={describedBy}
+              min={minDate}
+              max={maxDate}
               value={endDate}
               onChange={onEndDateChange}
             />
           </CustomRangeField>
           {errorMessage !== null ? (
-            <CustomRangeError role="alert">{errorMessage}</CustomRangeError>
+            <CustomRangeError id={CUSTOM_RANGE_MESSAGE_ID} role={errorRole}>
+              {errorMessage}
+            </CustomRangeError>
           ) : null}
         </CustomRangeRow>
       ) : null}
