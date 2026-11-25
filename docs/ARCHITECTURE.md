@@ -299,7 +299,7 @@ Conditional rendering (`cond ? <A/> : null`) and early returns choosing _what_ t
 ### Styling: `styled()` in `.styles.ts`, theme as single source of truth
 
 - **Zero inline `sx={{...}}`** in feature or shared/ui components. All styling lives in `XPresenter.styles.ts` (or `XContainer.styles.ts`) as `styled()` components from `@mui/material/styles`.
-- **The MUI theme (`@ui/theme`) is the only source of design tokens.** `global.css` contains nothing but the font `@import` lines; element resets, scrollbar styling and the base body styles live in the `MuiCssBaseline` overrides in `theme.ts`. Never use CSS custom properties (`var(--...)`), hardcoded hex/rgba colors or raw px `fontSize` in components — resolve everything from the theme.
+- **The MUI theme (`@ui/theme`) is the only source of design tokens.** Fonts are bundled locally from npm (`@fontsource/inter`, `@fontsource/jetbrains-mono`, `material-icons`) and imported in `src/renderer/main.tsx`; there is no global stylesheet. Element resets, scrollbar styling and the base body styles live in the `MuiCssBaseline` overrides in `theme.ts`. Never use CSS custom properties (`var(--...)`), hardcoded hex/rgba colors or raw px `fontSize` in components — resolve everything from the theme.
 - MUI v9's `styled()` serialises style objects with emotion's raw CSS serializer and does **not** resolve MUI system props (`mt`, `px`, `gap`, `bgcolor`, …) — they would reach the stylesheet unprocessed and be silently dropped. Style objects therefore use **real CSS properties** and `theme.spacing()` for spacing-scale values (`paddingInline: theme.spacing(1)`, `backgroundColor`, `gap: theme.spacing(0.75)`), never system-prop shorthands.
 - Every styled call passes the shared prop filter:
 
@@ -732,7 +732,7 @@ const activityIcons: Record<ActivityType, string> = { ... }
 | `Modal`         | Dialog wrapper with custom width mapping       |
 | `ErrorBoundary` | Global render-error catch + fallback UI        |
 
-`.styles.ts` files export `styled()` components (plus `*_PX` size constants) built with `@mui/material/styles` `styled()` using plain CSS properties and `theme.spacing()` — never MUI system props — and the shared `shouldForwardStyledProp` filter; not MUI `sx`. All design tokens come from the MUI theme (`@ui/theme`): palette (including the custom `sidebar`/`surface`/`dividerStrong`/`activity` slots), `TYPE_SCALE` + `FONT_WEIGHTS` for typography, `RADII`, `TINT_ALPHAS` and `theme.shadows[1..4]`. `global.css` contains only the font imports.
+`.styles.ts` files export `styled()` components (plus `*_PX` size constants) built with `@mui/material/styles` `styled()` using plain CSS properties and `theme.spacing()` — never MUI system props — and the shared `shouldForwardStyledProp` filter; not MUI `sx`. All design tokens come from the MUI theme (`@ui/theme`): palette (including the custom `sidebar`/`surface`/`dividerStrong`/`activity` slots), `TYPE_SCALE` + `FONT_WEIGHTS` for typography, `RADII`, `TINT_ALPHAS` and `theme.shadows[1..4]`. Fonts are bundled locally from npm (`@fontsource/inter`, `@fontsource/jetbrains-mono`, `material-icons`) and imported in `src/renderer/main.tsx`; there is no global stylesheet.
 
 ---
 
