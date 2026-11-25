@@ -355,6 +355,7 @@ Search is case-insensitive multi-field match (`nom`, `prenom`, `classe`, `ine`).
 Consistent 3-layer architecture for any list with multi-select:
 
 1. **Selection hook** (`useStudentSelection` / `useJournalEntrySelection`)
+   - `useJournalEntrySelection(scopeKey)` resets when the scope (selected date) changes
    - `useState<number[]>` for `selectedIds`
    - `toggle(id)`, `selectAll(ids)`, `clearSelection()`, `isSelected(id)`
 

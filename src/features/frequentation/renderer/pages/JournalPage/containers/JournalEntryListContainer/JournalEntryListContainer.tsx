@@ -40,7 +40,7 @@ export function JournalEntryListContainer({
   onEditEntry
 }: JournalEntryListContainerProps) {
   const { t } = useTranslation('frequentation')
-  const { selectedIds, toggle, selectAll, clearSelection } = useJournalEntrySelection()
+  const { selectedIds, toggle, selectAll, clearSelection } = useJournalEntrySelection(selectedDate)
   const { period, setPeriod } = useEntryPeriodFilter()
   const { searchTerm, setSearchTerm } = useSearchFilter()
   const { data, isLoading } = useJournalEntries({ startDate: selectedDate, endDate: selectedDate })
