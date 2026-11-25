@@ -24,7 +24,7 @@ import { intersectSelectedIds } from './helpers/intersectSelectedIds'
 import { JournalEntryToolbarPresenter } from './presenters/JournalEntryToolbarPresenter'
 import { JournalEntryRowPresenter } from './presenters/JournalEntryRowPresenter'
 import { JournalBatchActionsContainer } from './containers/JournalBatchActionsContainer'
-import { EntriesScroll, ListCard } from './JournalEntryListContainer.styles'
+import { EntriesList, EntriesScroll, ListCard } from './JournalEntryListContainer.styles'
 import type { JournalEntryRowPresenterProps } from './presenters/JournalEntryRowPresenter'
 import type { EntryPeriodFilter } from './helpers/filterEntriesByPeriod'
 import type { JournalEntryViewModel } from '@frequentation/types'
@@ -161,9 +161,11 @@ export function JournalEntryListContainer({
             description={t('emptyHint')}
           />
         ) : (
-          filtered.map((entry) => (
-            <JournalEntryRowPresenter key={entry.id} {...buildRowProps(entry)} />
-          ))
+          <EntriesList aria-label={t('present')}>
+            {filtered.map((entry) => (
+              <JournalEntryRowPresenter key={entry.id} {...buildRowProps(entry)} />
+            ))}
+          </EntriesList>
         )}
       </EntriesScroll>
       <ConfirmDialog

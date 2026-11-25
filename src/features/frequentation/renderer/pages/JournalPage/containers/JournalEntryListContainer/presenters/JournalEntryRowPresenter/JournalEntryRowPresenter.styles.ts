@@ -5,10 +5,11 @@ import { FONT_WEIGHTS, MONO_FONT_FAMILY, RADII, TINT_ALPHAS } from '@ui/theme'
 
 export const ACTIONS_CLASS = 'att-actions'
 
-export const Row = styled('div', {
+export const Row = styled('li', {
   shouldForwardProp: shouldForwardStyledProp
 })<{ $isSelected: boolean }>(({ theme, $isSelected }) => ({
   position: 'relative',
+  listStyle: 'none',
   display: 'flex',
   alignItems: 'center',
   gap: theme.spacing(1.5),

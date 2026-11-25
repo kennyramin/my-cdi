@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { I18nextProvider } from 'react-i18next'
@@ -10,6 +10,7 @@ import type { ReactNode } from 'react'
 import { JournalEntryListContainer } from '../JournalEntryListContainer'
 import { ActivityType } from '@types'
 
+const MOCK_ENTRY_COUNT = 2
 const SELECT_ALL = 'Tout sélectionner'
 
 const deleteMock = vi.fn()
@@ -69,6 +70,31 @@ describe('JournalEntryListContainer', () => {
       withProviders(<JournalEntryListContainer selectedDate="2026-04-01" onEditEntry={vi.fn()} />)
     )
     await waitFor(() => expect(screen.getByText('Jean Dupont')).toBeInTheDocument())
+  })
+
+  it('renders entries as items of a labelled list', async () => {
+    render(
+      withProviders(<JournalEntryListContainer selectedDate="2026-04-01" onEditEntry={vi.fn()} />)
+    )
+    const list = await screen.findByRole('list', { name: 'Présents' })
+    expect(within(list).getAllByRole('listitem')).toHaveLength(MOCK_ENTRY_COUNT)
+  })
+
+  it('renders no list when the day has no entries', async () => {
+    vi.stubGlobal('electronAPI', {
+      frequentation: {
+        getJournalEntries: vi.fn().mockResolvedValue({ success: true, data: [] }),
+        delete: deleteMock,
+        update: updateMock
+      }
+    })
+    render(
+      withProviders(<JournalEntryListContainer selectedDate="2026-04-01" onEditEntry={vi.fn()} />)
+    )
+    expect(
+      await screen.findByText(i18n.t('noEntries', { ns: 'frequentation' }))
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('list')).toBeNull()
   })
 
   it('selects only visible entries when clicking Tout sélectionner', async () => {
