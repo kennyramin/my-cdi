@@ -14,9 +14,10 @@
     "visitCount": "Visits",
     "actions": "Actions"
   },
-  "deleteConfirm_one": "Are you sure you want to delete {{count}} student?",
-  "deleteConfirm_other": "Are you sure you want to delete {{count}} students?",
-  "row.confirmDelete": "Are you sure you want to delete this student?",
+  "deleteConfirm_one": "Deleting {{count}} student also deletes their entire visit history. This action cannot be undone.",
+  "deleteConfirm_other": "Deleting {{count}} students also deletes their entire visit history. This action cannot be undone.",
+  "row.confirmDelete": "Deleting this student also deletes their entire visit history. This action cannot be undone.",
+  "row.selectStudent": "Select {{name}}",
   "deleteSuccess": "Student deleted",
   "createSuccess": "Student added successfully",
   "updateSuccess": "Student information updated",

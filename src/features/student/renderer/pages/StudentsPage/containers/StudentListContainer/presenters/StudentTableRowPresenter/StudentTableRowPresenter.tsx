@@ -33,6 +33,7 @@ export function StudentTableRowPresenter({
   onDeleteClick
 }: StudentTableRowPresenterProps) {
   const { t } = useTranslation('common')
+  const { t: tStudent } = useTranslation('student')
 
   return (
     <tr data-selected={selected}>
@@ -42,7 +43,9 @@ export function StudentTableRowPresenter({
           onChange={onCheckboxChange}
           onClick={onCheckboxClick}
           size="small"
-          aria-label={t('app.select')}
+          slotProps={{
+            input: { 'aria-label': tStudent('row.selectStudent', { name: student.displayName }) }
+          }}
         />
       </td>
       <td>

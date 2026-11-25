@@ -14,9 +14,10 @@
     "visitCount": "Visites",
     "actions": "Actions"
   },
-  "deleteConfirm_one": "Êtes-vous sûr de vouloir supprimer {{count}} élève ?",
-  "deleteConfirm_other": "Êtes-vous sûr de vouloir supprimer {{count}} élèves ?",
-  "row.confirmDelete": "Voulez-vous vraiment supprimer cet élève ?",
+  "deleteConfirm_one": "Supprimer {{count}} élève supprimera aussi tout son historique de fréquentation. Cette action est irréversible.",
+  "deleteConfirm_other": "Supprimer {{count}} élèves supprimera aussi tout leur historique de fréquentation. Cette action est irréversible.",
+  "row.confirmDelete": "Supprimer cet élève supprimera aussi tout son historique de fréquentation. Cette action est irréversible.",
+  "row.selectStudent": "Sélectionner {{name}}",
   "deleteSuccess": "Élève supprimé",
   "createSuccess": "Un élève a bien été ajouté",
   "updateSuccess": "Les informations de l'élève ont été mises à jour",

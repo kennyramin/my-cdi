@@ -12,6 +12,7 @@ import { buildStudentInitials } from '@student/helpers/studentFormatters'
 import { StudentTablePresenter } from './presenters/StudentTablePresenter'
 import { StudentTableRowPresenter } from './presenters/StudentTableRowPresenter'
 import { buildNextSortConfig } from './helpers/buildNextSortConfig'
+import { intersectVisibleSelection } from './helpers/intersectVisibleSelection'
 import { getHeaderSortState } from './helpers/getHeaderSortState'
 import { SortableHeaderCellPresenter } from './presenters/SortableHeaderCellPresenter'
 import { StudentListToolbarPresenter } from './presenters/StudentListToolbarPresenter'
@@ -38,7 +39,7 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
   const { filteredStudents, searchTerm, setSearchTerm, sortConfig, setSortConfig, isLoading } =
     useStudentListData()
 
-  const { selectedIds, selectedCount, toggle, selectAll, clearSelection } = useStudentSelection()
+  const { selectedIds, toggle, selectAll, clearSelection } = useStudentSelection()
   const { toast, show, dismiss } = useToast()
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
   const { mutate: deleteStudent } = useDeleteStudent({
@@ -46,6 +47,11 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
       show(tStudent('deleteSuccess'))
     }
   })
+
+  const visibleSelectedIds = intersectVisibleSelection(
+    selectedIds,
+    filteredStudents.map((student) => student.id)
+  )
 
   function handleSelectAll() {
     selectAll(filteredStudents.map((student) => student.id))
@@ -133,8 +139,8 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
       />
 
       <StudentBatchActionsContainer
-        selectedIds={selectedIds}
-        selectedCount={selectedCount}
+        selectedIds={visibleSelectedIds}
+        selectedCount={visibleSelectedIds.length}
         totalCount={filteredStudents.length}
         onSelectAll={handleSelectAll}
         onClearSelection={clearSelection}

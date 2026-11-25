@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'
+import '@shared/i18n/config'
 import { theme } from '@ui/theme'
 import { StudentTableRowPresenter } from '../StudentTableRowPresenter'
 import type { StudentViewModel } from '@student/types'
@@ -55,5 +56,15 @@ describe('StudentTableRowPresenter', () => {
     renderRow(buildStudent(NO_VISITS))
     expect(screen.getByText(String(NO_VISITS))).toBeInTheDocument()
     expect(screen.queryByText('—')).toBeNull()
+  })
+
+  it('labels the row checkbox input with the student name', () => {
+    renderRow({
+      ...buildStudent(NO_VISITS),
+      prenom: 'Léa',
+      nom: 'Martin',
+      displayName: 'Léa Martin'
+    })
+    expect(screen.getByRole('checkbox', { name: 'Sélectionner Léa Martin' })).toBeInTheDocument()
   })
 })
