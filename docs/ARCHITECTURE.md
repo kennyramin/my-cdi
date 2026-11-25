@@ -810,6 +810,8 @@ Every artifact lives as close as possible to its consumer. Only hoist when share
 
 `vitest.config.ts` loads `shared/test/setup.ts` which imports `@testing-library/jest-dom/vitest` matchers.
 
+`vitest.config.ts` sets `process.env.TZ = 'Europe/Paris'` so the suite runs in the users' timezone.
+
 ### Renderer Test Mocking
 
 Renderer tests mock the IPC bridge by stubbing the global:
