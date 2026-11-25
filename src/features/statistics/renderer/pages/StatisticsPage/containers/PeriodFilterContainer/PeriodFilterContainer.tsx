@@ -33,6 +33,8 @@ export function PeriodFilterContainer({
     maxDate,
     onStartDateChange,
     onEndDateChange,
+    onEditStart,
+    onEditEnd,
     errorMessage,
     errorRole,
     isStartInvalid,
@@ -70,6 +72,8 @@ export function PeriodFilterContainer({
               max={maxDate}
               value={startDate}
               onChange={onStartDateChange}
+              onFocus={onEditStart}
+              onBlur={onEditEnd}
             />
           </CustomRangeField>
           <CustomRangeField>
@@ -85,10 +89,12 @@ export function PeriodFilterContainer({
               max={maxDate}
               value={endDate}
               onChange={onEndDateChange}
+              onFocus={onEditStart}
+              onBlur={onEditEnd}
             />
           </CustomRangeField>
           {errorMessage !== null ? (
-            <CustomRangeError id={CUSTOM_RANGE_MESSAGE_ID} role={errorRole}>
+            <CustomRangeError key={errorRole} id={CUSTOM_RANGE_MESSAGE_ID} role={errorRole}>
               {errorMessage}
             </CustomRangeError>
           ) : null}

@@ -88,6 +88,18 @@ describe('PeriodFilterContainer', () => {
     expect(screen.getByLabelText('Date de début')).toHaveAttribute('aria-invalid', 'false')
   })
 
+  it('keeps the inverted-range message polite while a date input is being edited', () => {
+    renderFilter({ value: 'custom', customRangeError: 'endBeforeStart' })
+    const end = screen.getByLabelText('Date de fin')
+    fireEvent.focus(end)
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('status')).toHaveTextContent('La date de fin doit être')
+    expect(end).toHaveAttribute('aria-invalid', 'true')
+    fireEvent.blur(end)
+    expect(screen.getByRole('alert')).toHaveTextContent('La date de fin doit être')
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
   it('announces an incomplete range politely, never as an alert', () => {
     renderFilter({
       value: 'custom',

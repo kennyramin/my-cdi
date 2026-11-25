@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { PeriodRangeDto } from '@statistics-shared'
@@ -17,6 +18,7 @@ export function useCustomRangeInputs(
   customRangeError: CustomRangeError | null
 ) {
   const { t } = useTranslation('statistics')
+  const [isEditing, setIsEditing] = useState(false)
   const errorMessages: Record<CustomRangeError, string> = {
     incomplete: t('customRange.errors.incomplete'),
     endBeforeStart: t('customRange.errors.endBeforeStart')
@@ -30,6 +32,14 @@ export function useCustomRangeInputs(
     onCustomRangeChange({ ...customRange, endDate: event.target.value })
   }
 
+  function onEditStart() {
+    setIsEditing(true)
+  }
+
+  function onEditEnd() {
+    setIsEditing(false)
+  }
+
   const isIncomplete = customRangeError === 'incomplete'
 
   return {
@@ -40,9 +50,12 @@ export function useCustomRangeInputs(
     onStartDateChange,
     onEndDateChange,
     errorMessage: customRangeError === null ? null : errorMessages[customRangeError],
-    // Typing into a native date input emits partial values: only a genuinely
-    // inverted range is an alert; an incomplete one is a polite status.
-    errorRole: isIncomplete ? ('status' as const) : ('alert' as const),
+    onEditStart,
+    onEditEnd,
+    // Typing into a native date input emits partial values (month "1" before
+    // "11"): while editing, every message is a polite status. Only a settled,
+    // genuinely inverted range is an alert.
+    errorRole: isIncomplete || isEditing ? ('status' as const) : ('alert' as const),
     isStartInvalid: isIncomplete && !isPlausibleCustomDate(customRange.startDate),
     isEndInvalid:
       customRangeError === 'endBeforeStart' ||
