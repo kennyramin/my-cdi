@@ -1,6 +1,7 @@
 import { styled } from '@mui/material/styles'
 import type { Theme } from '@mui/material/styles'
 import { shouldForwardStyledProp } from '@ui/helpers/shouldForwardStyledProp'
+import { submitBarClearance } from './containers/JournalEntryFormContainer'
 
 const GRID_FIRST_COLUMN_PX = 320
 
@@ -30,6 +31,8 @@ export const FormColumn = styled('div', {
   ...columnStyles(theme),
   // No bottom padding: the sticky submit bar must sit flush with the visible edge.
   paddingBottom: 0,
+  // Keyboard focus scrolls a control clear of the sticky bar, never under it (WCAG 2.4.11).
+  scrollPaddingBottom: submitBarClearance(theme),
   overflowY: 'auto'
 }))
 

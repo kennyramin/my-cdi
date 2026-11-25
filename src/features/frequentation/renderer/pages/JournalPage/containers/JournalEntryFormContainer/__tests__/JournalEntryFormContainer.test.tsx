@@ -101,6 +101,15 @@ describe('JournalEntryFormContainer', () => {
     expect(submitButton).toHaveAttribute('aria-describedby', helper.id)
   })
 
+  it('renders the future-date explanation inside the sticky submit bar, next to the button', () => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    render(withProviders(<JournalEntryFormContainer selectedDate={formatLocalDate(tomorrow)} />))
+    const helper = screen.getByText("Impossible d'enregistrer une présence dans le futur")
+    const submitBar = screen.getByRole('button', { name: /enregistrer/i }).parentElement
+    expect(submitBar).toContainElement(helper)
+  })
+
   it('shows no future warning for today', () => {
     render(withProviders(<JournalEntryFormContainer selectedDate={formatLocalDate(new Date())} />))
     expect(screen.queryByText(/dans le futur/)).toBeNull()

@@ -157,12 +157,12 @@ export function JournalEntryFormContainer({
           >
             {t('form.submit')}
           </Button>
+          {isFutureDate && (
+            <FutureDateHelperText id={FUTURE_DATE_HELPER_ID} variant="caption" role="status">
+              {t('form.futureNotAllowed')}
+            </FutureDateHelperText>
+          )}
         </SubmitBar>
-        {isFutureDate && (
-          <FutureDateHelperText id={FUTURE_DATE_HELPER_ID} variant="caption" role="status">
-            {t('form.futureNotAllowed')}
-          </FutureDateHelperText>
-        )}
       </EntryForm>
       <Toast toast={toast} onClose={dismissToast} />
     </FormCard>

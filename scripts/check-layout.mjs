@@ -3,7 +3,13 @@
 // realistic data and reports horizontal overflow at 800x600 plus the journal
 // "Enregistrer" fold at 1200x800. Exit code 0 = clean, 1 = offenders found.
 //
+// Also asserts WCAG 2.4.11 on the journal form (no keyboard-focused control hidden under the sticky
+// submit bar) and that the future-date explanation stays inside the viewport.
+//
 // Usage: PLAYWRIGHT_MODULE=/path/to/playwright xvfb-run -a npm run check:layout
+//   - PLAYWRIGHT_MODULE is required: playwright is not a project dependency, point it at an install.
+//   - check:layout aligns better-sqlite3 to the ELECTRON ABI and leaves it there: run `npm test`
+//     (which realigns) or `npm run rebuild:tests` afterwards before running vitest.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -26,6 +32,11 @@ const SUBPIXEL_TOLERANCE = 1
 const READY_TIMEOUT_MS = 15000
 const ACTIVITIES = ['work', 'reading', 'computer', 'relaxation', 'game', 'other']
 const SAVE_BUTTON_NAME = 'Enregistrer'
+const TIME_BUTTON_NAME = 'Date et heure'
+const FOCUS_TAB_LIMIT = 14
+const FOCUS_SETTLE_MS = 150
+const FUTURE_DAYS_AHEAD = 2
+const MS_PER_DAY = 86400000
 const ROUTES = [
   { page: 'journal', hash: '#/', ready: 'form button[type="submit"]' },
   { page: 'students', hash: '#/students', ready: 'main table tbody tr' },
@@ -279,14 +290,97 @@ const inPageSaveButton = ({ name, tolerance }) => {
 
 const inPageClassLabels = (tolerance) => {
   const out = []
-  for (const label of document.querySelectorAll('main ul > li > div > div:first-child > span')) {
+  const labels = document.querySelectorAll('main ul > li > div > div:first-child > span')
+  for (const label of labels) {
     const lineHeight = parseFloat(getComputedStyle(label).lineHeight)
     if (label.getBoundingClientRect().height > lineHeight + tolerance) {
       out.push(`class label "${label.textContent.trim()}" wraps onto several lines`)
       break
     }
   }
-  return out
+  return { count: labels.length, problems: out }
+}
+
+const inPageFocusObscured = () => {
+  const bar = document.querySelector('form button[type="submit"]')?.parentElement
+  const el = document.activeElement
+  if (!bar || !el || el === document.body || bar.contains(el) || !el.closest('form, main')) {
+    return null
+  }
+  const rect = el.getBoundingClientRect()
+  const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+  const label = (el.getAttribute('aria-label') ?? el.textContent ?? el.placeholder ?? el.tagName)
+    .trim()
+    .slice(0, 24)
+  return hit && bar.contains(hit)
+    ? `focused ${el.tagName.toLowerCase()} "${label}" is covered by the submit bar (y ${Math.round(rect.top)}-${Math.round(rect.bottom)})`
+    : ''
+}
+
+const inPageResetJournalScroll = () => {
+  for (const el of document.querySelectorAll('main *')) {
+    if (getComputedStyle(el).overflowY === 'auto') {
+      el.scrollTop = 0
+    }
+  }
+}
+
+const inPageFutureHelper = () => {
+  const helper = document.getElementById('journal-future-date-helper')
+  if (!helper) {
+    return 'future-date helper not rendered for a future date'
+  }
+  const rect = helper.getBoundingClientRect()
+  if (rect.top < 0 || rect.bottom > window.innerHeight) {
+    return `future-date helper is outside the viewport (y ${Math.round(rect.top)}-${Math.round(rect.bottom)} of ${window.innerHeight})`
+  }
+  const hit = document.elementFromPoint(rect.left + 2, rect.top + rect.height / 2)
+  return hit && !helper.contains(hit) ? 'future-date helper is covered by another element' : ''
+}
+
+const isoDaysAhead = (days) => {
+  const d = new Date(Date.now() + MS_PER_DAY * days)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+const checkFocusNotObscured = async (page, size) => {
+  await page.evaluate(inPageResetJournalScroll)
+  await page.getByRole('button', { name: TIME_BUTTON_NAME }).focus()
+  let seen = 0
+  for (let i = 0; i < FOCUS_TAB_LIMIT; i++) {
+    await page.keyboard.press('Tab')
+    await page.waitForTimeout(FOCUS_SETTLE_MS)
+    const problem = await page.evaluate(inPageFocusObscured)
+    if (problem === null) {
+      continue
+    }
+    seen++
+    if (problem) {
+      report('journal', size, 'keyboard focus', problem)
+      return
+    }
+  }
+  if (seen === 0) {
+    report('journal', size, 'keyboard focus', 'tabbing never reached a journal form control')
+  }
+}
+
+const checkFutureHelperVisible = async (page, size) => {
+  const futureIso = isoDaysAhead(FUTURE_DAYS_AHEAD)
+  const todayIso = isoDaysAhead(0)
+  await page.locator(`[data-iso="${futureIso}"]`).click()
+  await page.waitForSelector('#journal-future-date-helper', { timeout: READY_TIMEOUT_MS })
+  await page.waitForTimeout(FOCUS_SETTLE_MS)
+  const problem = await page.evaluate(inPageFutureHelper)
+  if (problem) {
+    report('journal', size, 'future date helper', problem)
+  }
+  await page.locator(`[data-iso="${todayIso}"]`).click()
+  await page.waitForSelector('#journal-future-date-helper', {
+    state: 'detached',
+    timeout: READY_TIMEOUT_MS
+  })
 }
 
 const checkSaveButton = async (page, size) => {
@@ -303,9 +397,14 @@ const checkJournalSmall = async (page) => {
   await gotoRoute(page, ROUTES[0], ROUTES.at(-1))
   await checkSaveButton(page, SMALL_VIEWPORT)
   const labels = await page.evaluate(inPageClassLabels, SUBPIXEL_TOLERANCE)
-  for (const reason of labels) {
+  if (labels.count === 0) {
+    report('journal', SMALL_VIEWPORT, 'entries>li', 'no class label found: selector is stale')
+  }
+  for (const reason of labels.problems) {
     report('journal', SMALL_VIEWPORT, 'entries>li', reason)
   }
+  await checkFocusNotObscured(page, SMALL_VIEWPORT)
+  await checkFutureHelperVisible(page, SMALL_VIEWPORT)
   await gotoRoute(page, ROUTES.at(-1), ROUTES[0])
 }
 
@@ -324,6 +423,8 @@ const checkFold = async (page) => {
     )
   }
   await checkSaveButton(page, FOLD_VIEWPORT)
+  await checkFocusNotObscured(page, FOLD_VIEWPORT)
+  await checkFutureHelperVisible(page, FOLD_VIEWPORT)
 }
 
 const dir = mkdtempSync(join(tmpdir(), 'my-cdi-layout-'))
