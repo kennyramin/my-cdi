@@ -3,9 +3,16 @@ import { ActivityType } from '@types'
 import { createFrequentationBatch } from '../createFrequentationBatch'
 import type { FrequentationGateway } from '@frequentation/gateways/frequentation'
 import type { FrequentationEntity } from '@frequentation/entities/frequentation'
+import { ErrorCode } from '@lib/errors'
 
 const SECOND_STUDENT_ID = 2
 const EXPECTED_TWO = 2
+
+const TEST_YEAR = 2026
+const TEST_MONTH_INDEX = 10
+const TEST_DAY = 25
+const NOW_HOUR = 14
+const NOW_MINUTE = 30
 
 const VALID_ENTITY: FrequentationEntity = {
   id: 1,
@@ -89,5 +96,44 @@ describe('createFrequentationBatch', () => {
       expect(result.data.errors).toHaveLength(1)
       expect(result.data.errors[0]?.error).toContain('DB conflict')
     }
+  })
+
+  describe('future dates', () => {
+    const NOW = new Date(TEST_YEAR, TEST_MONTH_INDEX, TEST_DAY, NOW_HOUR, NOW_MINUTE)
+
+    it('rejects the whole batch when any item is in the future', async () => {
+      const gateway = createMockGateway()
+      const result = await createFrequentationBatch(
+        gateway,
+        {
+          frequentations: [
+            { startsAt: '2026-11-25T14:00:00', activity: ActivityType.WORK, studentId: 1 },
+            { startsAt: '2026-11-26T09:00:00', activity: ActivityType.WORK, studentId: 1 }
+          ]
+        },
+        NOW
+      )
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.code).toBe(ErrorCode.VALIDATION_ERROR)
+      }
+      expect(gateway.create).not.toHaveBeenCalled()
+    })
+
+    it('creates a batch dated now', async () => {
+      const result = await createFrequentationBatch(
+        createMockGateway(),
+        {
+          frequentations: [
+            { startsAt: '2026-11-25T14:30:00', activity: ActivityType.WORK, studentId: 1 }
+          ]
+        },
+        NOW
+      )
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.created).toHaveLength(1)
+      }
+    })
   })
 })
