@@ -17,7 +17,8 @@ const MOCK_STUDENTS: StudentResponseDto[] = [
     ine: '1234567890A',
     fullName: 'Jean Dupont',
     createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z'
+    updatedAt: '2026-01-01T00:00:00Z',
+    visitCount: 0
   },
   {
     id: STUDENT_ID_SECOND,
@@ -27,7 +28,8 @@ const MOCK_STUDENTS: StudentResponseDto[] = [
     ine: '0987654321B',
     fullName: 'Marie Martin',
     createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z'
+    updatedAt: '2026-01-01T00:00:00Z',
+    visitCount: 0
   }
 ]
 

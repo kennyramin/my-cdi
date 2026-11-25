@@ -50,5 +50,6 @@ export async function updateStudent(
     return { success: false, error: 'Failed to update student', code: ErrorCode.DATABASE_ERROR }
   }
 
-  return { success: true, data: formatStudentResponse(entity) }
+  const visitCount = await deps.gateway.countVisitsByStudentId(entity.id)
+  return { success: true, data: formatStudentResponse(entity, visitCount) }
 }

@@ -32,6 +32,7 @@ export interface StudentResponseDto {
   fullName: string
   createdAt: string
   updatedAt: string
+  visitCount: number
 }
 
 export interface StudentListResponseDto {

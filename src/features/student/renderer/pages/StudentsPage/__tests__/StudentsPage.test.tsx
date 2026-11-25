@@ -20,7 +20,8 @@ const MOCK_DTOS: StudentResponseDto[] = [
     ine: '111A',
     fullName: 'Jean Dupont',
     createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z'
+    updatedAt: '2026-01-01T00:00:00Z',
+    visitCount: 0
   }
 ]
 

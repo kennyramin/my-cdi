@@ -17,6 +17,7 @@ const STUDENTS: StudentViewModel[] = [
     fullName: 'Jean Dupont',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
+    visitCount: 0,
     displayName: 'Jean Dupont',
     classLabel: '3ème A'
   },
@@ -29,6 +30,7 @@ const STUDENTS: StudentViewModel[] = [
     fullName: 'Marie Martin',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
+    visitCount: 0,
     displayName: 'Marie Martin',
     classLabel: '3ème B'
   },
@@ -41,6 +43,7 @@ const STUDENTS: StudentViewModel[] = [
     fullName: 'Luc Bernard',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
+    visitCount: 0,
     displayName: 'Luc Bernard',
     classLabel: '4ème C'
   }
@@ -98,6 +101,7 @@ describe('sortStudentRows', () => {
         fullName: 'A A',
         createdAt: '2026-01-01T00:00:00Z',
         updatedAt: '2026-01-01T00:00:00Z',
+        visitCount: 0,
         displayName: 'A A',
         classLabel: 'A'
       },
@@ -110,6 +114,7 @@ describe('sortStudentRows', () => {
         fullName: 'B A',
         createdAt: '2026-01-01T00:00:00Z',
         updatedAt: '2026-01-01T00:00:00Z',
+        visitCount: 0,
         displayName: 'B A',
         classLabel: 'A'
       }

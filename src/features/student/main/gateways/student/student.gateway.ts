@@ -1,4 +1,4 @@
-import type { StudentEntity } from '@student/entities/student'
+import type { StudentEntity, StudentWithVisitCountEntity } from '@student/entities/student'
 import type { CreateStudentDto, UpdateStudentDto } from '@student-shared'
 
 export interface StudentGateway {
@@ -9,4 +9,6 @@ export interface StudentGateway {
   delete(id: number): Promise<boolean>
   getByClass(classe: string): Promise<StudentEntity[]>
   getByIds(ids: number[]): Promise<StudentEntity[]>
+  getAllWithVisitCount(classe?: string): Promise<StudentWithVisitCountEntity[]>
+  countVisitsByStudentId(studentId: number): Promise<number>
 }
