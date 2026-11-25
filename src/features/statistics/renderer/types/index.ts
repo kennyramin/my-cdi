@@ -1,4 +1,4 @@
-export type PeriodKey = 'week' | 'month' | 'quarter' | 'semester' | 'year' | 'custom'
+export type PeriodKey = 'week' | 'month' | 'quarter' | 'semester' | 'schoolYear' | 'custom'
 
 export interface PeriodOption {
   value: PeriodKey

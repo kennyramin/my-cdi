@@ -10,7 +10,7 @@ describe('PeriodFilterContainer', () => {
     expect(screen.getByText('Ce mois')).toBeInTheDocument()
     expect(screen.getByText('Ce trimestre')).toBeInTheDocument()
     expect(screen.getByText('Ce semestre')).toBeInTheDocument()
-    expect(screen.getByText('Cette année')).toBeInTheDocument()
+    expect(screen.getByText('Année scolaire')).toBeInTheDocument()
     expect(screen.getByText('Personnalisé')).toBeInTheDocument()
   })
 

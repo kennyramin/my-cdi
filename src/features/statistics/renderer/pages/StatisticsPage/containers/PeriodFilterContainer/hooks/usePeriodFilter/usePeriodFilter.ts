@@ -14,7 +14,7 @@ const BUTTONS: PeriodButtonConfig[] = [
   { key: 'month', labelKey: 'period.month' },
   { key: 'quarter', labelKey: 'period.quarter' },
   { key: 'semester', labelKey: 'period.semester' },
-  { key: 'year', labelKey: 'period.year' },
+  { key: 'schoolYear', labelKey: 'period.schoolYear' },
   { key: 'custom', labelKey: 'period.custom', iconName: 'date_range', disabled: true }
 ]
 

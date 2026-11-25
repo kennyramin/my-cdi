@@ -12,7 +12,7 @@ describe('usePeriodFilter', () => {
       'Ce mois',
       'Ce trimestre',
       'Ce semestre',
-      'Cette année',
+      'Année scolaire',
       'Personnalisé'
     ])
   })
