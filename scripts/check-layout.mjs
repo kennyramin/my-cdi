@@ -21,6 +21,7 @@ const STUDENT_COUNT = 60
 const VISIT_COUNT = 30
 const NOON_HOUR = 12
 const INE_LENGTH = 11
+const ERROR_EXCERPT = 300
 const SUBPIXEL_TOLERANCE = 1
 const READY_TIMEOUT_MS = 15000
 const ACTIVITIES = ['work', 'reading', 'computer', 'relaxation', 'game', 'other']
@@ -50,6 +51,12 @@ const seed = async (page) => {
           classe: '4e B',
           ine: String(i).padStart(cfg.ineLength, 'X')
         })
+        if (!res.success) {
+          throw new Error(
+            'seed student.create failed: ' +
+              JSON.stringify(res.error ?? res).slice(0, cfg.errorExcerpt)
+          )
+        }
         ids.push(res.data.id)
       }
       const now = new Date()
@@ -64,9 +71,16 @@ const seed = async (page) => {
           studentId: ids[i % ids.length]
         })
       }
-      await api.frequentation.createBatch({ frequentations })
+      const batch = await api.frequentation.createBatch({ frequentations })
+      if (!batch.success) {
+        throw new Error(
+          'seed createBatch failed: ' +
+            JSON.stringify(batch.error ?? batch).slice(0, cfg.errorExcerpt)
+        )
+      }
     },
     {
+      errorExcerpt: ERROR_EXCERPT,
       studentCount: STUDENT_COUNT,
       visitCount: VISIT_COUNT,
       noonHour: NOON_HOUR,
@@ -137,9 +151,13 @@ const inPageOverflow = (tolerance) => {
       })
     }
     const style = getComputedStyle(el)
-    // 1px boxes are visually-hidden helpers (sr-only), not clipped controls
+    // visually-hidden helpers (sr-only): absolutely positioned 1x1 box or clipped
+    const srOnly =
+      (style.position === 'absolute' && rect.width <= 1 && rect.height <= 1) ||
+      (style.clip !== 'auto' && style.clip !== '') ||
+      (style.clipPath !== 'none' && style.clipPath !== '')
     if (
-      el.clientWidth > 1 &&
+      !srOnly &&
       style.overflowX !== 'visible' &&
       !isScroller(el) &&
       style.textOverflow !== 'ellipsis'
@@ -163,12 +181,31 @@ const inPageOverflow = (tolerance) => {
   return out
 }
 
+const gotoRoute = async (page, route, previous) => {
+  const prevHandle = previous
+    ? await page.evaluate((sel) => {
+        const el = document.querySelector(sel)
+        window.__layoutPrev = el
+        return el !== null
+      }, previous.ready)
+    : false
+  await page.evaluate((hash) => {
+    location.hash = hash
+  }, route.hash)
+  if (prevHandle) {
+    // the previous page's own element must be gone before trusting the new DOM
+    await page.waitForFunction(() => !window.__layoutPrev?.isConnected, undefined, {
+      timeout: READY_TIMEOUT_MS
+    })
+  }
+  await page.waitForSelector(route.ready, { timeout: READY_TIMEOUT_MS })
+}
+
 const checkOverflow = async (page) => {
+  let previous
   for (const route of ROUTES) {
-    await page.evaluate((hash) => {
-      location.hash = hash
-    }, route.hash)
-    await page.waitForSelector(route.ready, { timeout: READY_TIMEOUT_MS })
+    await gotoRoute(page, route, previous)
+    previous = route
     const found = await page.evaluate(inPageOverflow, SUBPIXEL_TOLERANCE)
     for (const o of found) {
       report(route.page, SMALL_VIEWPORT, o.path, o.reason)
@@ -177,11 +214,8 @@ const checkOverflow = async (page) => {
 }
 
 const checkFold = async (page) => {
-  await page.evaluate((hash) => {
-    location.hash = hash
-  }, ROUTES[0].hash)
-  await page.waitForSelector(ROUTES[0].ready, { timeout: READY_TIMEOUT_MS })
-  const box = await page.getByRole('button', { name: SAVE_BUTTON_NAME }).boundingBox()
+  await gotoRoute(page, ROUTES[0], ROUTES.at(-1))
+  const box = await page.getByRole('button', { name: SAVE_BUTTON_NAME, exact: true }).boundingBox()
   const innerHeight = await page.evaluate(() => window.innerHeight)
   if (!box) {
     report('journal', FOLD_VIEWPORT, `button "${SAVE_BUTTON_NAME}"`, 'not found')
