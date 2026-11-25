@@ -344,7 +344,7 @@ const isoDaysAhead = (days) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-const checkFocusNotObscured = async (page, size) => {
+const checkFocusNotObscured = async (page, size, context = '') => {
   await page.evaluate(inPageResetJournalScroll)
   await page.getByRole('button', { name: TIME_BUTTON_NAME }).focus()
   let seen = 0
@@ -357,12 +357,12 @@ const checkFocusNotObscured = async (page, size) => {
     }
     seen++
     if (problem) {
-      report('journal', size, 'keyboard focus', problem)
+      report('journal', size, 'keyboard focus' + context, problem)
       return
     }
   }
   if (seen === 0) {
-    report('journal', size, 'keyboard focus', 'tabbing never reached a journal form control')
+    report('journal', size, 'keyboard focus' + context, 'tabbing never reached a form control')
   }
 }
 
@@ -376,6 +376,8 @@ const checkFutureHelperVisible = async (page, size) => {
   if (problem) {
     report('journal', size, 'future date helper', problem)
   }
+  // the helper makes the bar taller (and may wrap at narrow widths): focus must still clear it
+  await checkFocusNotObscured(page, size, ' (future-date helper showing)')
   await page.locator(`[data-iso="${todayIso}"]`).click()
   await page.waitForSelector('#journal-future-date-helper', {
     state: 'detached',

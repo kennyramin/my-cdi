@@ -6,6 +6,9 @@ import { shouldForwardStyledProp } from '@ui/helpers/shouldForwardStyledProp'
 import { CONTROL_HEIGHTS } from '@ui/theme'
 
 // The bar spans the card's full inner width, so its side gutters match the default Card padding.
+/** Marks the bar so the page can measure it; the page publishes the height under the variable. */
+export const SUBMIT_BAR_ATTRIBUTE = 'data-submit-bar'
+export const SUBMIT_BAR_HEIGHT_VAR = '--submit-bar-height'
 const BAR_GUTTER_STEPS = PADDING_DEFAULT_STEPS
 const BAR_PADDING_BLOCK_STEPS = 1.5
 const BAR_BORDER_PX = 1
@@ -38,11 +41,12 @@ export const FutureDateHelperText = styled(Typography, {
 }))
 
 /**
- * Space the sticky submit bar covers at the bottom of the scrolling form column, including room
- * for the future-date helper line: used as scroll padding so a focused control is never hidden.
+ * Space the sticky submit bar covers at the bottom of the scrolling form column, used as scroll
+ * padding so a focused control is never hidden. Prefers the measured bar height; the constant-based
+ * estimate (with room for one helper line) applies until it is measured.
  */
 export const submitBarClearance = (theme: Theme) =>
-  `calc(${theme.spacing(2 * BAR_PADDING_BLOCK_STEPS + BAR_HELPER_ALLOWANCE_STEPS)} + ${CONTROL_HEIGHTS.md + BAR_BORDER_PX}px)`
+  `var(${SUBMIT_BAR_HEIGHT_VAR}, calc(${theme.spacing(2 * BAR_PADDING_BLOCK_STEPS + BAR_HELPER_ALLOWANCE_STEPS)} + ${CONTROL_HEIGHTS.md + BAR_BORDER_PX}px))`
 
 export const FormCard = styled(Card, {
   shouldForwardProp: shouldForwardStyledProp

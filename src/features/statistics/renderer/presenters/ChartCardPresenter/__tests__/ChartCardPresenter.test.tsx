@@ -13,6 +13,17 @@ describe('ChartCardPresenter', () => {
     expect(screen.getByText('bar_chart')).toBeInTheDocument()
   })
 
+  it('names the card region with a level-2 heading', () => {
+    render(
+      <ChartCardPresenter titleIcon="bar_chart" title="Fréquentation par jour">
+        <span>child</span>
+      </ChartCardPresenter>
+    )
+    expect(
+      screen.getByRole('heading', { level: 2, name: /Fréquentation par jour/ })
+    ).toBeInTheDocument()
+  })
+
   it('renders children inside the card', () => {
     render(
       <ChartCardPresenter titleIcon="bar_chart" title="title">

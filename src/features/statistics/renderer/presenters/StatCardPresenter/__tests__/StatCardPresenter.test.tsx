@@ -22,7 +22,7 @@ describe('StatCardPresenter', () => {
     expect(screen.getByText('1,247')).toBeInTheDocument()
   })
 
-  it('exposes the value as a level-2 heading under the page title', () => {
+  it('keeps the value out of the heading outline (the label names the card)', () => {
     render(
       <StatCardPresenter
         iconName="people"
@@ -32,7 +32,7 @@ describe('StatCardPresenter', () => {
         value="1,247"
       />
     )
-    expect(screen.getByRole('heading', { level: 2, name: '1,247' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading')).toBeNull()
   })
 
   it('renders the delta with up sign when sign is up', () => {

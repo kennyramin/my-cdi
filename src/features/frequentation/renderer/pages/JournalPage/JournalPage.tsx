@@ -6,6 +6,7 @@ import { buildActivityTiles } from '@frequentation/presenters/ActivityGridPresen
 import { buildActivityTileNodes } from '@frequentation/presenters/ActivityGridPresenter/helpers/buildActivityTileNodes'
 import { buildInitials } from '@frequentation/helpers/buildInitials'
 import { useJournalPage } from './hooks/useJournalPage'
+import { useSubmitBarHeight } from './hooks/useSubmitBarHeight'
 import { FormColumn, ListColumn, PageGrid } from './JournalPage.styles'
 
 export function JournalPage() {
@@ -21,9 +22,11 @@ export function JournalPage() {
     submitEdit
   } = useJournalPage()
 
+  const formColumnRef = useSubmitBarHeight<HTMLDivElement>()
+
   return (
     <PageGrid>
-      <FormColumn>
+      <FormColumn ref={formColumnRef}>
         <CalendarContainer selectedDate={selectedDate} onSelectDate={setSelectedDate} />
         <JournalEntryFormContainer selectedDate={selectedDate} />
       </FormColumn>

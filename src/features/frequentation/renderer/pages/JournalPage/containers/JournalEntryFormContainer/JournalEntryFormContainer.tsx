@@ -20,6 +20,7 @@ import { periodFromTime } from './presenters/TimeRowPresenter/helpers/periodFrom
 import {
   EntryForm,
   FutureDateHelperText,
+  SUBMIT_BAR_ATTRIBUTE,
   SectionLabel,
   FormCard,
   SubmitBar
@@ -146,7 +147,7 @@ export function JournalEntryFormContainer({
             />
           )}
         />
-        <SubmitBar>
+        <SubmitBar {...{ [SUBMIT_BAR_ATTRIBUTE]: '' }}>
           <Button
             type="submit"
             variant="primary"
