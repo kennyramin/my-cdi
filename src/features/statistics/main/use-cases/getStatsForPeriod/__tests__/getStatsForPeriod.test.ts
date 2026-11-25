@@ -135,12 +135,13 @@ describe('getStatsForPeriod', () => {
     }
   })
 
-  it('computes morning and afternoon rates from UTC hour', async () => {
+  it('classifies visits by the local wall-clock hour of startsAt', async () => {
+    expect(new Date('2026-11-25T12:30:00').getUTCHours()).toBe(11) // precondition: TZ=Europe/Paris
     const gateway = createMockFrequentationGateway([
-      makeFrequentation({ id: 1, startsAt: '2026-01-15T08:00:00.000Z' }),
-      makeFrequentation({ id: TWO, startsAt: '2026-01-15T11:00:00.000Z' }),
-      makeFrequentation({ id: THREE, startsAt: '2026-01-15T14:00:00.000Z' }),
-      makeFrequentation({ id: FOUR, startsAt: '2026-01-15T16:00:00.000Z' })
+      makeFrequentation({ id: 1, startsAt: '2026-11-25T12:30:00' }),
+      makeFrequentation({ id: TWO, startsAt: '2026-06-10T13:15:00' }),
+      makeFrequentation({ id: THREE, startsAt: '2026-11-25T11:50:00' }),
+      makeFrequentation({ id: FOUR, startsAt: '2026-11-25T08:05:00' })
     ])
 
     const result = await getStatsForPeriod(gateway, RANGE)
