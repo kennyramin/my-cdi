@@ -7,6 +7,7 @@ export {
   RADII,
   CONTROL_HEIGHTS,
   TINT_ALPHAS,
-  MONO_FONT_FAMILY
+  MONO_FONT_FAMILY,
+  FOCUS_VISIBLE_SELECTOR
 } from './theme'
 export type { ActivityTone } from './theme'

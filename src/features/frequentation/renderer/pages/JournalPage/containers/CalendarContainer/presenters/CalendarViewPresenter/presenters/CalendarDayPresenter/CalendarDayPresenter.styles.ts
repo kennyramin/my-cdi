@@ -5,6 +5,7 @@ import { FONT_WEIGHTS } from '@ui/theme'
 const DAY_SIZE_PX = 36
 const VISITS_DOT_SIZE_PX = 4
 const VISITS_DOT_BOTTOM_PX = 3
+const SELECTED_RING_WIDTH_PX = 2
 const OTHER_MONTH_OPACITY = 0.4
 
 export const DayCell = styled('button', {
@@ -24,7 +25,6 @@ export const DayCell = styled('button', {
   border: 'none',
   backgroundColor: 'transparent',
   color: theme.palette.text.primary,
-  outline: 'none',
   '&:hover': {
     backgroundColor: theme.palette.surface
   },
@@ -38,8 +38,10 @@ export const DayCell = styled('button', {
     }
   },
   '&[data-selected="true"]': {
-    outline: `2px solid ${theme.palette.primary.main}`,
-    outlineOffset: '2px'
+    boxShadow: `inset 0 0 0 ${SELECTED_RING_WIDTH_PX}px ${theme.palette.primary.main}`
+  },
+  '&[data-today="true"][data-selected="true"]': {
+    boxShadow: `${theme.shadows[3]}, inset 0 0 0 ${SELECTED_RING_WIDTH_PX}px ${theme.palette.primary.contrastText}`
   },
   '&:not([data-current-month="true"])': {
     opacity: OTHER_MONTH_OPACITY

@@ -10,6 +10,12 @@ import {
 
 export const MONO_FONT_FAMILY = '"JetBrains Mono", ui-monospace, monospace'
 
+const FOCUS_RING_WIDTH_PX = 2
+const FOCUS_RING_OFFSET_PX = 2
+
+/** `body` prefix lifts specificity above single-class MUI resets; text inputs keep their focused border. */
+export const FOCUS_VISIBLE_SELECTOR = 'body :focus-visible:not(input):not(textarea)'
+
 const SANS_FONT_FAMILY = '"Inter", system-ui, -apple-system, sans-serif'
 
 interface AccentColors {
@@ -507,6 +513,10 @@ export function createAppTheme(preference: ThemePreference): Theme {
           'input, select, textarea': {
             font: 'inherit',
             color: 'inherit'
+          },
+          [FOCUS_VISIBLE_SELECTOR]: {
+            outline: `${FOCUS_RING_WIDTH_PX}px solid ${accentColors.main}`,
+            outlineOffset: `${FOCUS_RING_OFFSET_PX}px`
           },
           '*::-webkit-scrollbar': {
             width: SCROLLBAR_WIDTH_PX

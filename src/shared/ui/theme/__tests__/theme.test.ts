@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { alpha } from '@mui/material/styles'
 import { contrastRatio } from '@ui/helpers/contrastRatio'
-import { createAppTheme, theme } from '../theme'
+import { createAppTheme, FOCUS_VISIBLE_SELECTOR, theme } from '../theme'
 import { THEME_ACCENTS, THEME_MODES, DEFAULT_THEME_PREFERENCE, THEME_BACKGROUNDS } from '@types'
 
 const ACCENT_GLOW_ALPHA = 0.35
@@ -170,6 +170,16 @@ describe('createAppTheme', () => {
       const serializedComponents = JSON.stringify(appTheme.components)
       expect(serializedComponents).toContain(appTheme.palette.divider)
       expect(serializedComponents).toContain(appTheme.palette.dividerStrong)
+    }
+  })
+
+  it('defines one primary-colored focus-visible ring in CssBaseline for every combination', () => {
+    for (const preference of ALL_PREFERENCES) {
+      const appTheme = createAppTheme(preference)
+      const serialized = JSON.stringify(appTheme.components?.MuiCssBaseline)
+      expect(serialized).toContain(FOCUS_VISIBLE_SELECTOR)
+      expect(serialized).toContain(`"outline":"2px solid ${appTheme.palette.primary.main}"`)
+      expect(serialized).toContain('"outlineOffset":"2px"')
     }
   })
 
