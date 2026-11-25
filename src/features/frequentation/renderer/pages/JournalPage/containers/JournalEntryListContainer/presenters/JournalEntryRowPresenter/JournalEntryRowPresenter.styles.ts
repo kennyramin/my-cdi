@@ -59,6 +59,8 @@ export const ClasseTag = styled('span', {
   fontSize: theme.typography.caption.fontSize,
   fontWeight: FONT_WEIGHTS.medium,
   marginLeft: theme.spacing(0.5),
+  flexShrink: 0,
+  whiteSpace: 'nowrap',
   color: theme.palette.text.disabled
 }))
 

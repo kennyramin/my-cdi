@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Controller } from 'react-hook-form'
 import dayjs from 'dayjs'
-import { Card } from '@ui/components/Card'
 import { Button } from '@ui/components/Button'
 import { Icon } from '@ui/components/Icon'
 import { Toast } from '@ui/components/Toast'
@@ -22,6 +21,7 @@ import {
   EntryForm,
   FutureDateHelperText,
   SectionLabel,
+  FormCard,
   SubmitBar
 } from './JournalEntryFormContainer.styles'
 
@@ -92,7 +92,7 @@ export function JournalEntryFormContainer({
   }
 
   return (
-    <Card>
+    <FormCard>
       <SectionLabel variant="overline">{t('form.newEntry')}</SectionLabel>
       <Controller
         control={form.control}
@@ -165,6 +165,6 @@ export function JournalEntryFormContainer({
         )}
       </EntryForm>
       <Toast toast={toast} onClose={dismissToast} />
-    </Card>
+    </FormCard>
   )
 }

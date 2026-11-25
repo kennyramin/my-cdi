@@ -28,6 +28,8 @@ export const FormColumn = styled('div', {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
   ...columnStyles(theme),
+  // No bottom padding: the sticky submit bar must sit flush with the visible edge.
+  paddingBottom: 0,
   overflowY: 'auto'
 }))
 
