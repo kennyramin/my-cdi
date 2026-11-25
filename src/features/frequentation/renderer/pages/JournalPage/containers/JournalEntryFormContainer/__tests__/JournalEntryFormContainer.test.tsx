@@ -8,6 +8,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import i18n from '@shared/i18n/config'
 import { theme } from '@ui/theme'
 import type { ReactNode } from 'react'
+import { formatLocalDate } from '@lib/localDateTime'
 import { JournalEntryFormContainer } from '../JournalEntryFormContainer'
 
 const FIRST_ID = 1
@@ -87,5 +88,20 @@ describe('JournalEntryFormContainer', () => {
     )
 
     expect(document.activeElement).toBe(searchInput)
+  })
+
+  it('explains and disables submit for a future date', () => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    render(withProviders(<JournalEntryFormContainer selectedDate={formatLocalDate(tomorrow)} />))
+    const helper = screen.getByText("Impossible d'enregistrer une présence dans le futur")
+    const submitButton = screen.getByRole('button', { name: /enregistrer/i })
+    expect(submitButton).toBeDisabled()
+    expect(submitButton).toHaveAttribute('aria-describedby', helper.id)
+  })
+
+  it('shows no future warning for today', () => {
+    render(withProviders(<JournalEntryFormContainer selectedDate={formatLocalDate(new Date())} />))
+    expect(screen.queryByText(/dans le futur/)).toBeNull()
   })
 })

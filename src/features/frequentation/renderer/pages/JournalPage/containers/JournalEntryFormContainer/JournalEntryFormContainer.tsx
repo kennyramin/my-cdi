@@ -18,9 +18,10 @@ import type { AutocompleteOption } from '@ui/components/Autocomplete'
 import { TimeRowPresenter } from './presenters/TimeRowPresenter'
 import { periodFromTime } from './presenters/TimeRowPresenter/helpers/periodFromTime'
 
-import { EntryForm, SectionLabel } from './JournalEntryFormContainer.styles'
+import { EntryForm, FutureDateHelperText, SectionLabel } from './JournalEntryFormContainer.styles'
 
 const TIME_FORMAT = 'HH:mm'
+const FUTURE_DATE_HELPER_ID = 'journal-future-date-helper'
 
 interface StudentChip {
   id: number
@@ -51,12 +52,13 @@ export function JournalEntryFormContainer({
     handleStudentSelect,
     handleStudentRemove,
     isStudentLoading,
+    isFutureDate,
     isSubmitting,
     toast,
     dismissToast
   } = useJournalEntryForm({ selectedDate, onSubmitted })
 
-  const isDisabled = isSubmitting || !form.formState.isValid
+  const isDisabled = isSubmitting || !form.formState.isValid || isFutureDate
 
   function buildStudentChips(selectedIds: number[]): StudentChip[] {
     return studentOptions
@@ -144,10 +146,16 @@ export function JournalEntryFormContainer({
           variant="primary"
           fullWidth
           disabled={isDisabled}
+          aria-describedby={isFutureDate ? FUTURE_DATE_HELPER_ID : undefined}
           iconLeft={<Icon name="check_circle" />}
         >
           {t('form.submit')}
         </Button>
+        {isFutureDate && (
+          <FutureDateHelperText id={FUTURE_DATE_HELPER_ID} variant="caption">
+            {t('form.futureNotAllowed')}
+          </FutureDateHelperText>
+        )}
       </EntryForm>
       <Toast toast={toast} onClose={dismissToast} />
     </Card>

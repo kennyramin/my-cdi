@@ -16,6 +16,7 @@
     "startsAt": "Date and time",
     "selectStudents": "Student(s)",
     "searchStudent": "Search for a student…",
+    "futureNotAllowed": "A visit cannot be recorded in the future",
     "submit": "Save",
     "cancel": "Cancel",
     "successMessage": "Attendance(s) saved"
