@@ -33,7 +33,13 @@
     "dropzoneSubtitle": "ou cliquer pour parcourir",
     "expectedColumns": "Colonnes attendues :",
     "expectedColumnsList": "Nom de famille, Prénom 1, INE, Division (classe)",
-    "expectedColumnsHint": "Les colonnes Adresse, Commune, CP, Tel, Courriel sont importées mais optionnelles",
+    "expectedColumnsHint": "Les autres colonnes (adresse, téléphone…) sont ignorées et ne sont pas enregistrées.",
+    "columns": {
+      "nom": "Nom de famille",
+      "prenom": "Prénom 1",
+      "classe": "Division",
+      "ine": "INE"
+    },
     "submit": "Importer",
     "summary_one": "{{count}} élève importé, {{updated}} mis à jour, {{errors}} en échec",
     "summary_other": "{{count}} élèves importés, {{updated}} mis à jour, {{errors}} en échec",

@@ -33,7 +33,13 @@
     "dropzoneSubtitle": "or click to browse",
     "expectedColumns": "Expected columns:",
     "expectedColumnsList": "Last name, First name, INE, Division (class)",
-    "expectedColumnsHint": "Address, City, ZIP, Phone, Email columns are imported but optional",
+    "expectedColumnsHint": "Other columns (address, phone…) are ignored and not saved.",
+    "columns": {
+      "nom": "Nom de famille",
+      "prenom": "Prénom 1",
+      "classe": "Division",
+      "ine": "INE"
+    },
     "submit": "Import",
     "summary_one": "{{count}} student imported, {{updated}} updated, {{errors}} failed",
     "summary_other": "{{count}} students imported, {{updated}} updated, {{errors}} failed",
