@@ -62,12 +62,43 @@ describe('useCalendarKeyboardNavigation', () => {
     expect(document.activeElement?.getAttribute('data-iso')).toBe('2026-11-25')
   })
 
-  it('ignores moves that leave the rendered grid', () => {
+  it('ignores moves that leave the rendered grid without swallowing the key', () => {
     render(<Harness onSelect={vi.fn()} />)
+    const first = buttonFor(CELLS[0]?.iso ?? '')
     const last = buttonFor(CELLS[CELLS.length - 1]?.iso ?? '')
-    last.focus()
-    expect(() => fireEvent.keyDown(last, { key: 'ArrowDown' })).not.toThrow()
-    expect(document.activeElement).toBe(last)
+    const edges = [
+      { cell: first, key: 'ArrowUp' },
+      { cell: first, key: 'ArrowLeft' },
+      { cell: last, key: 'ArrowRight' },
+      { cell: last, key: 'ArrowDown' }
+    ]
+    for (const { cell, key } of edges) {
+      cell.focus()
+      const notPrevented = fireEvent.keyDown(cell, { key })
+      expect(notPrevented, `${key} at ${cell.dataset.iso}`).toBe(true)
+      expect(document.activeElement).toBe(cell)
+    }
+  })
+
+  it('leaves keys it does not handle to the browser', () => {
+    render(<Harness onSelect={vi.fn()} />)
+    const start = buttonFor('2026-11-18')
+    start.focus()
+    for (const key of ['Home', 'End', 'PageUp', 'PageDown']) {
+      expect(fireEvent.keyDown(start, { key }), key).toBe(true)
+      expect(document.activeElement).toBe(start)
+    }
+  })
+
+  it('does not hijack arrows combined with Alt, Ctrl, Meta or Shift (Alt+Left is browser back)', () => {
+    render(<Harness onSelect={vi.fn()} />)
+    const start = buttonFor('2026-11-18')
+    start.focus()
+    for (const modifier of ['altKey', 'ctrlKey', 'metaKey', 'shiftKey']) {
+      const notPrevented = fireEvent.keyDown(start, { key: 'ArrowLeft', [modifier]: true })
+      expect(notPrevented, modifier).toBe(true)
+      expect(document.activeElement, modifier).toBe(start)
+    }
   })
 
   it('selects the focused day with Enter', async () => {

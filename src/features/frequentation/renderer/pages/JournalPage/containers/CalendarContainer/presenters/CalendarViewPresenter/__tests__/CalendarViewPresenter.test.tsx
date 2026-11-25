@@ -82,6 +82,11 @@ describe('CalendarViewPresenter', () => {
     expect(screen.getByText('Avril 2026')).toBeInTheDocument()
   })
 
+  it('exposes the month label as a level-2 heading under the page title', () => {
+    renderView()
+    expect(screen.getByRole('heading', { level: 2, name: 'Avril 2026' })).toBeInTheDocument()
+  })
+
   it('renders weekday headers', () => {
     renderView()
     WEEKDAYS.forEach((label) => {

@@ -192,14 +192,10 @@ describe('createAppTheme', () => {
   it('draws the same ring on a keyboard-focused checkbox, whose input is visually hidden', () => {
     for (const preference of ALL_PREFERENCES) {
       const appTheme = createAppTheme(preference)
-      const baseline = appTheme.components?.MuiCssBaseline?.styleOverrides as Record<
-        string,
-        Record<string, string>
-      >
-      expect(baseline[CHECKBOX_FOCUS_VISIBLE_SELECTOR]).toEqual({
-        outline: `2px solid ${appTheme.palette.focusRing}`,
-        outlineOffset: '2px'
-      })
+      const serialized = JSON.stringify(appTheme.components?.MuiCssBaseline)
+      expect(serialized).toContain(
+        `"${CHECKBOX_FOCUS_VISIBLE_SELECTOR}":{"outline":"2px solid ${appTheme.palette.focusRing}","outlineOffset":"2px"}`
+      )
     }
   })
 

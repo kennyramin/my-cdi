@@ -22,7 +22,9 @@ export function StatCardPresenter({
         <Icon name={iconName} />
       </StatCardIcon>
       <StatCardLabel variant="overline">{label}</StatCardLabel>
-      <StatCardValue variant="h4">{value}</StatCardValue>
+      <StatCardValue variant="h4" component="h2">
+        {value}
+      </StatCardValue>
       {delta ? (
         <StatCardDelta variant="body2" data-sign={delta.sign}>
           {delta.text}

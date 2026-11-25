@@ -21,6 +21,9 @@ export function useCalendarKeyboardNavigation(
   }
 
   function handleDayKeyDown(event: KeyboardEvent<HTMLButtonElement>, iso: string) {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+      return
+    }
     const next = shiftDayByKey(iso, event.key)
     if (next === null || !cells.some((cell) => cell.iso === next)) {
       return

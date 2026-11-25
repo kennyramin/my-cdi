@@ -7,7 +7,9 @@ export function HeaderPresenter({ title, subtitle, time }: HeaderPresenterProps)
     <HeaderRoot as="header">
       <TitleBlock>
         <Box>
-          <Title variant="h6" component="h1">{title}</Title>
+          <Title variant="h6" component="h1">
+            {title}
+          </Title>
           <Subtitle variant="body2">{subtitle}</Subtitle>
         </Box>
       </TitleBlock>

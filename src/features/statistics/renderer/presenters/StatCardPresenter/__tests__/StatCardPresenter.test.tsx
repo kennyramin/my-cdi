@@ -22,6 +22,19 @@ describe('StatCardPresenter', () => {
     expect(screen.getByText('1,247')).toBeInTheDocument()
   })
 
+  it('exposes the value as a level-2 heading under the page title', () => {
+    render(
+      <StatCardPresenter
+        iconName="people"
+        iconBg={SAMPLE_ICON_BG}
+        iconColor={SAMPLE_ICON_COLOR}
+        label="Visites totales"
+        value="1,247"
+      />
+    )
+    expect(screen.getByRole('heading', { level: 2, name: '1,247' })).toBeInTheDocument()
+  })
+
   it('renders the delta with up sign when sign is up', () => {
     render(
       <StatCardPresenter
