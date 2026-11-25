@@ -356,7 +356,8 @@ Consistent 3-layer architecture for any list with multi-select:
 
 1. **Selection hook** (`useStudentSelection` / `useJournalEntrySelection`)
    - `useJournalEntrySelection(scopeKey)` resets when the scope (selected date) changes
-   - `useState<number[]>` for `selectedIds`
+   - `useStudentSelection`: `useState<number[]>` for `selectedIds`
+   - `useJournalEntrySelection`: `useState<{ scopeKey, ids }>`; ids are only exposed while `scopeKey` matches the current scope
    - `toggle(id)`, `selectAll(ids)`, `clearSelection()`, `isSelected(id)`
 
 2. **Batch actions container** (`StudentBatchActionsContainer` / `JournalBatchActionsContainer`)
@@ -536,7 +537,7 @@ Gateway methods follow a strict naming convention:
 | Update    | `update`                  | `update(id, data)`                       |
 | Delete    | `delete`                  | `delete(id)`                             |
 | Delete by | `deleteByXxx`             | `deleteByStudentId(id)`                  |
-| Delete by | `deleteOlderThan(cutoff)` | `deleteOlderThan('2024-11-25T00:30:00')` |
+| Delete by | `deleteOlderThan`         | `deleteOlderThan(cutoff)`                |
 | Count     | `count`                   | `count()`                                |
 
 No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single reads, never throws for missing rows.
@@ -545,7 +546,7 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 
 ## 17. Date / Time Handling
 
-- **Storage**: dates stored as ISO strings in SQLite; time-of-day stored as `HH:mm` strings.
+- **Storage**: visit start times stored as local wall-clock strings `YYYY-MM-DDTHH:mm:ss` (no timezone suffix) in SQLite; time-of-day stored as `HH:mm` strings.
 - **Display**: `formatDate` (`DD/MM/YYYY`) and `formatDateTime` (`DD/MM/YYYY HH:mm`) via `dayjs` with French locale.
 - **UI**: MUI X Date Pickers wrapped in `LocalizationProvider` with `AdapterDayjs` and `adapterLocale="fr"`.
 - **Cleanup**: `CLEANUP_RETENTION_YEARS = 2` — old frequentations deleted on startup (local cutoff, single `DELETE … WHERE starts_at < ?`).

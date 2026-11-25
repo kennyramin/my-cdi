@@ -152,7 +152,7 @@ export function JournalEntryFormContainer({
           {t('form.submit')}
         </Button>
         {isFutureDate && (
-          <FutureDateHelperText id={FUTURE_DATE_HELPER_ID} variant="caption">
+          <FutureDateHelperText id={FUTURE_DATE_HELPER_ID} variant="caption" role="status">
             {t('form.futureNotAllowed')}
           </FutureDateHelperText>
         )}

@@ -16,11 +16,11 @@ const AFTER_MIDNIGHT_MINUTE = 45
 
 const VALID_ENTITY: FrequentationEntity = {
   id: 1,
-  startsAt: '2026-01-15T09:00:00.000Z',
+  startsAt: '2026-01-15T09:00:00',
   activity: ActivityType.WORK,
   studentId: 1,
-  createdAt: '2026-01-15T09:00:00.000Z',
-  updatedAt: '2026-01-15T09:00:00.000Z'
+  createdAt: '2026-01-15T09:00:00',
+  updatedAt: '2026-01-15T09:00:00'
 }
 
 function createMockGateway(overrides: Partial<FrequentationGateway> = {}): FrequentationGateway {
@@ -43,7 +43,7 @@ describe('createFrequentation', () => {
   it('creates a frequentation successfully', async () => {
     const gateway = createMockGateway()
     const result = await createFrequentation(gateway, {
-      startsAt: '2026-01-15T09:00:00.000Z',
+      startsAt: '2026-01-15T09:00:00',
       activity: ActivityType.WORK,
       studentId: 1
     })
@@ -69,7 +69,7 @@ describe('createFrequentation', () => {
   it('rejects empty activity', async () => {
     const gateway = createMockGateway()
     const dto: CreateFrequentationDto = {
-      startsAt: '2026-01-15T09:00:00.000Z',
+      startsAt: '2026-01-15T09:00:00',
       activity: ActivityType.WORK,
       studentId: 1
     }
@@ -85,7 +85,7 @@ describe('createFrequentation', () => {
   it('rejects non-positive studentId', async () => {
     const gateway = createMockGateway()
     const result = await createFrequentation(gateway, {
-      startsAt: '2026-01-15T09:00:00.000Z',
+      startsAt: '2026-01-15T09:00:00',
       activity: ActivityType.WORK,
       studentId: 0
     })
@@ -95,12 +95,29 @@ describe('createFrequentation', () => {
     }
   })
 
+  it.each(['2026-01-15 09:00:00', '2026-01-15T09:00:00Z'])(
+    'rejects non local wall-clock startsAt %s',
+    async (startsAt) => {
+      const gateway = createMockGateway()
+      const result = await createFrequentation(gateway, {
+        startsAt,
+        activity: ActivityType.WORK,
+        studentId: 1
+      })
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.code).toBe(ErrorCode.VALIDATION_ERROR)
+      }
+      expect(gateway.create).not.toHaveBeenCalled()
+    }
+  )
+
   it('returns error when gateway throws', async () => {
     const gateway = createMockGateway({
       create: vi.fn().mockRejectedValue(new Error('DB error'))
     })
     const result = await createFrequentation(gateway, {
-      startsAt: '2026-01-15T09:00:00.000Z',
+      startsAt: '2026-01-15T09:00:00',
       activity: ActivityType.WORK,
       studentId: 1
     })

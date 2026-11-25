@@ -105,7 +105,7 @@ describe('registerFrequentationController', () => {
 
   it('registers create handler that delegates to use-case', async () => {
     const result = await ipcMain.invoke(FREQUENTATION_CHANNELS.CREATE, {
-      startsAt: '2026-01-15T09:00:00.000Z',
+      startsAt: '2026-01-15T09:00:00',
       activity: ActivityType.WORK,
       studentId: 1
     })

@@ -97,6 +97,7 @@ describe('JournalEntryFormContainer', () => {
     const helper = screen.getByText("Impossible d'enregistrer une présence dans le futur")
     const submitButton = screen.getByRole('button', { name: /enregistrer/i })
     expect(submitButton).toBeDisabled()
+    expect(helper).toHaveAttribute('role', 'status')
     expect(submitButton).toHaveAttribute('aria-describedby', helper.id)
   })
 

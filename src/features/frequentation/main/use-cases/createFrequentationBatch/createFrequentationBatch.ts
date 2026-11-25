@@ -16,7 +16,7 @@ export async function createFrequentationBatch(
 ): Promise<UseCaseResult<BatchResult>> {
   const parsed = createFrequentationBatchSchema.safeParse(dto)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.message }
+    return { success: false, error: parsed.error.message, code: ErrorCode.VALIDATION_ERROR }
   }
 
   if (dto.frequentations.some((item) => isFutureLocalDateTime(item.startsAt, now))) {

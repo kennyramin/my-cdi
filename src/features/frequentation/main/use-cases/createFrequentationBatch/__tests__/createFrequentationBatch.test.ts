@@ -16,11 +16,11 @@ const NOW_MINUTE = 30
 
 const VALID_ENTITY: FrequentationEntity = {
   id: 1,
-  startsAt: '2026-01-15T09:00:00.000Z',
+  startsAt: '2026-01-15T09:00:00',
   activity: ActivityType.WORK,
   studentId: 1,
-  createdAt: '2026-01-15T09:00:00.000Z',
-  updatedAt: '2026-01-15T09:00:00.000Z'
+  createdAt: '2026-01-15T09:00:00',
+  updatedAt: '2026-01-15T09:00:00'
 }
 
 function createMockGateway(overrides: Partial<FrequentationGateway> = {}): FrequentationGateway {
@@ -44,9 +44,9 @@ describe('createFrequentationBatch', () => {
     const gateway = createMockGateway()
     const result = await createFrequentationBatch(gateway, {
       frequentations: [
-        { startsAt: '2026-01-15T09:00:00.000Z', activity: ActivityType.WORK, studentId: 1 },
+        { startsAt: '2026-01-15T09:00:00', activity: ActivityType.WORK, studentId: 1 },
         {
-          startsAt: '2026-01-15T10:00:00.000Z',
+          startsAt: '2026-01-15T10:00:00',
           activity: ActivityType.READING,
           studentId: SECOND_STUDENT_ID
         }
@@ -70,6 +70,20 @@ describe('createFrequentationBatch', () => {
     }
   })
 
+  it('rejects the batch with VALIDATION_ERROR when startsAt is not local wall-clock', async () => {
+    const gateway = createMockGateway()
+    const result = await createFrequentationBatch(gateway, {
+      frequentations: [
+        { startsAt: '2026-01-15T09:00:00Z', activity: ActivityType.WORK, studentId: 1 }
+      ]
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.code).toBe(ErrorCode.VALIDATION_ERROR)
+    }
+    expect(gateway.create).not.toHaveBeenCalled()
+  })
+
   it('collects errors from gateway failures while creating valid items', async () => {
     let callCount = 0
     const gateway = createMockGateway({
@@ -83,9 +97,9 @@ describe('createFrequentationBatch', () => {
     })
     const result = await createFrequentationBatch(gateway, {
       frequentations: [
-        { startsAt: '2026-01-15T09:00:00.000Z', activity: ActivityType.WORK, studentId: 1 },
+        { startsAt: '2026-01-15T09:00:00', activity: ActivityType.WORK, studentId: 1 },
         {
-          startsAt: '2026-01-15T10:00:00.000Z',
+          startsAt: '2026-01-15T10:00:00',
           activity: ActivityType.WORK,
           studentId: SECOND_STUDENT_ID
         }
