@@ -15,7 +15,9 @@
     "custom": "Custom"
   },
   "charts": {
-    "weekly": "Attendance by day",
+    "weekly": "Visits by weekday",
+    "classes": "Visits by class",
+    "classesEmpty": "No visits in this period",
     "activities": "Activities",
     "trend": "Trend over period",
     "visits": "visits",

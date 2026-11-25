@@ -15,7 +15,9 @@
     "custom": "Personnalisé"
   },
   "charts": {
-    "weekly": "Fréquentation par jour",
+    "weekly": "Fréquentation par jour de la semaine",
+    "classes": "Fréquentation par classe",
+    "classesEmpty": "Aucune visite sur cette période",
     "activities": "Activités",
     "trend": "Évolution sur la période",
     "visits": "visites",

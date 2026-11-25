@@ -34,7 +34,8 @@ export const StatisticsChartGrid = styled(Box, {
 
 export const StatisticsFullGrid = styled(Box, {
   shouldForwardProp: shouldForwardStyledProp
-})(() => ({
+})(({ theme }) => ({
   display: 'grid',
-  gridTemplateColumns: '1fr'
+  gridTemplateColumns: '1fr',
+  gap: theme.spacing(2.5)
 }))

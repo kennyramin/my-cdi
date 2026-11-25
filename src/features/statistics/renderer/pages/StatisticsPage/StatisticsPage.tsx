@@ -12,6 +12,7 @@ import { PeriodFilterContainer } from './containers/PeriodFilterContainer'
 import { WeeklyBarChartContainer } from './containers/WeeklyBarChartContainer'
 import { ActivityDonutChartContainer } from './containers/ActivityDonutChartContainer'
 import { MonthlyTrendChartContainer } from './containers/MonthlyTrendChartContainer'
+import { ClassBarChartContainer } from './containers/ClassBarChartContainer'
 
 export function StatisticsPage() {
   const {
@@ -48,6 +49,7 @@ export function StatisticsPage() {
       </StatisticsChartGrid>
       <StatisticsFullGrid>
         <MonthlyTrendChartContainer dailyCounts={stats.dailyCounts} range={range} />
+        <ClassBarChartContainer classCounts={stats.classCounts} />
       </StatisticsFullGrid>
     </StatisticsLayout>
   )
