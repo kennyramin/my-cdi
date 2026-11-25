@@ -96,6 +96,17 @@ describe('StudentListContainer', () => {
     expect(nomHeader).toHaveAttribute('aria-sort', 'none')
   })
 
+  it('shows the search term verbatim in the empty state', async () => {
+    const user = userEvent.setup()
+    render(<StudentListContainer onEditStudent={vi.fn()} onAddStudent={vi.fn()} />, {
+      wrapper: createWrapper()
+    })
+
+    await user.type(await screen.findByLabelText('Rechercher par nom, prénom, classe…'), "l'é")
+
+    expect(screen.getByText("Aucun élève ne correspond à « l'é »")).toBeInTheDocument()
+  })
+
   it('batch delete sends only visible selected ids', async () => {
     const user = userEvent.setup()
     render(<StudentListContainer onEditStudent={vi.fn()} onAddStudent={vi.fn()} />, {

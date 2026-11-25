@@ -20,6 +20,7 @@ import { StudentBatchActionsContainer } from './containers/StudentBatchActionsCo
 import {
   CHECKBOX_CELL_STYLE,
   ACTIONS_CELL_STYLE,
+  VISITS_CELL_STYLE,
   StudentListLayout
 } from './StudentListContainer.styles'
 import type { StudentListContainerProps } from './types/StudentListContainerProps'
@@ -32,6 +33,8 @@ const SORTABLE_FIELDS: readonly StudentSortField[] = [
   'ine',
   'visitCount'
 ]
+
+const VISITS_FIELD: StudentSortField = 'visitCount'
 
 export function StudentListContainer({ onEditStudent, onAddStudent }: StudentListContainerProps) {
   const { t: tCommon } = useTranslation('common')
@@ -106,6 +109,7 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
       <SortableHeaderCellPresenter
         key={field}
         label={tStudent(`fields.${field}`)}
+        style={field === VISITS_FIELD ? VISITS_CELL_STYLE : undefined}
         sortState={getHeaderSortState(sortConfig, field)}
         onSort={() => {
           setSortConfig(buildNextSortConfig(sortConfig, field))
@@ -151,6 +155,7 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
         headerNodes={buildHeaderNodes()}
         rowNodes={buildRowNodes(filteredStudents)}
         countLabel={tStudent('count', { count: filteredStudents.length })}
+        emptyMessage={searchTerm === '' ? null : tStudent('emptySearch', { term: searchTerm })}
       />
 
       <ConfirmDialog

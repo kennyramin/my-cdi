@@ -6,6 +6,7 @@
   "count_one": "{{count}} student",
   "count_other": "{{count}} students",
   "searchPlaceholder": "Search by name, first name, class…",
+  "emptySearch": "No student matches “{{term}}”",
   "fields": {
     "nom": "Last name",
     "prenom": "First name",

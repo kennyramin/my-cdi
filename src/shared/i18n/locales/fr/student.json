@@ -6,6 +6,7 @@
   "count_one": "{{count}} élève",
   "count_other": "{{count}} élèves",
   "searchPlaceholder": "Rechercher par nom, prénom, classe…",
+  "emptySearch": "Aucun élève ne correspond à « {{term}} »",
   "fields": {
     "nom": "Nom",
     "prenom": "Prénom",

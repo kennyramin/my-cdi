@@ -4,7 +4,9 @@ import { shouldForwardStyledProp } from '@ui/helpers/shouldForwardStyledProp'
 
 export const CHECKBOX_CELL_WIDTH_PX = 40
 export const ACTIONS_CELL_WIDTH_PX = 80
+export const VISITS_CELL_WIDTH_PX = 100
 export const CHECKBOX_CELL_STYLE = { width: CHECKBOX_CELL_WIDTH_PX } as const
+export const VISITS_CELL_STYLE = { width: VISITS_CELL_WIDTH_PX } as const
 export const ACTIONS_CELL_STYLE = { width: ACTIONS_CELL_WIDTH_PX } as const
 
 export const StudentListLayout = styled(Box, {

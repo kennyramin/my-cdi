@@ -14,7 +14,8 @@ export const TableRoot = styled(Box, {
   boxShadow: theme.shadows[1],
   '& table': {
     width: '100%',
-    borderCollapse: 'collapse'
+    borderCollapse: 'collapse',
+    tableLayout: 'fixed'
   },
   '& th': {
     textAlign: 'left',
@@ -57,8 +58,17 @@ export const TableElement = styled('table', {
   shouldForwardProp: shouldForwardStyledProp
 })({
   width: '100%',
-  borderCollapse: 'collapse'
+  borderCollapse: 'collapse',
+  tableLayout: 'fixed'
 })
+
+export const EmptyCell = styled('td', {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  textAlign: 'center',
+  color: theme.palette.text.secondary,
+  paddingBlock: theme.spacing(4)
+}))
 
 export const TableFooter = styled(Box, {
   shouldForwardProp: shouldForwardStyledProp
