@@ -2,7 +2,6 @@ import { styled } from '@mui/material/styles'
 import { TYPE_SCALE } from '@ui/theme'
 
 export const SORT_ICON_FONT_SIZE_PX = TYPE_SCALE.body1
-export const FOCUS_OUTLINE_WIDTH_PX = 2
 
 export const SortHeaderButton = styled('button')(({ theme }) => ({
   background: 'none',
@@ -17,10 +16,6 @@ export const SortHeaderButton = styled('button')(({ theme }) => ({
   cursor: 'pointer',
   '&:hover': {
     color: theme.palette.text.secondary
-  },
-  '&:focus-visible': {
-    outline: `${FOCUS_OUTLINE_WIDTH_PX}px solid ${theme.palette.primary.main}`,
-    outlineOffset: theme.spacing(0.25)
   }
 }))
 

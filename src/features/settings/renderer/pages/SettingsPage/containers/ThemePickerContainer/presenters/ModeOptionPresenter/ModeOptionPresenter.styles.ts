@@ -32,9 +32,5 @@ export const ModeOptionButton = styled('button', {
   '&[data-active="true"]:hover': {
     borderColor: alpha(theme.palette.primary.main, TINT_ALPHAS.border),
     color: theme.palette.primary.main
-  },
-  '&:focus-visible': {
-    outline: `2px solid ${alpha(theme.palette.primary.main, TINT_ALPHAS.border)}`,
-    outlineOffset: '2px'
   }
 }))

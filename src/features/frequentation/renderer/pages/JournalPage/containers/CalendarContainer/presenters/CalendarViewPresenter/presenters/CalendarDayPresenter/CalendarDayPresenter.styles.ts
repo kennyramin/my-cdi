@@ -38,7 +38,7 @@ export const DayCell = styled('button', {
     }
   },
   '&[data-selected="true"]': {
-    boxShadow: `inset 0 0 0 ${SELECTED_RING_WIDTH_PX}px ${theme.palette.primary.main}`
+    boxShadow: `inset 0 0 0 ${SELECTED_RING_WIDTH_PX}px ${theme.palette.focusRing}`
   },
   '&[data-today="true"][data-selected="true"]': {
     boxShadow: `${theme.shadows[3]}, inset 0 0 0 ${SELECTED_RING_WIDTH_PX}px ${theme.palette.primary.contrastText}`

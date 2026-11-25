@@ -1,11 +1,17 @@
 import { describe, it, expect } from 'vitest'
 import { alpha } from '@mui/material/styles'
 import { contrastRatio } from '@ui/helpers/contrastRatio'
-import { createAppTheme, FOCUS_VISIBLE_SELECTOR, theme } from '../theme'
+import {
+  CHECKBOX_FOCUS_VISIBLE_SELECTOR,
+  createAppTheme,
+  FOCUS_VISIBLE_SELECTOR,
+  theme
+} from '../theme'
 import { THEME_ACCENTS, THEME_MODES, DEFAULT_THEME_PREFERENCE, THEME_BACKGROUNDS } from '@types'
 
 const ACCENT_GLOW_ALPHA = 0.35
 const WCAG_AA_NORMAL_TEXT_RATIO = 4.5
+const WCAG_NON_TEXT_RATIO = 3
 
 type NeutralSlot = 'sidebar' | 'surface' | 'background.paper' | 'divider' | 'dividerStrong'
 
@@ -173,13 +179,45 @@ describe('createAppTheme', () => {
     }
   })
 
-  it('defines one primary-colored focus-visible ring in CssBaseline for every combination', () => {
+  it('defines one focus-ring-colored focus-visible ring in CssBaseline for every combination', () => {
     for (const preference of ALL_PREFERENCES) {
       const appTheme = createAppTheme(preference)
       const serialized = JSON.stringify(appTheme.components?.MuiCssBaseline)
       expect(serialized).toContain(FOCUS_VISIBLE_SELECTOR)
-      expect(serialized).toContain(`"outline":"2px solid ${appTheme.palette.primary.main}"`)
+      expect(serialized).toContain(`"outline":"2px solid ${appTheme.palette.focusRing}"`)
       expect(serialized).toContain('"outlineOffset":"2px"')
+    }
+  })
+
+  it('draws the same ring on a keyboard-focused checkbox, whose input is visually hidden', () => {
+    for (const preference of ALL_PREFERENCES) {
+      const appTheme = createAppTheme(preference)
+      const baseline = appTheme.components?.MuiCssBaseline?.styleOverrides as Record<
+        string,
+        Record<string, string>
+      >
+      expect(baseline[CHECKBOX_FOCUS_VISIBLE_SELECTOR]).toEqual({
+        outline: `2px solid ${appTheme.palette.focusRing}`,
+        outlineOffset: '2px'
+      })
+    }
+  })
+
+  it('keeps the focus ring at 3:1 or more (WCAG 1.4.11) on every backdrop of every combination', () => {
+    for (const preference of ALL_PREFERENCES) {
+      const { palette } = createAppTheme(preference)
+      const backdrops = {
+        default: palette.background.default,
+        paper: palette.background.paper,
+        surface: palette.surface,
+        sidebar: palette.sidebar
+      }
+      for (const [backdropName, backdropColor] of Object.entries(backdrops)) {
+        const label = `${preference.accent}/${preference.mode} ring on ${backdropName}`
+        expect(contrastRatio(palette.focusRing, backdropColor), label).toBeGreaterThanOrEqual(
+          WCAG_NON_TEXT_RATIO
+        )
+      }
     }
   })
 
