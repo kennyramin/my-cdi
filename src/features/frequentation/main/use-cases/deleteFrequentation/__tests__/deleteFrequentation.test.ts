@@ -26,6 +26,7 @@ function createMockGateway(overrides: Partial<FrequentationGateway> = {}): Frequ
     update: vi.fn().mockResolvedValue(null),
     delete: vi.fn().mockResolvedValue(true),
     deleteByStudentId: vi.fn().mockResolvedValue(0),
+    deleteOlderThan: vi.fn().mockResolvedValue(0),
     count: vi.fn().mockResolvedValue(0),
     ...overrides
   }

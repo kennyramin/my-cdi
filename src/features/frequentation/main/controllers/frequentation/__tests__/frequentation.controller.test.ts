@@ -67,6 +67,7 @@ function createFrequentationGatewayStub(): FrequentationGateway {
     update: vi.fn().mockResolvedValue(SAMPLE_FREQUENTATION),
     delete: vi.fn().mockResolvedValue(true),
     deleteByStudentId: vi.fn().mockResolvedValue(0),
+    deleteOlderThan: vi.fn().mockResolvedValue(0),
     count: vi.fn().mockResolvedValue(0)
   }
 }

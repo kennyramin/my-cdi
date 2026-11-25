@@ -294,7 +294,7 @@ export function CalendarViewPresenter({ dayNodes }: CalendarViewPresenterProps) 
 }
 ```
 
-Conditional rendering (`cond ? <A/> : null`) and early returns choosing *what* to render stay in presenters; everything else derived moves up.
+Conditional rendering (`cond ? <A/> : null`) and early returns choosing _what_ to render stay in presenters; everything else derived moves up.
 
 ### Styling: `styled()` in `.styles.ts`, theme as single source of truth
 
@@ -527,16 +527,17 @@ Feature dialogs (e.g., `JournalEntryEditDialogPresenter`) use `Modal` directly. 
 
 Gateway methods follow a strict naming convention:
 
-| Action    | Pattern       | Example                 |
-| --------- | ------------- | ----------------------- |
-| Create    | `create`      | `create(student)`       |
-| Read one  | `getById`     | `getById(id)`           |
-| Read by   | `getByXxx`    | `getByClass(class)`     |
-| Read all  | `getAll`      | `getAll()`              |
-| Update    | `update`      | `update(id, data)`      |
-| Delete    | `delete`      | `delete(id)`            |
-| Delete by | `deleteByXxx` | `deleteByStudentId(id)` |
-| Count     | `count`       | `count()`               |
+| Action    | Pattern                   | Example                                  |
+| --------- | ------------------------- | ---------------------------------------- |
+| Create    | `create`                  | `create(student)`                        |
+| Read one  | `getById`                 | `getById(id)`                            |
+| Read by   | `getByXxx`                | `getByClass(class)`                      |
+| Read all  | `getAll`                  | `getAll()`                               |
+| Update    | `update`                  | `update(id, data)`                       |
+| Delete    | `delete`                  | `delete(id)`                             |
+| Delete by | `deleteByXxx`             | `deleteByStudentId(id)`                  |
+| Delete by | `deleteOlderThan(cutoff)` | `deleteOlderThan('2024-11-25T00:30:00')` |
+| Count     | `count`                   | `count()`                                |
 
 No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single reads, never throws for missing rows.
 
@@ -547,7 +548,7 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 - **Storage**: dates stored as ISO strings in SQLite; time-of-day stored as `HH:mm` strings.
 - **Display**: `formatDate` (`DD/MM/YYYY`) and `formatDateTime` (`DD/MM/YYYY HH:mm`) via `dayjs` with French locale.
 - **UI**: MUI X Date Pickers wrapped in `LocalizationProvider` with `AdapterDayjs` and `adapterLocale="fr"`.
-- **Cleanup**: `CLEANUP_RETENTION_YEARS = 2` — old frequentations deleted on startup.
+- **Cleanup**: `CLEANUP_RETENTION_YEARS = 2` — old frequentations deleted on startup (local cutoff, single `DELETE … WHERE starts_at < ?`).
 
 ---
 
