@@ -48,7 +48,14 @@ function buildWeekdayNodes(labels: string[]): ReactNode[] {
 
 function buildDayNodes(cells: CalendarCell[], onSelectCell: (iso: string) => void): ReactNode[] {
   return cells.map((cell) => (
-    <CalendarDayPresenter key={cell.iso} cell={cell} onClick={() => onSelectCell(cell.iso)} />
+    <CalendarDayPresenter
+      key={cell.iso}
+      cell={cell}
+      tabIndex={0}
+      onClick={() => onSelectCell(cell.iso)}
+      onFocus={vi.fn()}
+      onKeyDown={vi.fn()}
+    />
   ))
 }
 
