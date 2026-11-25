@@ -11,7 +11,7 @@
     "prenom": "First name",
     "classe": "Class",
     "ine": "INE",
-    "visits": "Visits",
+    "visitCount": "Visits",
     "actions": "Actions"
   },
   "deleteConfirm_one": "Are you sure you want to delete {{count}} student?",

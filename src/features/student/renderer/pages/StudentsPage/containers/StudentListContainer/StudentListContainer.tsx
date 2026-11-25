@@ -23,7 +23,13 @@ import {
 import type { StudentListContainerProps } from './types/StudentListContainerProps'
 import type { StudentSortField, StudentViewModel } from '@student/types'
 
-const SORTABLE_FIELDS: readonly StudentSortField[] = ['nom', 'prenom', 'classe', 'ine']
+const SORTABLE_FIELDS: readonly StudentSortField[] = [
+  'nom',
+  'prenom',
+  'classe',
+  'ine',
+  'visitCount'
+]
 
 export function StudentListContainer({ onEditStudent, onAddStudent }: StudentListContainerProps) {
   const { t: tCommon } = useTranslation('common')
@@ -103,10 +109,6 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
     return [
       <th key="checkbox" style={CHECKBOX_CELL_STYLE} />,
       ...sortNodes,
-      <th key="visits">
-        {tStudent('fields.visits')}
-        <SortIcon name="unfold_more" />
-      </th>,
       <th key="actions" style={ACTIONS_CELL_STYLE}>
         {tStudent('fields.actions')}
       </th>

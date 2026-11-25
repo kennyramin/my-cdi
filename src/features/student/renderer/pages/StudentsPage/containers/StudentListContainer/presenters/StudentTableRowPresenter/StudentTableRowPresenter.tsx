@@ -23,8 +23,6 @@ export interface StudentTableRowPresenterProps {
   onDeleteClick: (event: MouseEvent<HTMLButtonElement>) => void
 }
 
-const VISITS_PLACEHOLDER = '—'
-
 export function StudentTableRowPresenter({
   student,
   initials,
@@ -58,7 +56,7 @@ export function StudentTableRowPresenter({
         <ClassTag>{student.classe}</ClassTag>
       </td>
       <IneCell>{student.ine}</IneCell>
-      <VisitsCell>{VISITS_PLACEHOLDER}</VisitsCell>
+      <VisitsCell>{student.visitCount}</VisitsCell>
       <td>
         <RowActions>
           <IconButton iconName="edit" aria-label={t('app.edit')} onClick={onEditClick} />

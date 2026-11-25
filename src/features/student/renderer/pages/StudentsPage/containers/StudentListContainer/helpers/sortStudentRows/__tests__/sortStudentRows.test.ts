@@ -6,6 +6,7 @@ const ID_FIRST = 1
 const ID_SECOND = 2
 const ID_THIRD = 3
 const INDEX_LAST = 2
+const VISIT_COUNTS = [10, 9, 0]
 
 const STUDENTS: StudentViewModel[] = [
   {
@@ -81,6 +82,17 @@ describe('sortStudentRows', () => {
     const config: StudentSortConfig = { field: 'ine', direction: 'asc' }
     const result = sortStudentRows([...STUDENTS], config)
     expect(result[0]?.ine).toBe('111A')
+  })
+
+  it('sorts visitCount numerically', () => {
+    const rows = STUDENTS.map((student, index) => ({
+      ...student,
+      visitCount: VISIT_COUNTS[index] ?? 0
+    }))
+    const asc = sortStudentRows(rows, { field: 'visitCount', direction: 'asc' })
+    const desc = sortStudentRows(rows, { field: 'visitCount', direction: 'desc' })
+    expect(asc.map((row) => row.visitCount)).toEqual([...VISIT_COUNTS].reverse())
+    expect(desc.map((row) => row.visitCount)).toEqual(VISIT_COUNTS)
   })
 
   it('does not mutate the original array', () => {

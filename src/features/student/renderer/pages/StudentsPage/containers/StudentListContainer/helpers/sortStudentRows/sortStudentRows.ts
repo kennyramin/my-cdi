@@ -7,15 +7,16 @@ import type {
 
 const COLLATOR = new Intl.Collator('fr', { sensitivity: 'base' })
 
-function getFieldValue(student: StudentViewModel, field: StudentSortField): string {
-  return student[field]
+function compareValues(a: StudentViewModel, b: StudentViewModel, field: StudentSortField): number {
+  if (field === 'visitCount') {
+    return a.visitCount - b.visitCount
+  }
+  return COLLATOR.compare(a[field], b[field])
 }
 
 function compareByField(field: StudentSortField, direction: SortDirection) {
   return (a: StudentViewModel, b: StudentViewModel): number => {
-    const aValue = getFieldValue(a, field)
-    const bValue = getFieldValue(b, field)
-    const comparison = COLLATOR.compare(aValue, bValue)
+    const comparison = compareValues(a, b, field)
     return direction === 'asc' ? comparison : -comparison
   }
 }
