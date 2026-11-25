@@ -12,12 +12,13 @@ import { buildStudentInitials } from '@student/helpers/studentFormatters'
 import { StudentTablePresenter } from './presenters/StudentTablePresenter'
 import { StudentTableRowPresenter } from './presenters/StudentTableRowPresenter'
 import { buildNextSortConfig } from './helpers/buildNextSortConfig'
+import { getHeaderSortState } from './helpers/getHeaderSortState'
+import { SortableHeaderCellPresenter } from './presenters/SortableHeaderCellPresenter'
 import { StudentListToolbarPresenter } from './presenters/StudentListToolbarPresenter'
 import { StudentBatchActionsContainer } from './containers/StudentBatchActionsContainer'
 import {
   CHECKBOX_CELL_STYLE,
   ACTIONS_CELL_STYLE,
-  SortIcon,
   StudentListLayout
 } from './StudentListContainer.styles'
 import type { StudentListContainerProps } from './types/StudentListContainerProps'
@@ -94,18 +95,21 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
     ))
   }
 
-  function buildHeaderNodes(): ReactNode[] {
-    const sortNodes: ReactNode[] = SORTABLE_FIELDS.map((field) => (
-      <th
+  function buildSortHeaderNode(field: StudentSortField): ReactNode {
+    return (
+      <SortableHeaderCellPresenter
         key={field}
-        onClick={() => {
+        label={tStudent(`fields.${field}`)}
+        sortState={getHeaderSortState(sortConfig, field)}
+        onSort={() => {
           setSortConfig(buildNextSortConfig(sortConfig, field))
         }}
-      >
-        {tStudent(`fields.${field}`)}
-        <SortIcon name="unfold_more" />
-      </th>
-    ))
+      />
+    )
+  }
+
+  function buildHeaderNodes(): ReactNode[] {
+    const sortNodes: ReactNode[] = SORTABLE_FIELDS.map(buildSortHeaderNode)
     return [
       <th key="checkbox" style={CHECKBOX_CELL_STYLE} />,
       ...sortNodes,

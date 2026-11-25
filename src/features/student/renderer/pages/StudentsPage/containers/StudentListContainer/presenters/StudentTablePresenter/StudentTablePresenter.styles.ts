@@ -27,11 +27,7 @@ export const TableRoot = styled(Box, {
     backgroundColor: theme.palette.surface,
     borderBottom: `1px solid ${theme.palette.divider}`,
     whiteSpace: 'nowrap',
-    userSelect: 'none',
-    cursor: 'pointer',
-    '&:hover': {
-      color: theme.palette.text.secondary
-    }
+    userSelect: 'none'
   },
   '& td': {
     padding: theme.spacing(1.5, 2),
