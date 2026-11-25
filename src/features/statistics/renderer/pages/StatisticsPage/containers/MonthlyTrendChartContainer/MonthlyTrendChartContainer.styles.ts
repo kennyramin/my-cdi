@@ -9,6 +9,7 @@ export const STROKE_WIDTH = 2
 export const Y_LABEL_TEXT_OFFSET = 4
 export const GRADIENT_OPACITY_TOP = 0.3
 export const Y_LABEL_FONT_SIZE = TYPE_SCALE.caption
+export const X_LABEL_BASELINE_OFFSET = 8
 export const DASH_PATTERN = '4,4'
 
 export const ChartArea = styled(Box, {

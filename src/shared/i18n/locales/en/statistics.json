@@ -18,7 +18,9 @@
     "weekly": "Attendance by day",
     "activities": "Activities",
     "trend": "Trend over period",
-    "visits": "visits"
+    "visits": "visits",
+    "dotTooltip_one": "{{date}}: {{count}} visit",
+    "dotTooltip_other": "{{date}}: {{count}} visits"
   },
   "customRange": {
     "start": "Start date",
