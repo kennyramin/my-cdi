@@ -15,7 +15,8 @@ export async function listStudents(
   deps: ListStudentsDeps,
   input: ListStudentsInput
 ): Promise<UseCaseResult<StudentListResponseDto>> {
-  const rows = await deps.gateway.getAllWithVisitCount(input.classe)
+  const classeFilter = input.classe || undefined
+  const rows = await deps.gateway.getAllWithVisitCount(classeFilter)
 
   const students = rows.map((row) => formatStudentResponse(row, row.visitCount))
 

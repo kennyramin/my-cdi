@@ -74,6 +74,14 @@ describe('listStudents', () => {
     expect(gateway.getByClass).not.toHaveBeenCalled()
   })
 
+  it('treats an empty classe as no filter', async () => {
+    const gateway = createMockGateway({
+      getAllWithVisitCount: vi.fn().mockResolvedValue([])
+    })
+    await listStudents({ gateway }, { classe: '' })
+    expect(gateway.getAllWithVisitCount).toHaveBeenCalledWith(undefined)
+  })
+
   it('returns empty list when no students', async () => {
     const gateway = createMockGateway({
       getAllWithVisitCount: vi.fn().mockResolvedValue([])
