@@ -5,6 +5,7 @@ import type {
   SortDirection
 } from '@student/types'
 
+const NO_DIFFERENCE = 0
 const COLLATOR = new Intl.Collator('fr', { sensitivity: 'base' })
 
 function compareValues(a: StudentViewModel, b: StudentViewModel, field: StudentSortField): number {
@@ -17,7 +18,10 @@ function compareValues(a: StudentViewModel, b: StudentViewModel, field: StudentS
 function compareByField(field: StudentSortField, direction: SortDirection) {
   return (a: StudentViewModel, b: StudentViewModel): number => {
     const comparison = compareValues(a, b, field)
-    return direction === 'asc' ? comparison : -comparison
+    if (comparison !== NO_DIFFERENCE) {
+      return direction === 'asc' ? comparison : -comparison
+    }
+    return COLLATOR.compare(a.nom, b.nom) || COLLATOR.compare(a.prenom, b.prenom)
   }
 }
 

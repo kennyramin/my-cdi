@@ -95,6 +95,23 @@ describe('sortStudentRows', () => {
     expect(desc.map((row) => row.visitCount)).toEqual(VISIT_COUNTS)
   })
 
+  it('breaks visitCount ties by nom then prenom', () => {
+    const names = [
+      { nom: 'Martin', prenom: 'Zoé' },
+      { nom: 'Martin', prenom: 'Alice' },
+      { nom: 'Bernard', prenom: 'Luc' }
+    ]
+    const tied = STUDENTS.map((student, index) => ({
+      ...student,
+      ...names[index],
+      visitCount: 4
+    }))
+    const desc = sortStudentRows(tied, { field: 'visitCount', direction: 'desc' })
+    expect(desc.map((row) => row.id)).toEqual([ID_THIRD, ID_SECOND, ID_FIRST])
+    const asc = sortStudentRows(tied, { field: 'visitCount', direction: 'asc' })
+    expect(asc.map((row) => row.id)).toEqual([ID_THIRD, ID_SECOND, ID_FIRST])
+  })
+
   it('does not mutate the original array', () => {
     const original = [...STUDENTS]
     const config: StudentSortConfig = { field: 'nom', direction: 'asc' }

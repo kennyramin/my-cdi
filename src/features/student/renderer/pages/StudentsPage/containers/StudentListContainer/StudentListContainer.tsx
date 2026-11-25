@@ -155,7 +155,9 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
         headerNodes={buildHeaderNodes()}
         rowNodes={buildRowNodes(filteredStudents)}
         countLabel={tStudent('count', { count: filteredStudents.length })}
-        emptyMessage={searchTerm === '' ? null : tStudent('emptySearch', { term: searchTerm })}
+        emptyMessage={
+          searchTerm === '' ? null : tStudent('emptySearch', { term: searchTerm.trim() })
+        }
       />
 
       <ConfirmDialog

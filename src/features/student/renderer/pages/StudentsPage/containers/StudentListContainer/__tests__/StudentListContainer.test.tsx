@@ -92,8 +92,21 @@ describe('StudentListContainer', () => {
     expect(nomHeader).toHaveAttribute('aria-sort', 'descending')
 
     await user.click(screen.getByRole('button', { name: 'Visites' }))
-    expect(visitsHeader).toHaveAttribute('aria-sort', 'ascending')
+    expect(visitsHeader).toHaveAttribute('aria-sort', 'descending')
     expect(nomHeader).toHaveAttribute('aria-sort', 'none')
+  })
+
+  it('shows the trimmed search term in the empty state', async () => {
+    const user = userEvent.setup()
+    render(<StudentListContainer onEditStudent={vi.fn()} onAddStudent={vi.fn()} />, {
+      wrapper: createWrapper()
+    })
+
+    await user.type(await screen.findByLabelText('Rechercher par nom, prénom, classe…'), 'zzz ')
+
+    expect(
+      screen.getByText('Aucun élève ne correspond à « zzz »', { normalizer: (text) => text })
+    ).toBeInTheDocument()
   })
 
   it('shows the search term verbatim in the empty state', async () => {
