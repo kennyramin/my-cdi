@@ -213,6 +213,102 @@ const checkOverflow = async (page) => {
   }
 }
 
+const inPageSaveButton = ({ name, tolerance }) => {
+  const out = []
+  const button = [...document.querySelectorAll('button')].find((b) => b.textContent?.includes(name))
+  if (!button) {
+    return [`button "${name}" not found`]
+  }
+  const box = button.getBoundingClientRect()
+  let top = 0
+  let bottom = window.innerHeight
+  for (let n = button.parentElement; n; n = n.parentElement) {
+    const oy = getComputedStyle(n).overflowY
+    if (oy === 'auto' || oy === 'scroll' || oy === 'hidden') {
+      const r = n.getBoundingClientRect()
+      top = Math.max(top, r.top)
+      bottom = Math.min(bottom, r.bottom)
+    }
+  }
+  if (box.top < top - tolerance || box.bottom > bottom + tolerance) {
+    out.push(
+      `clipped by its scroll container (${Math.round(box.top)}-${Math.round(box.bottom)} not within ${Math.round(top)}-${Math.round(bottom)})`
+    )
+  }
+  const bar = button.parentElement
+  const barRect = bar.getBoundingClientRect()
+  let scroller = null
+  for (let n = bar.parentElement; n && !scroller; n = n.parentElement) {
+    const oy = getComputedStyle(n).overflowY
+    if (oy === 'auto' || oy === 'scroll') {
+      scroller = n
+    }
+  }
+  if (scroller && scroller.scrollHeight > scroller.clientHeight) {
+    const visibleBottom = scroller.getBoundingClientRect().bottom
+    if (Math.abs(barRect.bottom - visibleBottom) > tolerance) {
+      const probeY = barRect.bottom + tolerance + 1
+      for (const f of [0.25, 0.5, 0.75]) {
+        const hit = document.elementFromPoint(barRect.left + barRect.width * f, probeY)
+        if (
+          hit?.closest('button, input, [role="button"], [role="radio"]') &&
+          probeY < visibleBottom
+        ) {
+          out.push(
+            `${hit.tagName.toLowerCase()} shows below the submit bar (bar bottom ${Math.round(barRect.bottom)}, scroll container bottom ${Math.round(visibleBottom)})`
+          )
+          break
+        }
+      }
+    }
+    const cardRect = bar.closest('form')?.parentElement?.getBoundingClientRect()
+    if (cardRect) {
+      const probeY = barRect.top + barRect.height / 2
+      for (const x of [cardRect.left + 3, cardRect.right - 3]) {
+        const hit = document.elementFromPoint(x, probeY)
+        if (hit && !bar.contains(hit)) {
+          out.push(
+            `${hit.tagName.toLowerCase()} shows in the submit bar side gutter at x=${Math.round(x)}`
+          )
+        }
+      }
+    }
+  }
+  return out
+}
+
+const inPageClassLabels = (tolerance) => {
+  const out = []
+  for (const label of document.querySelectorAll('main ul > li > div > div:first-child > span')) {
+    const lineHeight = parseFloat(getComputedStyle(label).lineHeight)
+    if (label.getBoundingClientRect().height > lineHeight + tolerance) {
+      out.push(`class label "${label.textContent.trim()}" wraps onto several lines`)
+      break
+    }
+  }
+  return out
+}
+
+const checkSaveButton = async (page, size) => {
+  const found = await page.evaluate(inPageSaveButton, {
+    name: SAVE_BUTTON_NAME,
+    tolerance: SUBPIXEL_TOLERANCE
+  })
+  for (const reason of found) {
+    report('journal', size, `button "${SAVE_BUTTON_NAME}"`, reason)
+  }
+}
+
+const checkJournalSmall = async (page) => {
+  await gotoRoute(page, ROUTES[0], ROUTES.at(-1))
+  await checkSaveButton(page, SMALL_VIEWPORT)
+  const labels = await page.evaluate(inPageClassLabels, SUBPIXEL_TOLERANCE)
+  for (const reason of labels) {
+    report('journal', SMALL_VIEWPORT, 'entries>li', reason)
+  }
+  await gotoRoute(page, ROUTES.at(-1), ROUTES[0])
+}
+
 const checkFold = async (page) => {
   await gotoRoute(page, ROUTES[0], ROUTES.at(-1))
   const box = await page.getByRole('button', { name: SAVE_BUTTON_NAME, exact: true }).boundingBox()
@@ -227,6 +323,7 @@ const checkFold = async (page) => {
       `below the fold (bottom ${Math.round(box.y + box.height)} > ${innerHeight})`
     )
   }
+  await checkSaveButton(page, FOLD_VIEWPORT)
 }
 
 const dir = mkdtempSync(join(tmpdir(), 'my-cdi-layout-'))
@@ -241,6 +338,7 @@ try {
   await seed(page)
   await resize(app, page, SMALL_VIEWPORT)
   await checkOverflow(page)
+  await checkJournalSmall(page)
   await resize(app, page, FOLD_VIEWPORT)
   await checkFold(page)
 } catch (error) {
