@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@mui/material/styles'
 import { theme } from '@ui/theme'
@@ -25,10 +25,11 @@ function createWrapper() {
 }
 
 describe('StatisticsPage', () => {
+  const getStats = vi.fn()
   beforeEach(() => {
     vi.stubGlobal('electronAPI', {
       statistics: {
-        getStats: vi.fn().mockResolvedValue({
+        getStats: getStats.mockResolvedValue({
           success: true,
           data: {
             totalVisits: SAMPLE_TOTAL,
@@ -57,5 +58,19 @@ describe('StatisticsPage', () => {
     expect(screen.getByText('Fréquentation par jour')).toBeInTheDocument()
     expect(screen.getByText('Activités')).toBeInTheDocument()
     expect(screen.getByText('Évolution sur la période')).toBeInTheDocument()
+  })
+
+  it('keeps the custom inputs mounted while the new range loads', async () => {
+    render(<StatisticsPage />, { wrapper: createWrapper() })
+    await waitFor(() => expect(screen.getByText('Visites totales')).toBeInTheDocument())
+    fireEvent.click(screen.getByText('Personnalisé'))
+    fireEvent.change(screen.getByLabelText('Date de début'), { target: { value: '2026-11-10' } })
+    expect(screen.getByLabelText('Date de début')).toHaveValue('2026-11-10')
+    expect(screen.queryByText('Chargement…')).toBeNull()
+    await waitFor(() =>
+      expect(getStats).toHaveBeenLastCalledWith(
+        expect.objectContaining({ startDate: '2026-11-10' })
+      )
+    )
   })
 })

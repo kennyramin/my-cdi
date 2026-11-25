@@ -14,7 +14,8 @@ import { ActivityDonutChartContainer } from './containers/ActivityDonutChartCont
 import { MonthlyTrendChartContainer } from './containers/MonthlyTrendChartContainer'
 
 export function StatisticsPage() {
-  const { period, selectPeriod, stats, isLoading } = useStatisticsPage()
+  const { period, selectPeriod, customRange, setCustomRange, customRangeError, stats, isLoading } =
+    useStatisticsPage()
   const { t } = useTranslation('statistics')
   if (isLoading || !stats) {
     return (
@@ -26,7 +27,13 @@ export function StatisticsPage() {
   return (
     <StatisticsLayout>
       <StatsKpiCardsContainer stats={stats} />
-      <PeriodFilterContainer value={period} onChange={selectPeriod} />
+      <PeriodFilterContainer
+        value={period}
+        onChange={selectPeriod}
+        customRange={customRange}
+        customRangeError={customRangeError}
+        onCustomRangeChange={setCustomRange}
+      />
       <StatisticsChartGrid>
         <WeeklyBarChartContainer dailyCounts={stats.dailyCounts} />
         <ActivityDonutChartContainer activityCounts={stats.activityCounts} />

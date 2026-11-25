@@ -1,11 +1,27 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import type { ComponentProps } from 'react'
 import { PeriodFilterContainer } from '../PeriodFilterContainer'
 import '@shared/i18n/config'
 
+const RANGE = { startDate: '2026-11-01', endDate: '2026-11-30' }
+
+function renderFilter(props: Partial<ComponentProps<typeof PeriodFilterContainer>> = {}) {
+  return render(
+    <PeriodFilterContainer
+      value="month"
+      onChange={vi.fn()}
+      customRange={RANGE}
+      customRangeError={null}
+      onCustomRangeChange={vi.fn()}
+      {...props}
+    />
+  )
+}
+
 describe('PeriodFilterContainer', () => {
   it('renders all six period buttons', () => {
-    render(<PeriodFilterContainer value="month" onChange={vi.fn()} />)
+    renderFilter({ value: 'month', onChange: vi.fn() })
     expect(screen.getByText('Cette semaine')).toBeInTheDocument()
     expect(screen.getByText('Ce mois')).toBeInTheDocument()
     expect(screen.getByText('Ce trimestre')).toBeInTheDocument()
@@ -15,26 +31,62 @@ describe('PeriodFilterContainer', () => {
   })
 
   it('marks the selected button with the active style', () => {
-    render(<PeriodFilterContainer value="quarter" onChange={vi.fn()} />)
+    renderFilter({ value: 'quarter', onChange: vi.fn() })
     const button = screen.getByText('Ce trimestre').closest('button')
     expect(button?.getAttribute('data-active')).toBe('true')
   })
 
   it('calls onChange with the new key when a button is clicked', () => {
     const onChange = vi.fn()
-    render(<PeriodFilterContainer value="month" onChange={onChange} />)
+    renderFilter({ value: 'month', onChange: onChange })
     fireEvent.click(screen.getByText('Cette semaine'))
     expect(onChange).toHaveBeenCalledWith('week')
   })
 
-  it('disables the custom range button and does not fire onChange', () => {
+  it('enables the custom button and selects "custom"', () => {
     const onChange = vi.fn()
-    render(<PeriodFilterContainer value="month" onChange={onChange} />)
+    renderFilter({ onChange })
     const customButton = screen.getByText('Personnalisé').closest('button')
-    expect(customButton).toBeDisabled()
+    expect(customButton).not.toBeDisabled()
     if (customButton) {
       fireEvent.click(customButton)
     }
-    expect(onChange).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenCalledWith('custom')
+  })
+
+  it('hides the date inputs for preset periods', () => {
+    renderFilter({ value: 'month' })
+    expect(screen.queryByLabelText('Date de début')).toBeNull()
+    expect(screen.queryByLabelText('Date de fin')).toBeNull()
+  })
+
+  it('shows both date inputs pre-filled when custom is active', () => {
+    renderFilter({ value: 'custom' })
+    expect(screen.getByLabelText('Date de début')).toHaveValue('2026-11-01')
+    expect(screen.getByLabelText('Date de fin')).toHaveValue('2026-11-30')
+  })
+
+  it('emits the new range when the end date changes', () => {
+    const onCustomRangeChange = vi.fn()
+    renderFilter({ value: 'custom', onCustomRangeChange })
+    fireEvent.change(screen.getByLabelText('Date de fin'), { target: { value: '2026-11-15' } })
+    expect(onCustomRangeChange).toHaveBeenCalledWith({
+      startDate: '2026-11-01',
+      endDate: '2026-11-15'
+    })
+  })
+
+  it('shows the inline error for an inverted range', () => {
+    renderFilter({ value: 'custom', customRangeError: 'endBeforeStart' })
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'La date de fin doit être postérieure ou égale à la date de début'
+    )
+    expect(screen.getByLabelText('Date de fin')).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('shows no alert when the range is valid', () => {
+    renderFilter({ value: 'custom' })
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByLabelText('Date de fin')).toHaveAttribute('aria-invalid', 'false')
   })
 })

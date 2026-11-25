@@ -19,5 +19,13 @@
     "activities": "Activities",
     "trend": "Trend over period",
     "visits": "visits"
+  },
+  "customRange": {
+    "start": "Start date",
+    "end": "End date",
+    "errors": {
+      "incomplete": "Fill in both dates",
+      "endBeforeStart": "The end date must be on or after the start date"
+    }
   }
 }

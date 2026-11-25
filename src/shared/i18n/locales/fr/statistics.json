@@ -19,5 +19,13 @@
     "activities": "Activités",
     "trend": "Évolution sur la période",
     "visits": "visites"
+  },
+  "customRange": {
+    "start": "Date de début",
+    "end": "Date de fin",
+    "errors": {
+      "incomplete": "Renseignez les deux dates",
+      "endBeforeStart": "La date de fin doit être postérieure ou égale à la date de début"
+    }
   }
 }
