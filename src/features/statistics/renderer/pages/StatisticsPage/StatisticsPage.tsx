@@ -14,8 +14,16 @@ import { ActivityDonutChartContainer } from './containers/ActivityDonutChartCont
 import { MonthlyTrendChartContainer } from './containers/MonthlyTrendChartContainer'
 
 export function StatisticsPage() {
-  const { period, selectPeriod, customRange, setCustomRange, customRangeError, stats, isLoading } =
-    useStatisticsPage()
+  const {
+    period,
+    selectPeriod,
+    range,
+    customRange,
+    setCustomRange,
+    customRangeError,
+    stats,
+    isLoading
+  } = useStatisticsPage()
   const { t } = useTranslation('statistics')
   if (isLoading || !stats) {
     return (
@@ -39,7 +47,7 @@ export function StatisticsPage() {
         <ActivityDonutChartContainer activityCounts={stats.activityCounts} />
       </StatisticsChartGrid>
       <StatisticsFullGrid>
-        <MonthlyTrendChartContainer dailyCounts={stats.dailyCounts} />
+        <MonthlyTrendChartContainer dailyCounts={stats.dailyCounts} range={range} />
       </StatisticsFullGrid>
     </StatisticsLayout>
   )

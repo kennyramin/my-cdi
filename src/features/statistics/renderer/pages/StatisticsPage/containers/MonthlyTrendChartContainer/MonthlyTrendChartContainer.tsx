@@ -16,10 +16,13 @@ import { Y_LABEL_OFFSET_X } from './helpers/buildTrendPath'
 import { useMonthlyTrendChart } from './hooks/useMonthlyTrendChart'
 import type { MonthlyTrendChartContainerProps } from './types/MonthlyTrendChartContainerProps'
 
-export function MonthlyTrendChartContainer({ dailyCounts }: MonthlyTrendChartContainerProps) {
+export function MonthlyTrendChartContainer({
+  dailyCounts,
+  range
+}: MonthlyTrendChartContainerProps) {
   const { t } = useTranslation('statistics')
   const theme = useTheme()
-  const { trend, paddingLeft, innerRight } = useMonthlyTrendChart(dailyCounts)
+  const { trend, paddingLeft, innerRight } = useMonthlyTrendChart(dailyCounts, range)
 
   return (
     <ChartCardPresenter titleIcon="show_chart" title={t('charts.trend')}>
@@ -36,7 +39,7 @@ export function MonthlyTrendChartContainer({ dailyCounts }: MonthlyTrendChartCon
             </linearGradient>
           </defs>
           {trend.yLabels.map((label) => (
-            <g key={label.label}>
+            <g key={label.id}>
               <line
                 x1={paddingLeft}
                 y1={label.y}
@@ -54,7 +57,7 @@ export function MonthlyTrendChartContainer({ dailyCounts }: MonthlyTrendChartCon
                 fontFamily={MONO_FONT_FAMILY}
                 fontSize={Y_LABEL_FONT_SIZE}
               >
-                {label.label}
+                {label.value}
               </text>
             </g>
           ))}
