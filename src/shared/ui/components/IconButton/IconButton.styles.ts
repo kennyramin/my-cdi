@@ -4,7 +4,7 @@ import { shouldForwardStyledProp } from '@ui/helpers/shouldForwardStyledProp'
 import type { IconButtonTone } from './types/IconButtonProps'
 import { TINT_ALPHAS } from '@ui/theme'
 
-const BUTTON_SIZE_PX = 36
+export const BUTTON_SIZE_PX = 36
 
 export const IconButtonRoot = styled(MuiIconButton, {
   shouldForwardProp: shouldForwardStyledProp

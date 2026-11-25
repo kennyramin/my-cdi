@@ -3,6 +3,10 @@ import { alpha, styled } from '@mui/material/styles'
 import { shouldForwardStyledProp } from '@ui/helpers/shouldForwardStyledProp'
 import { FONT_WEIGHTS, TINT_ALPHAS } from '@ui/theme'
 
+// Nom, Prénom, Classe and INE columns: keep them on one line and ellipsize.
+const FIRST_TRUNCATED_COLUMN = 2
+const LAST_TRUNCATED_COLUMN = 5
+
 export const TableRoot = styled(Box, {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
@@ -35,6 +39,11 @@ export const TableRoot = styled(Box, {
     fontSize: theme.typography.body1.fontSize,
     borderBottom: `1px solid ${theme.palette.divider}`,
     verticalAlign: 'middle'
+  },
+  [`& td:nth-of-type(n+${FIRST_TRUNCATED_COLUMN}):nth-of-type(-n+${LAST_TRUNCATED_COLUMN})`]: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
   },
   '& tr:last-child td': {
     borderBottom: 'none'
