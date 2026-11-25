@@ -18,7 +18,10 @@ describe('renderer index.html', () => {
       'style-src': ["'self'", "'unsafe-inline'"],
       'font-src': ["'self'"],
       'connect-src': ["'self'"],
-      'img-src': ["'self'", 'data:', 'blob:']
+      'img-src': ["'self'", 'data:', 'blob:'],
+      'object-src': ["'none'"],
+      'base-uri': ["'self'"],
+      'form-action': ["'self'"]
     })
   })
 

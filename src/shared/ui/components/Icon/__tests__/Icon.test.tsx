@@ -42,7 +42,7 @@ describe('Icon', () => {
     render(
       <button aria-label="Rechercher">
         <Icon name="search" />
-      </button>,
+      </button>
     )
     expect(screen.getByRole('button', { name: 'Rechercher' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /search/ })).toBeNull()

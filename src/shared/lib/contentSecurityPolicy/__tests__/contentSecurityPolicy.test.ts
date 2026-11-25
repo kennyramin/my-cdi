@@ -6,7 +6,7 @@ import {
 } from '../contentSecurityPolicy'
 
 const PRODUCTION =
-  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; img-src 'self' data: blob:"
+  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'"
 const html = `<head><meta http-equiv="Content-Security-Policy" content="${PRODUCTION}" /></head>`
 
 describe('contentSecurityPolicy', () => {
