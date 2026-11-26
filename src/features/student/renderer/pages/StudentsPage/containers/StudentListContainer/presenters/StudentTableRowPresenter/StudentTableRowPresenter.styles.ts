@@ -17,11 +17,16 @@ export const NameCellContent = styled(Box, {
 })(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  gap: theme.spacing(1.25)
+  gap: theme.spacing(1.25),
+  minWidth: 0
 }))
 
 export const NameText = styled('span')({
-  fontWeight: FONT_WEIGHTS.medium
+  fontWeight: FONT_WEIGHTS.medium,
+  minWidth: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap'
 })
 
 export const ClassTag = styled('span', {

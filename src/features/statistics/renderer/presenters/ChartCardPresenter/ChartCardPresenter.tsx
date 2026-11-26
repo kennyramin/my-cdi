@@ -5,7 +5,7 @@ import type { ChartCardPresenterProps } from './types/ChartCardPresenterProps'
 export function ChartCardPresenter({ titleIcon, title, children }: ChartCardPresenterProps) {
   return (
     <Card>
-      <ChartCardTitle variant="body1">
+      <ChartCardTitle variant="body1" component="h2">
         <ChartCardTitleIcon name={titleIcon} />
         {title}
       </ChartCardTitle>

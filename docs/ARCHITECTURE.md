@@ -63,7 +63,6 @@ Renderer ──► Preload (contextBridge) ──► Main (ipcMain.handle)
 2. Inject `studentGateway` into `frequentationModule`
 3. Inject `frequentationGateway` into `statisticsModule`
 4. Initialize the `settings` module (gateway + IPC controller, no cross-feature dependency)
-5. Invoke `cleanupOldFrequentations()` after all modules initialize
 
 ### Auto-Updater
 
@@ -146,7 +145,8 @@ window.electronAPI.frequentation.list(input)
 - **Zod schemas** live alongside Drizzle schema for validation
 - **Migrations** managed by Drizzle Kit, output in `drizzle/`
 - **Schema registry** at `shared/db/schema.ts` re-exports all feature schemas
-- **Auto-cleanup**: frequentations older than 2 years are deleted on startup
+- **No automatic purge**: see §17 Retention
+- **Migration 0004** rebuilds `frequentation` with the SQLite create-new / copy / drop / rename pattern, without `PRAGMA foreign_keys` (a no-op inside the migration transaction); orphan rows get a `NULL` `student_id` so the foreign-key check cannot abort startup
 
 ```
 shared/db/
@@ -294,12 +294,12 @@ export function CalendarViewPresenter({ dayNodes }: CalendarViewPresenterProps) 
 }
 ```
 
-Conditional rendering (`cond ? <A/> : null`) and early returns choosing *what* to render stay in presenters; everything else derived moves up.
+Conditional rendering (`cond ? <A/> : null`) and early returns choosing _what_ to render stay in presenters; everything else derived moves up.
 
 ### Styling: `styled()` in `.styles.ts`, theme as single source of truth
 
 - **Zero inline `sx={{...}}`** in feature or shared/ui components. All styling lives in `XPresenter.styles.ts` (or `XContainer.styles.ts`) as `styled()` components from `@mui/material/styles`.
-- **The MUI theme (`@ui/theme`) is the only source of design tokens.** `global.css` contains nothing but the font `@import` lines; element resets, scrollbar styling and the base body styles live in the `MuiCssBaseline` overrides in `theme.ts`. Never use CSS custom properties (`var(--...)`), hardcoded hex/rgba colors or raw px `fontSize` in components — resolve everything from the theme.
+- **The MUI theme (`@ui/theme`) is the only source of design tokens.** Fonts are bundled locally from npm (`@fontsource/inter`, `@fontsource/jetbrains-mono`, `material-icons`) and imported in `src/renderer/main.tsx`; there is no global stylesheet. Element resets, scrollbar styling and the base body styles live in the `MuiCssBaseline` overrides in `theme.ts`. Never use CSS custom properties (`var(--...)`), hardcoded hex/rgba colors or raw px `fontSize` in components — resolve everything from the theme.
 - MUI v9's `styled()` serialises style objects with emotion's raw CSS serializer and does **not** resolve MUI system props (`mt`, `px`, `gap`, `bgcolor`, …) — they would reach the stylesheet unprocessed and be silently dropped. Style objects therefore use **real CSS properties** and `theme.spacing()` for spacing-scale values (`paddingInline: theme.spacing(1)`, `backgroundColor`, `gap: theme.spacing(0.75)`), never system-prop shorthands.
 - Every styled call passes the shared prop filter:
 
@@ -355,7 +355,9 @@ Search is case-insensitive multi-field match (`nom`, `prenom`, `classe`, `ine`).
 Consistent 3-layer architecture for any list with multi-select:
 
 1. **Selection hook** (`useStudentSelection` / `useJournalEntrySelection`)
-   - `useState<number[]>` for `selectedIds`
+   - `useJournalEntrySelection(scopeKey)` resets when the scope (selected date) changes
+   - `useStudentSelection`: `useState<number[]>` for `selectedIds`
+   - `useJournalEntrySelection`: `useState<{ scopeKey, ids }>`; ids are only exposed while `scopeKey` matches the current scope
    - `toggle(id)`, `selectAll(ids)`, `clearSelection()`, `isSelected(id)`
 
 2. **Batch actions container** (`StudentBatchActionsContainer` / `JournalBatchActionsContainer`)
@@ -495,6 +497,7 @@ Per [React docs](https://react.dev/learn/you-might-not-need-an-effect), `useEffe
 - `usePageTitle` — syncs with `document.title`
 - `useKeyboardShortcuts` — syncs with `document` key events
 - `useAutoUpdater` — syncs with Electron auto-updater
+- `useElementWidth` — syncs with the browser `ResizeObserver` (measured chart width)
 
 **Forbidden in all other cases** — derive state during render, not in effects.
 
@@ -526,16 +529,16 @@ Feature dialogs (e.g., `JournalEntryEditDialogPresenter`) use `Modal` directly. 
 
 Gateway methods follow a strict naming convention:
 
-| Action    | Pattern       | Example                 |
-| --------- | ------------- | ----------------------- |
-| Create    | `create`      | `create(student)`       |
-| Read one  | `getById`     | `getById(id)`           |
-| Read by   | `getByXxx`    | `getByClass(class)`     |
-| Read all  | `getAll`      | `getAll()`              |
-| Update    | `update`      | `update(id, data)`      |
-| Delete    | `delete`      | `delete(id)`            |
-| Delete by | `deleteByXxx` | `deleteByStudentId(id)` |
-| Count     | `count`       | `count()`               |
+| Action    | Pattern                   | Example                                  |
+| --------- | ------------------------- | ---------------------------------------- |
+| Create    | `create`                  | `create(student)`                        |
+| Read one  | `getById`                 | `getById(id)`                            |
+| Read by   | `getByXxx`                | `getByClass(class)`                      |
+| Read all  | `getAll`                  | `getAll()`                               |
+| Update    | `update`                  | `update(id, data)`                       |
+| Delete    | `delete`                  | `delete(id)`                             |
+| Delete by | `deleteByXxx`             | `deleteByStudentId(id)`                  |
+| Count     | `count`                   | `count()`                                |
 
 No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single reads, never throws for missing rows.
 
@@ -543,10 +546,33 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 
 ## 17. Date / Time Handling
 
-- **Storage**: dates stored as ISO strings in SQLite; time-of-day stored as `HH:mm` strings.
+- **Storage**: visit start times stored as local wall-clock strings `YYYY-MM-DDTHH:mm:ss` (no timezone suffix) in SQLite; time-of-day stored as `HH:mm` strings.
 - **Display**: `formatDate` (`DD/MM/YYYY`) and `formatDateTime` (`DD/MM/YYYY HH:mm`) via `dayjs` with French locale.
 - **UI**: MUI X Date Pickers wrapped in `LocalizationProvider` with `AdapterDayjs` and `adapterLocale="fr"`.
-- **Cleanup**: `CLEANUP_RETENTION_YEARS = 2` — old frequentations deleted on startup.
+- **Legacy rows**: legacy `Z`/offset values are normalised once at startup (settings key `migrations.startsAtLocal.done`, automatic backup first). The conversion uses the machine timezone at first launch; values that are not valid dates (including rollovers such as `2026-02-30T…Z`) are left untouched and counted as unparseable.
+- **Retention**: there is no automatic purge. Identified visits live as long as the student record; anonymized visits are kept forever.
+- **Secure deletion**: the connection sets `PRAGMA secure_delete = ON` and anonymization checkpoints the WAL (`TRUNCATE`) after commit, so a removed name, first name or INE is zeroed in the live database file (and its `-wal`).
+
+### Duplicate Visit Warning & Editing an Entry
+
+A visit is a **duplicate** when another visit of the **same student** on the **same local day** starts less than `DUPLICATE_WINDOW_SECONDS` (1800 s, i.e. 30 minutes) away; 30:00 exactly is not a duplicate, 29:59 is. Distances are never computed across days (`localSameDayDistanceSeconds`, minutes and seconds of the wall-clock strings; inputs are validated upstream). Anonymized visits (no `student_id`) never match, and the entry being edited never matches itself. Candidates of the same batch are not compared with each other, only with stored visits.
+
+- **Contract**: `frequentation.create`, `createBatch` and `update` accept an optional `allowDuplicates` (strict boolean). Without it, a request that would create a duplicate writes **nothing** and answers the success payload `{ created: 0, duplicates: DuplicateWarningDto[] }` (type guard `isDuplicatesFound`, which requires `created === 0` and an array). Callers discriminate it before treating the answer as a success; the renderer mutations do not invalidate queries on it. With `allowDuplicates: true` the write happens unconditionally.
+- **Transactional gateway**: the check and the write are one operation. `createManyChecked(items, { allowDuplicates })` and `updateChecked(id, dto, { allowDuplicates })` run in a single `better-sqlite3` transaction opened with `behavior: 'immediate'`, so two concurrent requests for the same visit cannot both pass the check: exactly one is written, the others get the warning. The result is `{ duplicates } | { written }`. Use cases never do check-then-insert across two gateway calls. Batch warnings are built per student by `buildDuplicateWarnings` (student names resolved in one `getByIds`, `ANONYMIZED_STUDENT_LABEL` as fallback).
+- **Renderer flow**: the journal form keeps its values while `DuplicateWarningDialogPresenter` is open (it lists one line per existing visit: name, time, activity). "Annuler" or Escape closes it and **explicitly refocuses the submit button via a ref** (the clicked button is disabled while the request runs, so the browser drops focus to `<body>` and the modal has nothing to restore). "Enregistrer quand même" resends the same payload once with `allowDuplicates: true`; a ref-based guard makes a double click send once. Batches where some items failed report the failure (toast with the number of students not found) instead of a plain success; on a partial success only the failed students stay selected in the form so they can be retried.
+- **Editing**: the edit dialog edits date, time, student and activity. It sends **only changed fields** (`startsAt` only when date or time changed, `studentId` only when the student changed; `activity` is always sent), refuses a future date/time both in the form (disabled save + explanation) and in the use case, rejects an unknown id or student, and re-checks duplicates (the warning opens over the edit dialog; cancelling refocuses the dialog's save button). Changing the student refreshes the class snapshot (`student_classe`). The student of an anonymized visit is locked (the field is disabled with an explanation, no `studentId` is ever sent, and the use case refuses it). An empty update payload is refused as "nothing to update".
+- **Verification**: `npm run check:duplicates` (Electron + Playwright, same prerequisites as `check:layout`; `AXE_SOURCE` optionally points at an `axe.min.js` for the dialog accessibility pass) drives the real app: warning, cancel focus, single write on double click, 31 min / other day, batch, concurrent creation, edit of time/student/duplicate/future/anonymized, light and dark at 800x600. It aligns `better-sqlite3` back to the Node ABI when it ends.
+
+### Anonymization
+
+A leaver is removed with `anonymizeStudents` (IPC `student.anonymize`, also reused by the CSV removal flow):
+
+- **Kept**: every visit (`frequentation` row) with its date, activity and a snapshot of the student's class (`student_classe`). `frequentation.student_id` is nullable and becomes `NULL`. Statistics and the Journal keep counting the visit; the Journal shows it as "Élève anonymisé" with the class.
+- **Removed**: the `students` row (surname, first name, INE, current class). A student without visits is simply deleted (nothing to keep).
+- **Class snapshot rule**: the class of a visit is `COALESCE(frequentation.student_classe, students.classe, 'unknown')`. The snapshot is written when the visit is created and refreshed when its student changes; migration 0004 backfills it from the live class.
+- **Backup first**: an automatic `anonymization` backup is taken before anything is written; if it fails nothing is changed. Everything else runs in a single transaction (all or nothing).
+- **Secure deletion** applies to the live database as described above. Limitation: that safety backup, and every earlier manual or automatic backup, is a full copy that still contains the real identities until it is pruned (automatic copies after 30 days or 10 copies); the Settings "Données" card says so.
+- **Irreversible**: the UI uses a confirmation dialog (not closable while the operation is pending) that states this and the backup note.
 
 ---
 
@@ -561,11 +587,19 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 **Main side:**
 
 - `importStudentsCsv` use-case receives the raw CSV string
-- `parseStudentCsv` (PapaParse) parses with `header: true`, validates required columns, caps rows at `MAX_CSV_IMPORT_ROWS`
+- `parseStudentCsv` (PapaParse) parses with `header: true`, validates required columns (the number of rows is not capped)
 - `csvRowSchema` (Zod) validates each row
 - Deduplicates against existing DB rows (`ine` match) and within-file duplicates
-- Gateway creates each student
-- Returns `CsvImportResult` `{ created, errors, errorMessages }`
+- Gateway creates or updates each student; the whole import runs in a single transaction
+- Returns `CsvImportResult` `{ created, updated, errors, errorDetails, anonymized?, deletedWithoutVisits? }`
+
+**Removal of absent students (optional, "Retirer les élèves absents")**
+
+- the `previewCsvRemoval` use-case writes nothing and returns `{ toRemove, total, sample, fingerprint, blockedReason? }`: the number of students that would be removed, the number of students, up to 20 names, a hash of the sorted INEs to remove, and the reason when removal is blocked
+- Removal is blocked (`blockedReason`: `missingColumns` for a wrong header, `rowErrors` for any malformed row such as quote errors or column-count mismatch, `emptyFile` for no data rows); students whose INE is in the file are never removed. A duplicate INE row does not block removal: the student is kept and the duplicate row is reported as `DUPLICATE_INE` after the import
+- Freshness: the import payload carries `removalExpectation` `{ count, fingerprint }` from the preview; the main process recomputes the plan from the file it receives and the current database and refuses (`VALIDATION_ERROR`) when it differs or is missing, and the renderer then re-runs the preview ("removalStale" message)
+- Confirmation: when 10 or more students, or more than half of them, would be removed, the user must type `RETIRER n`; the main process re-checks it (a missing or wrong confirmation is a `VALIDATION_ERROR`)
+- Apply: automatic `anonymization` backup first, then removal and import in the single transaction; duplicates with existing INE are updated (`replace` policy)
 
 **Key decision:** File contents are read in the renderer and passed as a string over IPC; the main process never touches the filesystem directly.
 
@@ -580,11 +614,14 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 **Frontend pure helpers transform DTOs into SVG primitives:**
 
 - `buildDonutSlices(activityCounts)` → SVG path `d` strings + colors
-- `buildTrendPath(dailyCounts, dimensions)` → SVG path `M...L...`, area path, dot coordinates, Y-axis labels
+- `buildTrendPath(dailyCounts, range, dimensions)` → time-scaled SVG path `M...L...`, area path, dot coordinates, zero-based Y-axis labels and first/last-day X labels (`dimensions.width` comes from `useElementWidth`, the measured container width)
 - `buildWeeklyBars(dailyCounts)` → bar heights in px, weekday labels, weekend vs weekday colors
+- `buildClassBars(classCounts)` → top-10 class rows with proportional bar widths (non-zero shares keep a minimum visible width); rendered as plain styled boxes in the "visits by class" card
 - `svgArc()` computes SVG arc paths for donut slices
 
 Presenters (`ActivityDonutChart`, `MonthlyTrendChart`, `WeeklyBarChart`) render raw `<svg>` elements from these helpers.
+
+**Range travels with the data.** `useStatsForPeriod` returns `{ range, stats }`; with `keepPreviousData`, the page passes the range of the *displayed* data (`dataRange`) to the trend chart and marks the content `data-stale` / `aria-busy` while placeholder data is shown or the custom range is invalid. Custom ranges treat years outside `MIN_CUSTOM_YEAR`..`MAX_CUSTOM_YEAR` as `incomplete` (announced politely with `role="status"`; only `endBeforeStart` is a `role="alert"`).
 
 ---
 
@@ -712,7 +749,7 @@ const activityIcons: Record<ActivityType, string> = { ... }
 
 ### Theme Factory (`@ui/theme`)
 
-`src/shared/ui/theme/theme.ts` is a single module (no barrel-file split, §22.6) that owns the whole design system: the `ACCENT_COLORS`/`THEME_PALETTES` palette maps, the numeric token exports (`TYPE_SCALE`, `FONT_WEIGHTS`, `RADII`, `CONTROL_HEIGHTS`, `TINT_ALPHAS`, `MONO_FONT_FAMILY`), the palette augmentation (`sidebar`/`surface`/`dividerStrong`/`activity` slots) and the `createAppTheme(preference)` factory. The factory caches instances in a `Map` keyed by `accent:mode`, so switching themes reuses objects instead of rebuilding them. A theme is a **complete** color change: `THEME_PALETTES[accent][mode]` provides hue-tinted sidebar/surface/card/text/border tokens and shadows per accent×mode (the purple entries are the original default palette, unchanged), while status colors (`info`/`success`/`warning`/`error` and the non-relaxation `activity` tones) stay semantic and follow only the mode, never the brand hue. Accent colors cover primary (with a contrast-safe `contrastText`, e.g. dark text on yellow) and the accent-derived `activity.relaxation` tone. `THEME_BACKGROUNDS[accent][mode]` in `src/shared/types/theme.ts` is the single source for both `palette.background.default` and the main-process `BrowserWindow.backgroundColor`, so the themed window background is painted before React mounts. `export const theme` is the default purple/dark instance, kept for consumers outside the React tree (tests, non-hook helpers). Components must receive theme-dependent values through `useTheme()`/styled callbacks, not through module-level constants. MUI's `colorSchemes`/`useColorScheme` API was deliberately not adopted: in v9 those hooks exist only on the CSS-variables provider, while this app uses the emotion `ThemeProvider` — swapping complete themes via the `createAppTheme` factory is the documented pattern for multiple branded themes on that path.
+`src/shared/ui/theme/theme.ts` is a single module (no barrel-file split, §22.6) that owns the whole design system: the `ACCENT_COLORS`/`THEME_PALETTES` palette maps, the numeric token exports (`TYPE_SCALE`, `FONT_WEIGHTS`, `RADII`, `CONTROL_HEIGHTS`, `TINT_ALPHAS`, `MONO_FONT_FAMILY`), the palette augmentation (`sidebar`/`surface`/`dividerStrong`/`focusRing`/`activity` slots; `focusRing` is a per-accent×mode shade tested at >= 3:1 on every backdrop and drives the global `:focus-visible` ring, so components must not define their own translucent focus outlines) and the `createAppTheme(preference)` factory. The factory caches instances in a `Map` keyed by `accent:mode`, so switching themes reuses objects instead of rebuilding them. A theme is a **complete** color change: `THEME_PALETTES[accent][mode]` provides hue-tinted sidebar/surface/card/text/border tokens and shadows per accent×mode (the purple entries are the original default palette, unchanged), while status colors (`info`/`success`/`warning`/`error` and the non-relaxation `activity` tones) stay semantic and follow only the mode, never the brand hue. Accent colors cover primary (with a contrast-safe `contrastText`, e.g. dark text on yellow) and the accent-derived `activity.relaxation` tone. `THEME_BACKGROUNDS[accent][mode]` in `src/shared/types/theme.ts` is the single source for both `palette.background.default` and the main-process `BrowserWindow.backgroundColor`, so the themed window background is painted before React mounts. `export const theme` is the default purple/dark instance, kept for consumers outside the React tree (tests, non-hook helpers). Components must receive theme-dependent values through `useTheme()`/styled callbacks, not through module-level constants. MUI's `colorSchemes`/`useColorScheme` API was deliberately not adopted: in v9 those hooks exist only on the CSS-variables provider, while this app uses the emotion `ThemeProvider` — swapping complete themes via the `createAppTheme` factory is the documented pattern for multiple branded themes on that path.
 
 ### Enum-to-Display Metadata
 
@@ -729,7 +766,7 @@ const activityIcons: Record<ActivityType, string> = { ... }
 | `Modal`         | Dialog wrapper with custom width mapping       |
 | `ErrorBoundary` | Global render-error catch + fallback UI        |
 
-`.styles.ts` files export `styled()` components (plus `*_PX` size constants) built with `@mui/material/styles` `styled()` using plain CSS properties and `theme.spacing()` — never MUI system props — and the shared `shouldForwardStyledProp` filter; not MUI `sx`. All design tokens come from the MUI theme (`@ui/theme`): palette (including the custom `sidebar`/`surface`/`dividerStrong`/`activity` slots), `TYPE_SCALE` + `FONT_WEIGHTS` for typography, `RADII`, `TINT_ALPHAS` and `theme.shadows[1..4]`. `global.css` contains only the font imports.
+`.styles.ts` files export `styled()` components (plus `*_PX` size constants) built with `@mui/material/styles` `styled()` using plain CSS properties and `theme.spacing()` — never MUI system props — and the shared `shouldForwardStyledProp` filter; not MUI `sx`. All design tokens come from the MUI theme (`@ui/theme`): palette (including the custom `sidebar`/`surface`/`dividerStrong`/`activity` slots), `TYPE_SCALE` + `FONT_WEIGHTS` for typography, `RADII`, `TINT_ALPHAS` and `theme.shadows[1..4]`. Fonts are bundled locally from npm (`@fontsource/inter`, `@fontsource/jetbrains-mono`, `material-icons`) and imported in `src/renderer/main.tsx`; there is no global stylesheet.
 
 ---
 
@@ -778,10 +815,12 @@ Every artifact lives as close as possible to its consumer. Only hoist when share
 | `@frequentation/*`      | `src/features/frequentation/renderer/*` | `src/features/frequentation/main/*` |
 | `@statistics/*`         | `src/features/statistics/renderer/*`    | `src/features/statistics/main/*`    |
 | `@settings/*`           | `src/features/settings/renderer/*`      | `src/features/settings/main/*`      |
+| `@backup/*`             | `src/features/backup/renderer/*`        | `src/features/backup/main/*`        |
 | `@student-shared`       | `src/features/student/shared`           | `src/features/student/shared`       |
 | `@frequentation-shared` | `src/features/frequentation/shared`     | `src/features/frequentation/shared` |
 | `@statistics-shared`    | `src/features/statistics/shared`        | `src/features/statistics/shared`    |
 | `@settings-shared`      | `src/features/settings/shared`          | `src/features/settings/shared`      |
+| `@backup-shared`        | `src/features/backup/shared`            | `src/features/backup/shared`        |
 | `@shared/*`             | `src/shared/*`                          | `src/shared/*`                      |
 | `@ui/*`                 | `src/shared/ui/*`                       | N/A                                 |
 | `@lib`                  | `src/shared/lib`                        | `src/shared/lib`                    |
@@ -809,6 +848,12 @@ Every artifact lives as close as possible to its consumer. Only hoist when share
 ### Test Bootstrapping
 
 `vitest.config.ts` loads `shared/test/setup.ts` which imports `@testing-library/jest-dom/vitest` matchers.
+
+`vitest.config.ts` sets `process.env.TZ = 'Europe/Paris'` so the suite runs in the users' timezone.
+
+`npm run check:duplicates`, `check:anonymize` and `check:backup` are the same kind of real-app checks for the duplicate warning, anonymization and backups.
+
+`npm run check:layout` (Electron + Playwright, not part of vitest; needs `PLAYWRIGHT_MODULE` pointing at a Playwright install) checks overflow, the sticky journal submit bar and keyboard-focus visibility on the built app. It leaves `better-sqlite3` on the Electron ABI, so run `npm test` (which realigns) or `npm run rebuild:tests` before using vitest again.
 
 ### Renderer Test Mocking
 

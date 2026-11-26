@@ -1,14 +1,21 @@
 import { useTranslation } from 'react-i18next'
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { Modal } from '@ui/components/Modal'
 import { Button } from '@ui/components/Button'
 import { Avatar } from '@ui/components/Avatar'
 import { ActivityGridPresenter } from '@frequentation/presenters/ActivityGridPresenter'
-import { EntrySummary, StudentClasse, StudentName } from './JournalEntryEditDialogPresenter.styles'
+import {
+  EntrySummary,
+  ErrorText,
+  OriginalCaption,
+  StudentClasse,
+  StudentName
+} from './JournalEntryEditDialogPresenter.styles'
 
 export interface EditDialogEntryViewModel {
   initials: string
-  colorSeed: number
+  colorSeed: number | null
+  neutral: boolean
   displayName: string
   classe: string
 }
@@ -18,7 +25,12 @@ interface JournalEntryEditDialogPresenterProps {
   tileNodes: ReactNode[]
   onSubmit: () => void
   onClose: () => void
+  fields: ReactNode
+  canSubmit: boolean
+  errorMessage?: string
+  saving?: boolean
   entry?: EditDialogEntryViewModel
+  saveButtonRef?: Ref<HTMLButtonElement>
 }
 
 export function JournalEntryEditDialogPresenter({
@@ -26,7 +38,12 @@ export function JournalEntryEditDialogPresenter({
   tileNodes,
   onSubmit,
   onClose,
-  entry
+  fields,
+  canSubmit,
+  errorMessage,
+  saving = false,
+  entry,
+  saveButtonRef
 }: JournalEntryEditDialogPresenterProps) {
   const { t } = useTranslation('frequentation')
 
@@ -41,21 +58,29 @@ export function JournalEntryEditDialogPresenter({
           <Button variant="secondary" onClick={onClose}>
             {t('form.cancel')}
           </Button>
-          <Button variant="primary" onClick={onSubmit}>
+          <Button
+            ref={saveButtonRef}
+            variant="primary"
+            onClick={onSubmit}
+            disabled={saving || !canSubmit}
+          >
             {t('edit.save')}
           </Button>
         </>
       }
     >
       {entry ? (
-        <EntrySummary>
-          <Avatar initials={entry.initials} colorSeed={entry.colorSeed} />
+        <EntrySummary aria-label={t('edit.original')}>
+          <OriginalCaption variant="caption">{t('edit.original')}</OriginalCaption>
+          <Avatar initials={entry.initials} colorSeed={entry.colorSeed} neutral={entry.neutral} />
           <div>
             <StudentName variant="body1">{entry.displayName}</StudentName>
             <StudentClasse variant="caption">{entry.classe}</StudentClasse>
           </div>
         </EntrySummary>
       ) : null}
+      {errorMessage ? <ErrorText role="alert">{errorMessage}</ErrorText> : null}
+      {fields}
       <ActivityGridPresenter tileNodes={tileNodes} />
     </Modal>
   )

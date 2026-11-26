@@ -1,3 +1,4 @@
+import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
 import { alpha, styled } from '@mui/material/styles'
 import { shouldForwardStyledProp } from '@ui/helpers/shouldForwardStyledProp'
@@ -5,10 +6,11 @@ import { FONT_WEIGHTS, MONO_FONT_FAMILY, RADII, TINT_ALPHAS } from '@ui/theme'
 
 export const ACTIONS_CLASS = 'att-actions'
 
-export const Row = styled('div', {
+export const Row = styled('li', {
   shouldForwardProp: shouldForwardStyledProp
 })<{ $isSelected: boolean }>(({ theme, $isSelected }) => ({
   position: 'relative',
+  listStyle: 'none',
   display: 'flex',
   alignItems: 'center',
   gap: theme.spacing(1.5),
@@ -58,6 +60,8 @@ export const ClasseTag = styled('span', {
   fontSize: theme.typography.caption.fontSize,
   fontWeight: FONT_WEIGHTS.medium,
   marginLeft: theme.spacing(0.5),
+  flexShrink: 0,
+  whiteSpace: 'nowrap',
   color: theme.palette.text.disabled
 }))
 
@@ -99,3 +103,9 @@ export const RowActions = styled('div', {
   opacity: 0,
   transition: theme.transitions.create('opacity')
 }))
+
+export const RowCheckbox = styled(Checkbox, {
+  shouldForwardProp: shouldForwardStyledProp
+})({
+  flexShrink: 0
+})

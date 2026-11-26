@@ -32,6 +32,7 @@ export interface StudentResponseDto {
   fullName: string
   createdAt: string
   updatedAt: string
+  visitCount: number
 }
 
 export interface StudentListResponseDto {
@@ -59,6 +60,8 @@ export interface CsvImportResult {
   updated: number
   errors: number
   errorDetails: CsvImportError[]
+  anonymized?: number
+  deletedWithoutVisits?: number
 }
 
 export type CsvDuplicateInePolicy = 'skip' | 'replace'
@@ -66,4 +69,36 @@ export type CsvDuplicateInePolicy = 'skip' | 'replace'
 export interface ImportStudentsCsvPayload {
   csv: string
   onDuplicateIne?: CsvDuplicateInePolicy
+  removeAbsent?: boolean
+  removalConfirmation?: string
+  removalExpectation?: CsvRemovalExpectation
+}
+
+export interface CsvRemovalExpectation {
+  count: number
+  fingerprint: string
+}
+
+export type CsvRemovalBlockedReason = 'missingColumns' | 'rowErrors' | 'emptyFile'
+
+export interface CsvRemovalPreview {
+  toRemove: number
+  total: number
+  sample: string[]
+  fingerprint: string
+  blockedReason?: CsvRemovalBlockedReason
+}
+
+export interface PreviewCsvRemovalPayload {
+  csv: string
+}
+
+export interface AnonymizeStudentsPayload {
+  ids: number[]
+}
+
+export interface AnonymizeStudentsResult {
+  anonymized: number
+  deletedWithoutVisits: number
+  ignored: number
 }

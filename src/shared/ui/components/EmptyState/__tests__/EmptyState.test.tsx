@@ -8,6 +8,11 @@ describe('EmptyState', () => {
     expect(screen.getByText('Aucune entrée')).toBeInTheDocument()
   })
 
+  it('renders the message as a paragraph, not a skipped-level heading', () => {
+    render(<EmptyState iconName="inbox" message="Aucune entrée" />)
+    expect(screen.queryByRole('heading')).toBeNull()
+  })
+
   it('renders the icon by name', () => {
     render(<EmptyState iconName="inbox" message="Aucune entrée" />)
     expect(screen.getByText('inbox')).toBeInTheDocument()

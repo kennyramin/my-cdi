@@ -9,7 +9,13 @@ import { deleteStudent } from '@student/use-cases/deleteStudent'
 import { getStudent } from '@student/use-cases/getStudent'
 import { listStudents } from '@student/use-cases/listStudents'
 import { importStudentsCsv } from '@student/use-cases/importStudentsCsv'
-import type { ImportStudentsCsvPayload } from '@student-shared'
+import { anonymizeStudents } from '@student/use-cases/anonymizeStudents'
+import { previewCsvRemoval } from '@student/use-cases/previewCsvRemoval'
+import type {
+  AnonymizeStudentsPayload,
+  ImportStudentsCsvPayload,
+  PreviewCsvRemovalPayload
+} from '@student-shared'
 
 interface CreateStudentInput {
   nom: string
@@ -40,7 +46,11 @@ interface DeleteStudentInput {
 
 export type IpcMainHandle = Pick<IpcMain, 'handle'>
 
-export function registerStudentController(ipcMain: IpcMainHandle, gateway: StudentGateway): void {
+export function registerStudentController(
+  ipcMain: IpcMainHandle,
+  gateway: StudentGateway,
+  createAutomaticBackup: (reason: 'anonymization') => Promise<string>
+): void {
   const router = createMainRouter(ipcMain)
   const deps = { gateway }
 
@@ -66,6 +76,17 @@ export function registerStudentController(ipcMain: IpcMainHandle, gateway: Stude
   })
 
   router.procedure(STUDENT_CHANNELS.IMPORT_CSV, async (input: ImportStudentsCsvPayload) => {
-    return unwrap(await importStudentsCsv(deps, input))
+    return unwrap(await importStudentsCsv({ gateway, createAutomaticBackup }, input))
   })
+
+  router.procedure(STUDENT_CHANNELS.ANONYMIZE, async (input: AnonymizeStudentsPayload) => {
+    return unwrap(await anonymizeStudents({ gateway, createAutomaticBackup }, input))
+  })
+
+  router.procedure(
+    STUDENT_CHANNELS.PREVIEW_CSV_REMOVAL,
+    async (input: PreviewCsvRemovalPayload) => {
+      return unwrap(await previewCsvRemoval(deps, input))
+    }
+  )
 }

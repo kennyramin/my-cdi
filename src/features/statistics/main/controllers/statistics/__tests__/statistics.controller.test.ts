@@ -14,6 +14,7 @@ const SAMPLE_FREQUENTATION: FrequentationEntity = {
   startsAt: '2026-01-15T09:00:00.000Z',
   activity: ActivityType.WORK,
   studentId: 1,
+  studentClasse: null,
   createdAt: '2026-01-15T09:00:00.000Z',
   updatedAt: '2026-01-15T09:00:00.000Z'
 }
@@ -63,6 +64,9 @@ function createFrequentationGatewayStub(): FrequentationGateway {
     update: vi.fn().mockResolvedValue(SAMPLE_FREQUENTATION),
     delete: vi.fn().mockResolvedValue(true),
     deleteByStudentId: vi.fn().mockResolvedValue(0),
+    createManyChecked: vi.fn(),
+    updateChecked: vi.fn(),
+    getWithStudentById: vi.fn(),
     count: vi.fn().mockResolvedValue(0)
   }
 }

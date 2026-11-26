@@ -36,7 +36,7 @@
     },
     "settings": {
       "title": "Paramètres",
-      "subtitle": "Personnalisez l'apparence de l'application"
+      "subtitle": "Personnalisez l'apparence et gérez les données de l'application"
     }
   },
   "pageTitles": {
@@ -52,6 +52,36 @@
       "description": "Choisissez la couleur d'accent et le mode d'affichage de l'application.",
       "accent": "Couleur d'accent",
       "mode": "Mode d'affichage"
+    },
+    "data": {
+      "title": "Données",
+      "retry": "Réessayer",
+      "status": {
+        "loading": "Dernière sauvegarde : chargement…",
+        "recommended": "sauvegarde conseillée",
+        "never": "Dernière sauvegarde : jamais",
+        "today": "Dernière sauvegarde : aujourd'hui",
+        "days_one": "Dernière sauvegarde : il y a {{count}} jour",
+        "days_other": "Dernière sauvegarde : il y a {{count}} jours",
+        "days_many": "Dernière sauvegarde : il y a {{count}} jours"
+      },
+      "backup": "Sauvegarder maintenant",
+      "restore": "Restaurer une sauvegarde…",
+      "deleteAutomatic": "Supprimer les sauvegardes automatiques ({{count}})",
+      "privacy": "Les fichiers de sauvegarde contiennent les noms des élèves et ne sont pas chiffrés : conservez-les en lieu sûr.",
+      "anonymizationNote": "Les sauvegardes réalisées avant une anonymisation contiennent encore les identités réelles. Les sauvegardes automatiques sont supprimées après 30 jours.",
+      "backupSuccess": "Sauvegarde enregistrée",
+      "restoreDialog": {
+        "title": "Restaurer cette sauvegarde ?",
+        "message": "Les données actuelles (élèves, passages) seront remplacées par celles de « {{fileName}} ». Une copie de sécurité est créée avant la restauration, puis l'application redémarre.",
+        "confirm": "Restaurer"
+      },
+      "deleteDialog": {
+        "title": "Supprimer les sauvegardes automatiques ?",
+        "message": "Les copies créées automatiquement par l'application seront supprimées définitivement. Vos sauvegardes manuelles ne sont pas concernées.",
+        "confirm": "Supprimer"
+      },
+      "deleteSuccess": "Sauvegardes automatiques supprimées"
     },
     "color": {
       "purple": "Violet",
@@ -76,7 +106,20 @@
     "duplicateIne": "Un élève avec cet INE existe déjà",
     "frequentationNotFound": "Fréquentation introuvable",
     "validation": "Les données envoyées sont invalides",
-    "generic": "Une erreur est survenue"
+    "generic": "Une erreur est survenue",
+    "backup": {
+      "pathIsLiveDb": "Le chemin choisi correspond à la base de données active ; choisissez un autre emplacement",
+      "writeFailed": "L'écriture de la sauvegarde a échoué"
+    },
+    "restore": {
+      "notADatabase": "Ce fichier n'est pas une base de données valide",
+      "corrupted": "Cette sauvegarde est corrompue",
+      "missingTables": "Cette sauvegarde ne contient pas toutes les données attendues",
+      "newerVersion": "Cette sauvegarde provient d'une version plus récente de l'application",
+      "unknownSchema": "Cette sauvegarde ne contient pas d'information de version et ne peut pas être utilisée",
+      "migrationFailed": "Cette sauvegarde ne peut pas être mise à niveau vers la version actuelle",
+      "failed": "La restauration a échoué ; vos données d'origine ont été conservées. L'application redémarre."
+    }
   },
   "updater": {
     "available": "Une nouvelle version ({{version}}) est disponible.",

@@ -24,6 +24,7 @@ describe('FrequentationEntitySchema', () => {
       startsAt: '2026-01-15T09:00:00.000Z',
       activity: 'work',
       studentId: 1,
+      studentClasse: '6ème A',
       createdAt: '2026-01-15T09:00:00.000Z',
       updatedAt: '2026-01-15T09:00:00.000Z'
     }

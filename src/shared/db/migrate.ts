@@ -5,7 +5,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { getDb } from './connection'
 import { ensureStudentsIneUniqueIndex } from './helpers/ensureStudentsIneUniqueIndex'
 
-const MIGRATIONS_FOLDER = join(app.getAppPath(), 'drizzle')
+export const MIGRATIONS_FOLDER = join(app.getAppPath(), 'drizzle')
 
 export function runMigrations() {
   const db = getDb()

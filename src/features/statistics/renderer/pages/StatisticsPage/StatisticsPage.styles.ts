@@ -25,16 +25,29 @@ export const StatisticsChartGrid = styled(Box, {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
   display: 'grid',
-  gridTemplateColumns: '2fr 1fr',
+  gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
   gap: theme.spacing(2.5),
   [theme.breakpoints.down('lg')]: {
-    gridTemplateColumns: '1fr'
+    gridTemplateColumns: 'minmax(0, 1fr)'
   }
 }))
 
 export const StatisticsFullGrid = styled(Box, {
   shouldForwardProp: shouldForwardStyledProp
-})(() => ({
+})(({ theme }) => ({
   display: 'grid',
-  gridTemplateColumns: '1fr'
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  gap: theme.spacing(2.5)
+}))
+
+export const StatisticsContent = styled(Box, {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(3),
+  transition: theme.transitions.create('opacity'),
+  '&[data-stale="true"]': {
+    opacity: theme.palette.action.disabledOpacity
+  }
 }))

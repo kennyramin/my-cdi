@@ -27,6 +27,8 @@ describe('JournalEntryEditDialogPresenter', () => {
             tileNodes={buildActivityTileNodes(tiles)}
             onSubmit={vi.fn()}
             onClose={vi.fn()}
+            fields={null}
+            canSubmit
           />
         </ThemeProvider>
       </I18nextProvider>
@@ -46,11 +48,46 @@ describe('JournalEntryEditDialogPresenter', () => {
             tileNodes={buildActivityTileNodes(tiles)}
             onSubmit={onSubmit}
             onClose={vi.fn()}
+            fields={null}
+            canSubmit
           />
         </ThemeProvider>
       </I18nextProvider>
     )
     fireEvent.click(screen.getByRole('button', { name: /enregistrer/i }))
     expect(onSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  function renderDialog(extra: { canSubmit: boolean; errorMessage?: string }) {
+    const tiles = buildActivityTiles(ACTIVITIES, ActivityType.WORK, vi.fn())
+    render(
+      <I18nextProvider i18n={i18n}>
+        <ThemeProvider theme={theme}>
+          <JournalEntryEditDialogPresenter
+            open
+            tileNodes={buildActivityTileNodes(tiles)}
+            onSubmit={vi.fn()}
+            onClose={vi.fn()}
+            fields={<input aria-label="champ-test" />}
+            {...extra}
+          />
+        </ThemeProvider>
+      </I18nextProvider>
+    )
+  }
+
+  it('renders the provided fields', () => {
+    renderDialog({ canSubmit: true })
+    expect(screen.getByLabelText('champ-test')).toBeInTheDocument()
+  })
+
+  it('disables save when the entry cannot be submitted', () => {
+    renderDialog({ canSubmit: false })
+    expect(screen.getByRole('button', { name: /enregistrer/i })).toBeDisabled()
+  })
+
+  it('shows the error message in an alert', () => {
+    renderDialog({ canSubmit: true, errorMessage: 'Élève introuvable' })
+    expect(screen.getByRole('alert')).toHaveTextContent('Élève introuvable')
   })
 })

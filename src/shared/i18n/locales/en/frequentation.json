@@ -16,16 +16,22 @@
     "startsAt": "Date and time",
     "selectStudents": "Student(s)",
     "searchStudent": "Search for a student…",
+    "futureNotAllowed": "A visit cannot be recorded in the future",
     "submit": "Save",
     "cancel": "Cancel",
-    "successMessage": "Attendance(s) saved"
+    "successMessage": "Attendance(s) saved",
+    "allFailed": "No visit saved: {{count}} student(s) not found.",
+    "partialSuccess": "{{created}} visit(s) saved. {{failed}} student(s) not found, still selected so you can retry."
   },
+  "anonymizedStudent": "Anonymized student",
   "loading": "Loading…",
   "present": "Present",
   "searchPlaceholder": "Search…",
   "emptyHint": "Select students and save their attendance",
   "row": {
     "edit": "Edit",
+    "select": "Select {{name}}",
+    "selectAnonymized": "Select an anonymized student ({{classe}}, {{time}})",
     "delete": "Delete",
     "confirmDelete": "Are you sure you want to delete this attendance?"
   },
@@ -49,7 +55,22 @@
   },
   "edit": {
     "title": "Edit entry",
-    "save": "Save"
+    "save": "Save",
+    "date": "Date",
+    "time": "Time",
+    "student": "Student",
+    "anonymizedStudentLocked": "An anonymized student cannot be linked to a person again.",
+    "studentRequired": "Select a student from the list",
+    "dateTimeRequired": "Enter a date and time",
+    "original": "Original entry"
+  },
+  "duplicate": {
+    "title": "Visit already recorded",
+    "intro_one": "{{count}} student already has a visit within {{minutes}} minutes:",
+    "intro_other": "{{count}} students already have a visit within {{minutes}} minutes:",
+    "line": "{{name}} — already recorded at {{time}} ({{activity}})",
+    "confirm": "Save anyway",
+    "cancel": "Cancel"
   },
   "calendar": {
     "previousMonth": "Previous month",

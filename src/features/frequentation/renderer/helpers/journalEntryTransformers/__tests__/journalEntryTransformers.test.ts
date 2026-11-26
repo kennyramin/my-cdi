@@ -27,15 +27,52 @@ const journalEntryDtoStub: JournalEntryDto = {
   }
 }
 
+const ANONYMIZED_LABEL = 'Élève anonymisé'
+
 describe('toJournalEntryViewModel', () => {
-  it('produces a view model with displayName and label/color', () => {
-    const labelLookup = (a: ActivityType) => `LABEL_${a}`
-    const result = toJournalEntryViewModel(journalEntryDtoStub, labelLookup, theme.palette.activity)
+  const labelLookup = (a: ActivityType) => `LABEL_${a}`
+
+  it('maps a normal entry unchanged', () => {
+    const result = toJournalEntryViewModel(
+      journalEntryDtoStub,
+      labelLookup,
+      theme.palette.activity,
+      ANONYMIZED_LABEL
+    )
+
+    expect(result.isAnonymized).toBe(false)
+    expect(result.student.id).toBe(STUDENT_ID)
 
     expect(result.id).toBe(1)
     expect(result.activity).toBe(ActivityType.WORK)
     expect(result.student.displayName).toBe('Jean Dupont')
     expect(result.activityLabel).toBe(`LABEL_${ActivityType.WORK}`)
     expect(result.activityColor).toMatch(/^#/)
+  })
+
+  it('maps student: null to an anonymized view model with the snapshot class and i18n label', () => {
+    const result = toJournalEntryViewModel(
+      {
+        frequentation: {
+          ...journalEntryDtoStub.frequentation,
+          studentId: null,
+          studentClass: '5C'
+        },
+        student: null
+      },
+      labelLookup,
+      theme.palette.activity,
+      ANONYMIZED_LABEL
+    )
+
+    expect(result.isAnonymized).toBe(true)
+    expect(result.student).toEqual({
+      id: null,
+      nom: '',
+      prenom: '',
+      classe: '5C',
+      ine: '',
+      displayName: ANONYMIZED_LABEL
+    })
   })
 })

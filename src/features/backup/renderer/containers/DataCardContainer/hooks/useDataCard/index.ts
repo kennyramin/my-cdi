@@ -1,0 +1,1 @@
+export { useDataCard } from './useDataCard'

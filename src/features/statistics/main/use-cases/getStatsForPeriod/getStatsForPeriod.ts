@@ -10,9 +10,10 @@ import type {
 import type { ActivityType } from '@types'
 
 export type StatsResult =
-  | { success: true; data: StatsForPeriodDto }
-  | { success: false; error: string }
+  { success: true; data: StatsForPeriodDto } | { success: false; error: string }
 
+const HOUR_START_INDEX = 11
+const HOUR_END_INDEX = 13
 const HOUR_NOON = 12
 const PERCENT = 100
 const DECIMAL_FACTOR = 10
@@ -91,7 +92,7 @@ function computePeriodRates(frequentations: FrequentationWithStudentEntity[]): {
   }
   let morning = 0
   for (const frequentation of frequentations) {
-    const hour = new Date(frequentation.startsAt).getUTCHours()
+    const hour = Number(frequentation.startsAt.slice(HOUR_START_INDEX, HOUR_END_INDEX))
     if (hour < HOUR_NOON) {
       morning += 1
     }

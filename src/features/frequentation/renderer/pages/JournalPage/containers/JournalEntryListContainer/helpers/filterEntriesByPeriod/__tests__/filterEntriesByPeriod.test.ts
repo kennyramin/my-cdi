@@ -12,6 +12,7 @@ function buildEntry(id: number, startsAt: string): JournalEntryViewModel {
     id,
     startsAt,
     activity: ActivityType.WORK,
+    isAnonymized: false,
     student: {
       id: STUDENT_ID,
       nom: 'Dupont',

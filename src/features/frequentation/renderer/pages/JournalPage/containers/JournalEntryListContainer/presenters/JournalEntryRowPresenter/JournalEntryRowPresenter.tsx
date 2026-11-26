@@ -10,6 +10,7 @@ import {
   PeriodTag,
   Row,
   RowActions,
+  RowCheckbox,
   RowMain,
   StudentName,
   TimeText
@@ -17,7 +18,8 @@ import {
 
 export interface JournalEntryRowPresenterProps {
   initials: string
-  avatarColorSeed: number
+  avatarColorSeed: number | null
+  isAnonymized: boolean
   displayName: string
   classe: string
   time: string
@@ -26,6 +28,7 @@ export interface JournalEntryRowPresenterProps {
   activityTone: ActivityTone
   activityLabel: string
   selected: boolean
+  onSelectChange: () => void
   onRowClick: (event: React.MouseEvent) => void
   onEditClick: (event: React.MouseEvent) => void
   onDeleteClick: (event: React.MouseEvent) => void
@@ -34,6 +37,7 @@ export interface JournalEntryRowPresenterProps {
 export function JournalEntryRowPresenter({
   initials,
   avatarColorSeed,
+  isAnonymized,
   displayName,
   classe,
   time,
@@ -42,15 +46,26 @@ export function JournalEntryRowPresenter({
   activityTone,
   activityLabel,
   selected,
+  onSelectChange,
   onRowClick,
   onEditClick,
   onDeleteClick
 }: JournalEntryRowPresenterProps) {
   const { t } = useTranslation('frequentation')
+  const selectLabel = isAnonymized
+    ? t('row.selectAnonymized', { classe, time })
+    : t('row.select', { name: displayName })
 
   return (
-    <Row role="row" onClick={onRowClick} $isSelected={selected}>
-      <Avatar initials={initials} colorSeed={avatarColorSeed} />
+    <Row onClick={onRowClick} $isSelected={selected}>
+      <RowCheckbox
+        size="small"
+        checked={selected}
+        onChange={onSelectChange}
+        onClick={(event) => event.stopPropagation()}
+        slotProps={{ input: { 'aria-label': selectLabel } }}
+      />
+      <Avatar initials={initials} colorSeed={avatarColorSeed} neutral={isAnonymized} />
       <RowMain>
         <StudentName>
           {displayName}

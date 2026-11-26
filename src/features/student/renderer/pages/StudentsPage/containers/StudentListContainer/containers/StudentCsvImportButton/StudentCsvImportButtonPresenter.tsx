@@ -6,7 +6,7 @@ import { Button } from '@ui/components/Button'
 import { Modal } from '@ui/components/Modal'
 import { Icon } from '@ui/components/Icon'
 import { Toast } from '@ui/components/Toast'
-import type { CsvImportResult } from '@student-shared'
+import type { CsvImportResult, CsvRemovalPreview } from '@student-shared'
 import type { ToastContent } from '@ui/components/Toast'
 import {
   VISUALLY_HIDDEN_STYLE,
@@ -24,6 +24,7 @@ import {
   ResultAlert,
   SelectedFileName
 } from './StudentCsvImportButtonPresenter.styles'
+import { RemovalSectionPresenter } from './RemovalSectionPresenter'
 
 const CSV_ACCEPT = '.csv'
 
@@ -38,6 +39,14 @@ interface StudentCsvImportButtonPresenterProps {
   toast: ToastContent | null
   canDownloadReport: boolean
   updateExisting: boolean
+  removeAbsent: boolean
+  removalPreview: CsvRemovalPreview | null
+  isPreviewPending: boolean
+  previewError: string | null
+  confirmationText: string
+  confirmationPhrase: string
+  needsConfirmation: boolean
+  canSubmit: boolean
   openModal: () => void
   closeModal: () => void
   handleFileChange: (event: ChangeEvent<HTMLInputElement>) => void
@@ -45,6 +54,9 @@ interface StudentCsvImportButtonPresenterProps {
   handleDropzoneKeyDown: (event: KeyboardEvent) => void
   handleSubmit: () => void
   handleToggleUpdateExisting: () => void
+  handleToggleRemoveAbsent: () => void
+  handleRetryPreview: () => void
+  handleConfirmationChange: (value: string) => void
   handleDownloadReport: () => void
   dismissToast: () => void
 }
@@ -64,6 +76,14 @@ export function StudentCsvImportButtonPresenter(props: StudentCsvImportButtonPre
     toast,
     canDownloadReport,
     updateExisting,
+    removeAbsent,
+    removalPreview,
+    isPreviewPending,
+    previewError,
+    confirmationText,
+    confirmationPhrase,
+    needsConfirmation,
+    canSubmit,
     openModal,
     closeModal,
     handleFileChange,
@@ -71,9 +91,20 @@ export function StudentCsvImportButtonPresenter(props: StudentCsvImportButtonPre
     handleDropzoneKeyDown,
     handleSubmit,
     handleToggleUpdateExisting,
+    handleToggleRemoveAbsent,
+    handleRetryPreview,
+    handleConfirmationChange,
     handleDownloadReport,
     dismissToast
   } = props
+
+  const summaryText = result
+    ? t('csvImport.summary', {
+        count: result.created,
+        updated: result.updated,
+        errors: result.errors
+      })
+    : ''
 
   return (
     <>
@@ -101,9 +132,9 @@ export function StudentCsvImportButtonPresenter(props: StudentCsvImportButtonPre
               variant="primary"
               iconLeft={<Icon name="upload_file" style={TRIGGER_ICON_STYLE} />}
               onClick={handleSubmit}
-              disabled={!pendingFile || isPending}
+              disabled={!canSubmit}
             >
-              {t('csvImport.submit')}
+              {t(removeAbsent ? 'csvImport.submitAndRemove' : 'csvImport.submit')}
             </Button>
           </>
         }
@@ -132,19 +163,43 @@ export function StudentCsvImportButtonPresenter(props: StudentCsvImportButtonPre
         />
 
         <FormControlLabel
-          control={<Checkbox checked={updateExisting} onChange={handleToggleUpdateExisting} />}
+          control={
+            <Checkbox
+              checked={updateExisting}
+              onChange={handleToggleUpdateExisting}
+              disabled={removeAbsent}
+            />
+          }
           label={t('csvImport.updateExisting')}
+        />
+
+        <RemovalSectionPresenter
+          removeAbsent={removeAbsent}
+          removalPreview={removalPreview}
+          isPreviewPending={isPreviewPending}
+          previewError={previewError}
+          onRetryPreview={handleRetryPreview}
+          confirmationText={confirmationText}
+          confirmationPhrase={confirmationPhrase}
+          needsConfirmation={needsConfirmation}
+          isPending={isPending}
+          onToggle={handleToggleRemoveAbsent}
+          onConfirmationChange={handleConfirmationChange}
         />
 
         {error ? <ResultAlert severity="error">{error}</ResultAlert> : null}
 
         {result && result.errors > 0 ? (
           <ResultAlert severity="warning">
-            {t('csvImport.summary', {
-              count: result.created,
-              updated: result.updated,
-              errors: result.errors
-            })}
+            {result.anonymized !== undefined
+              ? t('csvImport.summaryWithRemoval', {
+                  summary: summaryText,
+                  removal: t('csvImport.removalSummary', {
+                    anonymized: result.anonymized,
+                    deletedWithoutVisits: result.deletedWithoutVisits ?? 0
+                  })
+                })
+              : summaryText}
           </ResultAlert>
         ) : null}
 

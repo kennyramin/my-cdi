@@ -3,11 +3,26 @@ import { avatarColor } from './helpers/avatarColor'
 import type { AvatarProps } from './types/AvatarProps'
 import { AvatarRoot } from './Avatar.styles'
 
-export function Avatar({ initials, colorSeed, size = 'md', className }: AvatarProps) {
+export function Avatar({
+  initials,
+  colorSeed,
+  neutral = false,
+  size = 'md',
+  className
+}: AvatarProps) {
   const theme = useTheme()
-  const { bg } = avatarColor(colorSeed, theme.palette)
+  const isNeutral = neutral || colorSeed === null
+  const bg = isNeutral
+    ? theme.palette.action.disabledBackground
+    : avatarColor(colorSeed, theme.palette).bg
   return (
-    <AvatarRoot className={className} $bg={bg} $size={size}>
+    <AvatarRoot
+      className={className}
+      aria-hidden={isNeutral ? true : undefined}
+      $bg={bg}
+      $neutral={isNeutral}
+      $size={size}
+    >
       {initials}
     </AvatarRoot>
   )

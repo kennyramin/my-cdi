@@ -10,6 +10,7 @@ export const BatchActionsRoot = styled('div', {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
   display: 'flex',
+  flexWrap: 'wrap',
   gap: theme.spacing(1),
   alignItems: 'center',
   marginTop: theme.spacing(1),

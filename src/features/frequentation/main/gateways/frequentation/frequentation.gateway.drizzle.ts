@@ -1,19 +1,196 @@
+import type { SQL } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import { eq, and, gte, lte } from 'drizzle-orm'
-import type { FrequentationGateway } from './frequentation.gateway'
+import { eq, and, gte, lt, lte, inArray, or, sql } from 'drizzle-orm'
+import type {
+  CheckedWriteOptions,
+  CheckedWriteResult,
+  FrequentationGateway
+} from './frequentation.gateway'
 import type {
   FrequentationEntity,
   FrequentationWithStudentEntity
 } from '@frequentation/entities/frequentation'
 import type { CreateFrequentationDto, UpdateFrequentationDto } from '@frequentation-shared'
+import { UNKNOWN_CLASS_LABEL } from '@frequentation-shared'
 import { frequentationTable } from '@frequentation/entities/frequentation'
+import { formatLocalDate } from '@lib/localDateTime'
 import { mapFrequentationRow, mapFrequentationWithStudentRow } from './helpers/mapFrequentationRow'
 import { studentTable } from '@shared/db/schema'
+import { findDuplicateMatches } from './helpers/findDuplicateMatches'
+import type { DuplicateCandidate, ExistingVisit } from './helpers/findDuplicateMatches'
+
+type FrequentationDb = BetterSQLite3Database<Record<string, unknown>>
+// Exported for test subclasses hooking findExisting; not part of the module API
+export type FrequentationTx = Parameters<Parameters<FrequentationDb['transaction']>[0]>[0]
 
 const ISO_DATE_LENGTH = 10
+const MONTH_OFFSET = 1
+const DAY_PART_START = 8
+const MONTH_PART_START = 5
+const NEXT_DAY = 1
+
+// Calendar arithmetic on a local YYYY-MM-DD day, independent of the time zone
+function nextDay(day: string): string {
+  const year = Number(day.slice(0, MONTH_PART_START - 1))
+  const month = Number(day.slice(MONTH_PART_START, DAY_PART_START - 1))
+  const date = Number(day.slice(DAY_PART_START))
+  return formatLocalDate(new Date(year, month - MONTH_OFFSET, date + NEXT_DAY))
+}
+
+const START_OF_DAY_SUFFIX = 'T00:00:00'
 
 export class FrequentationGatewayDrizzle implements FrequentationGateway {
-  constructor(private db: BetterSQLite3Database<Record<string, unknown>>) {}
+  constructor(private db: FrequentationDb) {}
+
+  private studentClassSnapshot(studentId: number): SQL<string | null> {
+    return sql<string | null>`(SELECT classe FROM students WHERE id = ${studentId})`
+  }
+
+  private buildSelection() {
+    return {
+      id: frequentationTable.id,
+      startsAt: frequentationTable.startsAt,
+      activity: frequentationTable.activity,
+      studentId: frequentationTable.studentId,
+      studentNom: studentTable.nom,
+      studentPrenom: studentTable.prenom,
+      studentClasse: sql<string>`COALESCE(${frequentationTable.studentClasse}, ${studentTable.classe}, ${UNKNOWN_CLASS_LABEL})`,
+      studentIne: studentTable.ine,
+      createdAt: frequentationTable.createdAt,
+      updatedAt: frequentationTable.updatedAt
+    }
+  }
+
+  protected findExisting(
+    tx: FrequentationTx,
+    studentIds: number[],
+    days: string[]
+  ): ExistingVisit[] {
+    if (studentIds.length === 0 || days.length === 0) {
+      return []
+    }
+    const dayRanges = days.map((day) =>
+      and(
+        gte(frequentationTable.startsAt, `${day}${START_OF_DAY_SUFFIX}`),
+        lt(frequentationTable.startsAt, `${nextDay(day)}${START_OF_DAY_SUFFIX}`)
+      )
+    )
+    return tx
+      .select({
+        id: frequentationTable.id,
+        studentId: frequentationTable.studentId,
+        startsAt: frequentationTable.startsAt,
+        activity: frequentationTable.activity
+      })
+      .from(frequentationTable)
+      .where(and(inArray(frequentationTable.studentId, studentIds), or(...dayRanges)))
+      .all()
+  }
+
+  // Check and write share one IMMEDIATE transaction: the write lock is taken before the
+  // lookup, so nothing can slip in between. Synchronous only (no await) inside the callback.
+  async createManyChecked(
+    items: CreateFrequentationDto[],
+    options: CheckedWriteOptions
+  ): Promise<CheckedWriteResult<FrequentationEntity[]>> {
+    return this.db.transaction(
+      (tx): CheckedWriteResult<FrequentationEntity[]> => {
+        if (!options.allowDuplicates) {
+          const studentIds = [...new Set(items.map((item) => item.studentId))]
+          const days = [...new Set(items.map((item) => item.startsAt.slice(0, ISO_DATE_LENGTH)))]
+          const duplicates = findDuplicateMatches(items, this.findExisting(tx, studentIds, days))
+          if (duplicates.length > 0) {
+            return { duplicates }
+          }
+        }
+        const now = new Date().toISOString()
+        const written = items.map((dto) => {
+          const row = tx
+            .insert(frequentationTable)
+            .values({
+              startsAt: dto.startsAt,
+              activity: dto.activity,
+              studentId: dto.studentId,
+              studentClasse: this.studentClassSnapshot(dto.studentId),
+              createdAt: now,
+              updatedAt: now
+            })
+            .returning()
+            .get()
+          return mapFrequentationRow(row)
+        })
+        return { written }
+      },
+      { behavior: 'immediate' }
+    )
+  }
+
+  async updateChecked(
+    id: number,
+    dto: UpdateFrequentationDto,
+    options: CheckedWriteOptions
+  ): Promise<CheckedWriteResult<FrequentationEntity | null>> {
+    return this.db.transaction(
+      (tx): CheckedWriteResult<FrequentationEntity | null> => {
+        const current = tx
+          .select()
+          .from(frequentationTable)
+          .where(eq(frequentationTable.id, id))
+          .get()
+        if (!current) {
+          return { written: null }
+        }
+        // An anonymized visit is never re-linked to a student
+        const nextStudentId =
+          current.studentId === null ? null : (dto.studentId ?? current.studentId)
+        const nextStartsAt = dto.startsAt ?? current.startsAt
+        const studentChanged = nextStudentId !== current.studentId
+        const startsAtChanged = nextStartsAt !== current.startsAt
+        if (
+          !options.allowDuplicates &&
+          nextStudentId !== null &&
+          (studentChanged || startsAtChanged)
+        ) {
+          const candidate: DuplicateCandidate = { studentId: nextStudentId, startsAt: nextStartsAt }
+          const duplicates = findDuplicateMatches(
+            [candidate],
+            this.findExisting(tx, [nextStudentId], [nextStartsAt.slice(0, ISO_DATE_LENGTH)]),
+            id
+          )
+          if (duplicates.length > 0) {
+            return { duplicates }
+          }
+        }
+        const row = tx
+          .update(frequentationTable)
+          .set({
+            ...(dto.startsAt !== undefined && { startsAt: dto.startsAt }),
+            ...(dto.activity !== undefined && { activity: dto.activity }),
+            ...(studentChanged &&
+              nextStudentId !== null && {
+                studentId: nextStudentId,
+                studentClasse: this.studentClassSnapshot(nextStudentId)
+              }),
+            updatedAt: new Date().toISOString()
+          })
+          .where(eq(frequentationTable.id, id))
+          .returning()
+          .get()
+        return { written: row ? mapFrequentationRow(row) : null }
+      },
+      { behavior: 'immediate' }
+    )
+  }
+
+  async getWithStudentById(id: number): Promise<FrequentationWithStudentEntity | null> {
+    const results = await this.db
+      .select(this.buildSelection())
+      .from(frequentationTable)
+      .leftJoin(studentTable, eq(frequentationTable.studentId, studentTable.id))
+      .where(eq(frequentationTable.id, id))
+    const row = results[0]
+    return row ? mapFrequentationWithStudentRow(row) : null
+  }
 
   async create(dto: CreateFrequentationDto): Promise<FrequentationEntity> {
     const now = new Date().toISOString()
@@ -23,6 +200,7 @@ export class FrequentationGatewayDrizzle implements FrequentationGateway {
         startsAt: dto.startsAt,
         activity: dto.activity,
         studentId: dto.studentId,
+        studentClasse: this.studentClassSnapshot(dto.studentId),
         createdAt: now,
         updatedAt: now
       })
@@ -50,18 +228,7 @@ export class FrequentationGatewayDrizzle implements FrequentationGateway {
 
   async getAll(): Promise<FrequentationWithStudentEntity[]> {
     const results = await this.db
-      .select({
-        id: frequentationTable.id,
-        startsAt: frequentationTable.startsAt,
-        activity: frequentationTable.activity,
-        studentId: frequentationTable.studentId,
-        studentNom: studentTable.nom,
-        studentPrenom: studentTable.prenom,
-        studentClasse: studentTable.classe,
-        studentIne: studentTable.ine,
-        createdAt: frequentationTable.createdAt,
-        updatedAt: frequentationTable.updatedAt
-      })
+      .select(this.buildSelection())
       .from(frequentationTable)
       .leftJoin(studentTable, eq(frequentationTable.studentId, studentTable.id))
       .orderBy(frequentationTable.startsAt)
@@ -71,18 +238,7 @@ export class FrequentationGatewayDrizzle implements FrequentationGateway {
 
   async getByStudentId(studentId: number): Promise<FrequentationWithStudentEntity[]> {
     const results = await this.db
-      .select({
-        id: frequentationTable.id,
-        startsAt: frequentationTable.startsAt,
-        activity: frequentationTable.activity,
-        studentId: frequentationTable.studentId,
-        studentNom: studentTable.nom,
-        studentPrenom: studentTable.prenom,
-        studentClasse: studentTable.classe,
-        studentIne: studentTable.ine,
-        createdAt: frequentationTable.createdAt,
-        updatedAt: frequentationTable.updatedAt
-      })
+      .select(this.buildSelection())
       .from(frequentationTable)
       .leftJoin(studentTable, eq(frequentationTable.studentId, studentTable.id))
       .where(eq(frequentationTable.studentId, studentId))
@@ -98,18 +254,7 @@ export class FrequentationGatewayDrizzle implements FrequentationGateway {
     const endOfDay = endDate.length === ISO_DATE_LENGTH ? `${endDate}T23:59:59` : endDate
 
     const results = await this.db
-      .select({
-        id: frequentationTable.id,
-        startsAt: frequentationTable.startsAt,
-        activity: frequentationTable.activity,
-        studentId: frequentationTable.studentId,
-        studentNom: studentTable.nom,
-        studentPrenom: studentTable.prenom,
-        studentClasse: studentTable.classe,
-        studentIne: studentTable.ine,
-        createdAt: frequentationTable.createdAt,
-        updatedAt: frequentationTable.updatedAt
-      })
+      .select(this.buildSelection())
       .from(frequentationTable)
       .leftJoin(studentTable, eq(frequentationTable.studentId, studentTable.id))
       .where(
@@ -129,12 +274,17 @@ export class FrequentationGatewayDrizzle implements FrequentationGateway {
     }
 
     const now = new Date().toISOString()
+    const reassignedStudentId =
+      dto.studentId !== existingFrequentation.studentId ? dto.studentId : undefined
     await this.db
       .update(frequentationTable)
       .set({
         ...(dto.startsAt !== undefined && { startsAt: dto.startsAt }),
         ...(dto.activity !== undefined && { activity: dto.activity }),
         ...(dto.studentId !== undefined && { studentId: dto.studentId }),
+        ...(reassignedStudentId !== undefined && {
+          studentClasse: this.studentClassSnapshot(reassignedStudentId)
+        }),
         updatedAt: now
       })
       .where(eq(frequentationTable.id, id))
