@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
 import { createHash } from 'node:crypto'
 import {
+  chmodSync,
   closeSync,
   existsSync,
   mkdirSync,
@@ -133,6 +134,51 @@ describe('validateBackupFile', () => {
       const path = join(folder, "sauvegarde l'été.db")
       makeDb(path)
       expect(() => validate(path)).not.toThrow()
+    })
+  })
+
+  describe('with a WAL-flagged backup made by the online backup API', () => {
+    const WAL_FLAG_OFFSET = 18
+    const WAL_FLAG = 2
+    const READ_ONLY_DIR_MODE = 0o555
+    const WRITABLE_DIR_MODE = 0o755
+
+    async function makeWalBackup(path: string): Promise<void> {
+      const source = new Database(join(dir, 'wal-source.db'))
+      try {
+        source.pragma('journal_mode = WAL')
+        source.exec('CREATE TABLE students (id INTEGER PRIMARY KEY, name TEXT)')
+        source.exec('CREATE TABLE frequentation (id INTEGER PRIMARY KEY, name TEXT)')
+        await source.backup(path)
+      } finally {
+        source.close()
+      }
+    }
+
+    it('validates without touching the file or its folder', async () => {
+      const path = join(dir, 'wal-backup.db')
+      await makeWalBackup(path)
+      expect(readFileSync(path)[WAL_FLAG_OFFSET]).toBe(WAL_FLAG)
+      const before = sha256(path)
+      expect(() => validate(path)).not.toThrow()
+      expect(sha256(path)).toBe(before)
+      expect(existsSync(`${path}-wal`)).toBe(false)
+      expect(existsSync(`${path}-shm`)).toBe(false)
+    })
+
+    it('validates from a read-only directory', async () => {
+      const folder = join(dir, 'readonly')
+      mkdirSync(folder)
+      const path = join(folder, 'wal-backup.db')
+      await makeWalBackup(path)
+      chmodSync(folder, READ_ONLY_DIR_MODE)
+      try {
+        expect(() => validate(path)).not.toThrow()
+        expect(existsSync(`${path}-wal`)).toBe(false)
+        expect(existsSync(`${path}-shm`)).toBe(false)
+      } finally {
+        chmodSync(folder, WRITABLE_DIR_MODE)
+      }
     })
   })
 

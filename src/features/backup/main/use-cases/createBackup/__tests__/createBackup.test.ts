@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -17,6 +18,8 @@ import { createBackup } from '../createBackup'
 const SQLITE_HEADER = 'SQLite format 3\0'
 const SEED_ROWS = 3
 const WAL_ROWS = 5
+const JOURNAL_FLAG_OFFSET = 18
+const DELETE_MODE_FLAG = 1
 
 function countStudents(path: string): number {
   const db = new Database(path, { readonly: true })
@@ -74,6 +77,18 @@ describe('createBackup', () => {
       SQLITE_HEADER
     )
     expect(countStudents(dest)).toBe(SEED_ROWS)
+  })
+
+  it('writes a self-contained copy that is not WAL-flagged', async () => {
+    const dest = join(dir, 'copy.db')
+
+    await createBackup(db, dest)
+
+    const bytes = readFileSync(dest)
+    expect(bytes[JOURNAL_FLAG_OFFSET]).toBe(DELETE_MODE_FLAG)
+    expect(bytes[JOURNAL_FLAG_OFFSET + 1]).toBe(DELETE_MODE_FLAG)
+    expect(existsSync(`${dest}-wal`)).toBe(false)
+    expect(existsSync(`${dest}-shm`)).toBe(false)
   })
 
   it('includes rows still in the WAL', async () => {

@@ -1,5 +1,7 @@
 import Database from 'better-sqlite3'
-import { closeSync, openSync, readSync, statSync } from 'node:fs'
+import { closeSync, copyFileSync, mkdtempSync, openSync, readSync, rmSync, statSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { AppError, ErrorCode } from '@lib/errors'
 import { isLiveDatabasePath } from '../isLiveDatabasePath'
 import { readBackupMigrationMillis } from '../migrationLevel'
@@ -7,6 +9,8 @@ import { readBackupMigrationMillis } from '../migrationLevel'
 const SQLITE_HEADER = 'SQLite format 3\0'
 const HEADER_ENCODING = 'latin1'
 const INTEGRITY_OK = 'ok'
+const TEMP_DIR_PREFIX = 'validate-backup-'
+const COPY_NAME = 'candidate.db'
 const REQUIRED_TABLES = ['students', 'frequentation'] as const
 
 interface ValidateBackupFileInput {
@@ -63,15 +67,8 @@ function openReadOnly(filePath: string): Database.Database {
   }
 }
 
-export function validateBackupFile(input: ValidateBackupFileInput): void {
-  const { filePath, liveDbPath, latestMigrationMillis } = input
-  if (!hasSqliteHeader(filePath)) {
-    throw new AppError(ErrorCode.RESTORE_NOT_A_DATABASE, 'The file is not a SQLite database')
-  }
-  if (isLiveDatabasePath(liveDbPath, filePath)) {
-    throw new AppError(ErrorCode.BACKUP_PATH_IS_LIVE_DB, 'The restore source is the live database')
-  }
-  const db = openReadOnly(filePath)
+function inspectDatabase(copyPath: string, latestMigrationMillis: number): void {
+  const db = openReadOnly(copyPath)
   try {
     if (!integrityIsOk(db)) {
       throw new AppError(ErrorCode.RESTORE_CORRUPTED, 'The backup failed the integrity check')
@@ -88,5 +85,34 @@ export function validateBackupFile(input: ValidateBackupFileInput): void {
     }
   } finally {
     db.close()
+  }
+}
+
+function copyToScratch(filePath: string, scratchDir: string): string {
+  const copyPath = join(scratchDir, COPY_NAME)
+  try {
+    copyFileSync(filePath, copyPath)
+  } catch (error) {
+    throw new AppError(ErrorCode.RESTORE_NOT_A_DATABASE, 'The file cannot be read', {
+      cause: error
+    })
+  }
+  return copyPath
+}
+
+// Validates a throwaway copy: opening a WAL-flagged backup would create -wal/-shm beside it
+export function validateBackupFile(input: ValidateBackupFileInput): void {
+  const { filePath, liveDbPath, latestMigrationMillis } = input
+  if (!hasSqliteHeader(filePath)) {
+    throw new AppError(ErrorCode.RESTORE_NOT_A_DATABASE, 'The file is not a SQLite database')
+  }
+  if (isLiveDatabasePath(liveDbPath, filePath)) {
+    throw new AppError(ErrorCode.BACKUP_PATH_IS_LIVE_DB, 'The restore source is the live database')
+  }
+  const scratchDir = mkdtempSync(join(tmpdir(), TEMP_DIR_PREFIX))
+  try {
+    inspectDatabase(copyToScratch(filePath, scratchDir), latestMigrationMillis)
+  } finally {
+    rmSync(scratchDir, { recursive: true, force: true })
   }
 }
