@@ -12,6 +12,7 @@
     "prenom": "First name",
     "classe": "Class",
     "ine": "INE",
+    "csv": "File",
     "visitCount": "Visits",
     "actions": "Actions"
   },
@@ -61,6 +62,7 @@
     "required": "{{field}} is required",
     "too_small": "{{field}} is required",
     "too_big": "{{field}} is too long",
+    "invalid_quotes": "{{field}} contains an unclosed quote",
     "invalid_type": "{{field}} is not valid"
   }
 }

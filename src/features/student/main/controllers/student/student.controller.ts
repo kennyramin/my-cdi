@@ -10,7 +10,12 @@ import { getStudent } from '@student/use-cases/getStudent'
 import { listStudents } from '@student/use-cases/listStudents'
 import { importStudentsCsv } from '@student/use-cases/importStudentsCsv'
 import { anonymizeStudents } from '@student/use-cases/anonymizeStudents'
-import type { AnonymizeStudentsPayload, ImportStudentsCsvPayload } from '@student-shared'
+import { previewCsvRemoval } from '@student/use-cases/previewCsvRemoval'
+import type {
+  AnonymizeStudentsPayload,
+  ImportStudentsCsvPayload,
+  PreviewCsvRemovalPayload
+} from '@student-shared'
 
 interface CreateStudentInput {
   nom: string
@@ -71,10 +76,17 @@ export function registerStudentController(
   })
 
   router.procedure(STUDENT_CHANNELS.IMPORT_CSV, async (input: ImportStudentsCsvPayload) => {
-    return unwrap(await importStudentsCsv(deps, input))
+    return unwrap(await importStudentsCsv({ gateway, createAutomaticBackup }, input))
   })
 
   router.procedure(STUDENT_CHANNELS.ANONYMIZE, async (input: AnonymizeStudentsPayload) => {
     return unwrap(await anonymizeStudents({ gateway, createAutomaticBackup }, input))
   })
+
+  router.procedure(
+    STUDENT_CHANNELS.PREVIEW_CSV_REMOVAL,
+    async (input: PreviewCsvRemovalPayload) => {
+      return unwrap(await previewCsvRemoval(deps, input))
+    }
+  )
 }

@@ -60,6 +60,8 @@ export interface CsvImportResult {
   updated: number
   errors: number
   errorDetails: CsvImportError[]
+  anonymized?: number
+  deletedWithoutVisits?: number
 }
 
 export type CsvDuplicateInePolicy = 'skip' | 'replace'
@@ -67,6 +69,21 @@ export type CsvDuplicateInePolicy = 'skip' | 'replace'
 export interface ImportStudentsCsvPayload {
   csv: string
   onDuplicateIne?: CsvDuplicateInePolicy
+  removeAbsent?: boolean
+  removalConfirmation?: string
+}
+
+export type CsvRemovalBlockedReason = 'rowErrors' | 'emptyFile'
+
+export interface CsvRemovalPreview {
+  toRemove: number
+  total: number
+  sample: string[]
+  blockedReason?: CsvRemovalBlockedReason
+}
+
+export interface PreviewCsvRemovalPayload {
+  csv: string
 }
 
 export interface AnonymizeStudentsPayload {

@@ -9,7 +9,8 @@ export const STUDENT_CHANNELS = {
   UPDATE: 'student.update',
   DELETE: 'student.delete',
   IMPORT_CSV: 'student.importCsv',
-  ANONYMIZE: 'student.anonymize'
+  ANONYMIZE: 'student.anonymize',
+  PREVIEW_CSV_REMOVAL: 'student.previewCsvRemoval'
 } as const
 
 export const FREQUENTATION_CHANNELS = {

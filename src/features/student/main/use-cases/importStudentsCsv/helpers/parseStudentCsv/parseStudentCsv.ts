@@ -10,6 +10,10 @@ import type { CsvImportError, CsvRowIssue } from '@student-shared'
 import type { CsvRow } from '../../validations/csvRowSchema'
 import type { ParseResult, ParsedCsv, RowValidationResult } from './parseStudentCsv.types'
 
+const PAPA_QUOTES_ERROR_TYPE = 'Quotes'
+const INVALID_QUOTES_FIELD = 'csv'
+const INVALID_QUOTES_CODE = 'invalid_quotes'
+
 const NORMALISED_REQUIRED_COLUMNS = CSV_REQUIRED_COLUMNS.map(normaliseHeader)
 
 function stripBom(text: string): string {
@@ -33,9 +37,17 @@ function parseCsvText(text: string): ParsedCsv {
     skipEmptyLines: true,
     transformHeader: (header) => resolveHeaderAlias(normaliseHeader(header))
   })
+  const quoteErrors: CsvImportError[] = parsed.errors
+    .filter((error) => error.type === PAPA_QUOTES_ERROR_TYPE)
+    .map((error) => ({
+      type: 'ROW_VALIDATION',
+      rowNumber: (error.row ?? 0) + FIRST_DATA_ROW_NUMBER,
+      issues: [{ field: INVALID_QUOTES_FIELD, code: INVALID_QUOTES_CODE }]
+    }))
   return {
     headers: parsed.meta.fields ?? [],
-    rows: parsed.data
+    rows: parsed.data,
+    quoteErrors
   }
 }
 
@@ -76,7 +88,7 @@ function validateRows(rows: Record<string, string>[]): RowValidationResult {
 
 export function parseStudentCsv(rawCsvText: string): ParseResult {
   const cleanText = stripBom(rawCsvText)
-  const { headers, rows } = parseCsvText(cleanText)
+  const { headers, rows, quoteErrors } = parseCsvText(cleanText)
 
   const headerError = validateHeaders(headers)
   if (headerError) {
@@ -84,5 +96,5 @@ export function parseStudentCsv(rawCsvText: string): ParseResult {
   }
 
   const { validRows, errors } = validateRows(rows)
-  return { data: validRows, errors }
+  return { data: validRows, errors: [...quoteErrors, ...errors] }
 }

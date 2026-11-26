@@ -40,7 +40,7 @@ describe('importStudentsCsv', () => {
     const csv = `nom;prenom;classe;ine
 Dupont;Jean;3B;INE1
 Martin;Pierre;3A;INE2`
-    const result = await importStudentsCsv({ gateway }, { csv })
+    const result = await importStudentsCsv({ gateway, createAutomaticBackup: vi.fn() }, { csv })
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.created).toBe(EXPECTED_TWO_CREATED)
@@ -54,7 +54,7 @@ Martin;Pierre;3A;INE2`
     const csv = `nom;prenom;classe;ine
 Dupont;Jean;3B;INE_DUP
 Martin;Pierre;3A;INE_DUP`
-    const result = await importStudentsCsv({ gateway }, { csv })
+    const result = await importStudentsCsv({ gateway, createAutomaticBackup: vi.fn() }, { csv })
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.created).toBe(EXPECTED_ONE_CREATED)
@@ -69,7 +69,7 @@ Martin;Pierre;3A;INE_DUP`
     })
     const csv = `nom;prenom;classe;ine
 Dupont;Jean;3B;EXISTING_INE`
-    const result = await importStudentsCsv({ gateway }, { csv })
+    const result = await importStudentsCsv({ gateway, createAutomaticBackup: vi.fn() }, { csv })
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.created).toBe(EXPECTED_ZERO_CREATED)
@@ -90,7 +90,10 @@ Dupont;Jean;3B;EXISTING_INE`
     })
     const csv = `nom;prenom;classe;ine
 Dupont;Jean;3B;EXISTING_INE`
-    const result = await importStudentsCsv({ gateway }, { csv, onDuplicateIne: 'replace' })
+    const result = await importStudentsCsv(
+      { gateway, createAutomaticBackup: vi.fn() },
+      { csv, onDuplicateIne: 'replace' }
+    )
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.created).toBe(EXPECTED_ZERO_CREATED)
@@ -112,7 +115,10 @@ Dupont;Jean;3B;EXISTING_INE`
     const csv = `nom;prenom;classe;ine
 Dupont;Jean;3B;INE_DUP
 Martin;Pierre;3A;INE_DUP`
-    const result = await importStudentsCsv({ gateway }, { csv, onDuplicateIne: 'replace' })
+    const result = await importStudentsCsv(
+      { gateway, createAutomaticBackup: vi.fn() },
+      { csv, onDuplicateIne: 'replace' }
+    )
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.created).toBe(EXPECTED_ONE_CREATED)
@@ -125,7 +131,7 @@ Martin;Pierre;3A;INE_DUP`
     const gateway = createMockGateway()
     const csv = `nom;prenom
 Dupont;Jean`
-    const result = await importStudentsCsv({ gateway }, { csv })
+    const result = await importStudentsCsv({ gateway, createAutomaticBackup: vi.fn() }, { csv })
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.created).toBe(EXPECTED_ZERO_CREATED)

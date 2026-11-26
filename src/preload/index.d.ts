@@ -7,7 +7,9 @@ import type {
   ImportStudentsCsvPayload,
   CsvImportResult,
   AnonymizeStudentsPayload,
-  AnonymizeStudentsResult
+  AnonymizeStudentsResult,
+  CsvRemovalPreview,
+  PreviewCsvRemovalPayload
 } from '@student-shared'
 import type {
   CreateFrequentationDto,
@@ -43,6 +45,7 @@ export interface StudentApi {
   delete: (input: { id: number }) => Promise<IpcResult<void>>
   importCsv: (input: ImportStudentsCsvPayload) => Promise<IpcResult<CsvImportResult>>
   anonymize: (input: AnonymizeStudentsPayload) => Promise<IpcResult<AnonymizeStudentsResult>>
+  previewCsvRemoval: (input: PreviewCsvRemovalPayload) => Promise<IpcResult<CsvRemovalPreview>>
 }
 
 export interface FrequentationApi {

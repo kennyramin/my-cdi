@@ -59,4 +59,17 @@ Dupont,Jean,3B,INE1`
     expect(result.errors).toHaveLength(EXPECTED_ZERO_ERRORS)
     expect(result.data[FIRST_INDEX]?.nom).toBe('Dupont')
   })
+
+  it('reports an unterminated quote as invalid_quotes ROW_VALIDATION', () => {
+    const csv = `nom;prenom;classe;ine
+Dupont;Jean;3B;INE1
+"Martin;Pierre;3A;INE2`
+    const result = parseStudentCsv(csv)
+    const quoteError = result.errors.find(
+      (error) =>
+        error.type === 'ROW_VALIDATION' && error.issues.some((i) => i.code === 'invalid_quotes')
+    )
+    expect(quoteError).toBeDefined()
+    expect(quoteError).toMatchObject({ type: 'ROW_VALIDATION', rowNumber: 4 })
+  })
 })

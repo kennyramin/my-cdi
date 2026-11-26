@@ -100,4 +100,17 @@ describe('registerStudentController', () => {
     })
     expect(createAutomaticBackup).toHaveBeenCalledWith('anonymization')
   })
+
+  it('student.previewCsvRemoval delegates', async () => {
+    vi.mocked(gateway.getAll).mockResolvedValue([SAMPLE_ENTITY])
+    registerStudentController(ipcMain, gateway, createAutomaticBackup)
+    const result = await ipcMain.invoke(STUDENT_CHANNELS.PREVIEW_CSV_REMOVAL, {
+      csv: 'nom;prenom;classe;ine\nMartin;Pierre;3A;INE2'
+    })
+    expect(result).toEqual({
+      success: true,
+      data: { toRemove: 1, total: 1, sample: ['Jean Dupont'] }
+    })
+    expect(createAutomaticBackup).not.toHaveBeenCalled()
+  })
 })
