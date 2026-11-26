@@ -64,6 +64,21 @@ describe('exportRows', () => {
     ])
   })
 
+  it('keeps the local time of a late-evening visit on its own day', () => {
+    expect(buildJournalRow(entry({ startsAt: '2026-03-05T23:59:00' }), false)).toEqual([
+      '2026-03-05',
+      '23:59',
+      '6A',
+      'Lecture'
+    ])
+  })
+
+  it('a linked student with null name and INE yields empty cells, not the anonymized label', () => {
+    expect(
+      buildJournalRow(entry({ studentNom: null, studentPrenom: null, studentIne: null }), true)
+    ).toEqual(['2026-03-05', '09:07', '6A', 'Lecture', '', '', ''])
+  })
+
   it('uses the snapshot class carried by the entry', () => {
     expect(buildJournalRow(entry({ studentClasse: '5B' }), false)[2]).toBe('5B')
   })
@@ -87,6 +102,17 @@ describe('exportRows', () => {
   it('journal header and rows without names contain no name/INE column even if the entry has them', () => {
     expect(journalHeader(false)).toEqual(['date', 'heure', 'classe', 'activité'])
     expect(buildJournalRow(entry(), false)).toHaveLength(4)
+  })
+
+  it('aggregated statistics carry no personal field at the type level', () => {
+    // @ts-expect-error StatsForPeriodDto has no student name
+    expect(stats.nom).toBeUndefined()
+    // @ts-expect-error StatsForPeriodDto has no first name
+    expect(stats.prenom).toBeUndefined()
+    // @ts-expect-error StatsForPeriodDto has no INE
+    expect(stats.ine).toBeUndefined()
+    // @ts-expect-error StatsForPeriodDto has no student list
+    expect(stats.students).toBeUndefined()
   })
 
   it('aggregated rows contain no name or INE', () => {

@@ -9,7 +9,10 @@ const PERIOD = { startDate: '2026-09-01', endDate: '2026-09-30' }
 const WINDOWS_FORBIDDEN = ['<', '>', ':', '"', '/', '\\', '|', '?', '*']
 const FIRST_PRINTABLE_CODE = 32
 const LONG_NAME_LENGTH = 500
-const MAX_LENGTH = 200
+const MAX_BYTES = 200
+const DELETE_CODE = 127
+const textEncoder = new TextEncoder()
+const byteLength = (name: string): number => textEncoder.encode(name).length
 
 const hasForbiddenCharacter = (name: string): boolean =>
   [...name].some(
@@ -84,14 +87,26 @@ describe('sanitizeFileName', () => {
     expect(sanitizeFileName('élèves-2026.csv')).toBe('élèves-2026.csv')
   })
 
-  it.each(['CON', 'nul.csv', 'COM1.txt', 'lpt9', 'Aux.csv'])(
-    'defuses the reserved Windows device name %s',
-    (name) => {
-      const result = sanitizeFileName(name)
-      expect(result).not.toBe(name)
-      expect(result.endsWith(name)).toBe(true)
-    }
-  )
+  it.each([
+    ['CON', '_CON'],
+    ['CON.', '_CON'],
+    ['nul.csv', '_nul.csv'],
+    ['COM1.txt', '_COM1.txt'],
+    ['lpt9', '_lpt9'],
+    ['Aux.csv', '_Aux.csv'],
+    ['nul .txt', '_nul .txt'],
+    ['COM\u00b9', '_COM\u00b9'],
+    ['com\u00b2.csv', '_com\u00b2.csv'],
+    ['LPT\u00b3.txt', '_LPT\u00b3.txt'],
+    ['CONIN$', '_CONIN$'],
+    ['conout$.csv', '_conout$.csv']
+  ])('defuses the reserved Windows device name %j as %j', (name, expected) => {
+    expect(sanitizeFileName(name)).toBe(expected)
+  })
+
+  it('replaces the DEL control character', () => {
+    expect(sanitizeFileName(`a${String.fromCharCode(DELETE_CODE)}b.csv`)).toBe('a-b.csv')
+  })
 
   it('does not alter names that merely start like a reserved name', () => {
     expect(sanitizeFileName('console.csv')).toBe('console.csv')
@@ -104,7 +119,31 @@ describe('sanitizeFileName', () => {
 
   it('caps the length while keeping the extension', () => {
     const result = sanitizeFileName(`${'a'.repeat(LONG_NAME_LENGTH)}.csv`)
-    expect(result.length).toBeLessThanOrEqual(MAX_LENGTH)
+    expect(byteLength(result)).toBeLessThanOrEqual(MAX_BYTES)
     expect(result.endsWith('.csv')).toBe(true)
+  })
+
+  it('caps a name without extension', () => {
+    expect(sanitizeFileName('a'.repeat(LONG_NAME_LENGTH))).toBe('a'.repeat(MAX_BYTES))
+  })
+
+  it('caps by UTF-8 bytes, not by characters', () => {
+    const result = sanitizeFileName(`${'\u00e9'.repeat(LONG_NAME_LENGTH)}.csv`)
+    expect(byteLength(result)).toBeLessThanOrEqual(MAX_BYTES)
+    expect(result.endsWith('.csv')).toBe(true)
+    expect(result.startsWith('\u00e9')).toBe(true)
+  })
+
+  it('never cuts a surrogate pair in half', () => {
+    const result = sanitizeFileName(`${'\u{1F600}'.repeat(LONG_NAME_LENGTH)}.csv`)
+    expect(result.isWellFormed()).toBe(true)
+    expect(byteLength(result)).toBeLessThanOrEqual(MAX_BYTES)
+    expect(result.endsWith('.csv')).toBe(true)
+  })
+
+  it('stays within the cap when the extension alone is longer than the cap', () => {
+    const result = sanitizeFileName(`a.${'b'.repeat(LONG_NAME_LENGTH)}`)
+    expect(result.length).toBeGreaterThan(0)
+    expect(byteLength(result)).toBeLessThanOrEqual(MAX_BYTES)
   })
 })

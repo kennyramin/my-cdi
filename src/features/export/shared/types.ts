@@ -10,6 +10,16 @@ export const EXPORT_KINDS = [
 
 export type ExportKind = (typeof EXPORT_KINDS)[number]
 
+const KIND_USES_PERIOD = {
+  journal: true,
+  visitsByDay: true,
+  visitsByActivity: true,
+  visitsByClass: true,
+  students: false
+} satisfies Record<ExportKind, boolean>
+
+export const isPeriodExportKind = (kind: ExportKind): boolean => KIND_USES_PERIOD[kind]
+
 export interface ExportRequestDto {
   kind: ExportKind
   period?: PeriodRangeDto

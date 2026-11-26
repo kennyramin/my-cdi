@@ -1,5 +1,10 @@
 import { z } from 'zod'
-import { EXPORT_KINDS, type ExportKind, type ExportRequestDto } from '@export-shared'
+import {
+  EXPORT_KINDS,
+  isPeriodExportKind,
+  type ExportKind,
+  type ExportRequestDto
+} from '@export-shared'
 
 const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
 export const EXPORT_ISSUE_MESSAGES = {
@@ -64,7 +69,7 @@ export const exportRequestSchema = z
     }
   })
   .transform((value): ExportRequestDto => {
-    if (value.kind === 'students') {
+    if (!isPeriodExportKind(value.kind)) {
       return {
         kind: value.kind,
         includeNames: true,
