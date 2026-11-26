@@ -1,1 +1,1 @@
-export type { CreateBackup, CreateAutomaticBackup } from './backup.ports'
+export type { CreateBackup, CreateAutomaticBackup, AppLifecycle, FileOps } from './backup.ports'
