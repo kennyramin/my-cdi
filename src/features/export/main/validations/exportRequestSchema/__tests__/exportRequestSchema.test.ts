@@ -103,4 +103,26 @@ describe('exportRequestSchema', () => {
       exportRequestSchema.safeParse({ kind: 'nope', period: PERIOD, includeNames: false }).success
     ).toBe(false)
   })
+
+  const firstMessage = (input: unknown): string | undefined =>
+    exportRequestSchema.safeParse(input).error?.issues[0]?.message
+
+  it('gives explicit identifier messages to every custom issue', () => {
+    expect(firstMessage({ kind: 'journal', includeNames: false })).toBe('PERIOD_REQUIRED')
+    expect(
+      firstMessage({
+        kind: 'journal',
+        period: { startDate: '2026-02-01', endDate: '2026-01-31' },
+        includeNames: false
+      })
+    ).toBe('PERIOD_INVALID')
+    expect(
+      firstMessage({
+        kind: 'journal',
+        period: { startDate: '2026-13-01', endDate: '2026-01-31' },
+        includeNames: false
+      })
+    ).toBe('DATE_INVALID')
+    expect(firstMessage({ kind: 'students', includeNames: true })).toBe('ACKNOWLEDGEMENT_REQUIRED')
+  })
 })

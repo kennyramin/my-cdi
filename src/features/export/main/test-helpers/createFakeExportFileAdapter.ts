@@ -4,6 +4,7 @@ export interface FakeFile {
   chunks: string[]
   committed: boolean
   aborted: boolean
+  abortCalls: number
 }
 
 export interface FakeExportFileAdapterOptions {
@@ -12,6 +13,7 @@ export interface FakeExportFileAdapterOptions {
   failOnOpen?: boolean
   failOnWriteNumber?: number
   failOnCommit?: boolean
+  failOnAbort?: boolean
 }
 
 export interface FakeExportFileAdapter extends ExportFileAdapter {
@@ -49,7 +51,7 @@ export function createFakeExportFileAdapter(
       if (options.failOnOpen === true) {
         throw new Error('EACCES')
       }
-      const file: FakeFile = { chunks: [], committed: false, aborted: false }
+      const file: FakeFile = { chunks: [], committed: false, aborted: false, abortCalls: 0 }
       files.set(target, file)
       let writeNumber = 0
       return {
@@ -67,7 +69,11 @@ export function createFakeExportFileAdapter(
           file.committed = true
         },
         abort: async () => {
+          file.abortCalls += 1
           file.aborted = true
+          if (options.failOnAbort === true) {
+            throw new Error('abort failed')
+          }
         }
       }
     }

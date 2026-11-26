@@ -1,6 +1,11 @@
 export interface ExportWriter {
   write(chunk: string): Promise<void>
   commit(): Promise<void>
+  /**
+   * Must work after a failed write() or a failed commit(): release the handle and delete the
+   * staged file, so no partial target is left. Idempotent (a second call is a no-op). runExport
+   * swallows a rejection, so implementations should not throw.
+   */
   abort(): Promise<void>
 }
 

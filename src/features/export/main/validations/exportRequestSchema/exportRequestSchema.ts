@@ -2,6 +2,13 @@ import { z } from 'zod'
 import { EXPORT_KINDS, type ExportKind, type ExportRequestDto } from '@export-shared'
 
 const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
+export const EXPORT_ISSUE_MESSAGES = {
+  DATE_INVALID: 'DATE_INVALID',
+  PERIOD_REQUIRED: 'PERIOD_REQUIRED',
+  PERIOD_INVALID: 'PERIOD_INVALID',
+  ACKNOWLEDGEMENT_REQUIRED: 'ACKNOWLEDGEMENT_REQUIRED'
+} as const
+
 const AGGREGATED_KINDS: readonly ExportKind[] = ['visitsByDay', 'visitsByActivity', 'visitsByClass']
 
 function isRealCalendarDate(value: string): boolean {
@@ -16,7 +23,9 @@ function isRealCalendarDate(value: string): boolean {
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
 }
 
-const isoDateSchema = z.string().refine(isRealCalendarDate)
+const isoDateSchema = z
+  .string()
+  .refine(isRealCalendarDate, { message: EXPORT_ISSUE_MESSAGES.DATE_INVALID })
 
 const periodSchema = z.object({ startDate: isoDateSchema, endDate: isoDateSchema })
 
@@ -30,16 +39,28 @@ export const exportRequestSchema = z
   .superRefine((value, context) => {
     if (value.kind === 'students') {
       if (value.acknowledgedPersonalData !== true) {
-        context.addIssue({ code: z.ZodIssueCode.custom, path: ['acknowledgedPersonalData'] })
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['acknowledgedPersonalData'],
+          message: EXPORT_ISSUE_MESSAGES.ACKNOWLEDGEMENT_REQUIRED
+        })
       }
       return
     }
     if (value.period === undefined) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ['period'] })
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['period'],
+        message: EXPORT_ISSUE_MESSAGES.PERIOD_REQUIRED
+      })
       return
     }
     if (value.period.startDate > value.period.endDate) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ['period'] })
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['period'],
+        message: EXPORT_ISSUE_MESSAGES.PERIOD_INVALID
+      })
     }
   })
   .transform((value): ExportRequestDto => {

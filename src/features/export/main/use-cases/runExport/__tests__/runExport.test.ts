@@ -315,6 +315,89 @@ describe('runExport', () => {
     expect(adapter.files.get(PATH)).toMatchObject({ aborted: true, committed: false })
   })
 
+  it.each([
+    { label: 'write failure', options: { failOnWriteNumber: SECOND_WRITE } },
+    { label: 'commit failure', options: { failOnCommit: true } }
+  ])('a rejecting abort() is swallowed after a $label', async ({ options }) => {
+    const adapter = createFakeExportFileAdapter({ path: PATH, failOnAbort: true, ...options })
+    const { deps } = setup({ adapter })
+    const result = await runExport(deps, journalRequest)
+    expect(result).toMatchObject({ success: false, code: ErrorCode.EXPORT_WRITE_FAILED })
+    expect(adapter.files.get(PATH)?.abortCalls).toBe(1)
+    expect(adapter.files.get(PATH)?.committed).toBe(false)
+  })
+
+  it('header write failure: nothing committed, abort called, no partial file', async () => {
+    const adapter = createFakeExportFileAdapter({ path: PATH, failOnWriteNumber: 1 })
+    const { deps } = setup({ adapter })
+    const result = await runExport(deps, journalRequest)
+    expect(result).toMatchObject({ success: false, code: ErrorCode.EXPORT_WRITE_FAILED })
+    expect(adapter.files.get(PATH)).toMatchObject({ aborted: true, committed: false, chunks: [] })
+  })
+
+  it('aggregated rows are sorted deterministically whatever the stats order', async () => {
+    const { adapter, deps } = setup({
+      entries: [
+        entry({
+          id: 1,
+          startsAt: '2026-03-07T08:00:00',
+          activity: ActivityType.READING,
+          studentClasse: 'B'
+        }),
+        entry({
+          id: 2,
+          startsAt: '2026-03-05T08:00:00',
+          activity: ActivityType.GAME,
+          studentClasse: 'A'
+        }),
+        entry({
+          id: 3,
+          startsAt: '2026-03-06T08:00:00',
+          activity: ActivityType.READING,
+          studentClasse: 'C'
+        })
+      ].reverse()
+    })
+    await runExport(deps, { kind: 'visitsByDay', period: PERIOD, includeNames: false })
+    expect(
+      parse(adapter.text(PATH))
+        .slice(1)
+        .map((row) => row[0])
+    ).toEqual(['2026-03-05', '2026-03-06', '2026-03-07'])
+    await runExport(deps, { kind: 'visitsByClass', period: PERIOD, includeNames: false })
+    const classRows = parse(adapter.text(PATH)).slice(1)
+    expect(classRows.map((row) => row[0])).toEqual(['A', 'B', 'C'])
+    await runExport(deps, { kind: 'visitsByActivity', period: PERIOD, includeNames: false })
+    const activityRows = parse(adapter.text(PATH)).slice(1)
+    const labels = activityRows.map((row) => row[0] ?? '')
+    expect(labels).toEqual([...labels].sort((left, right) => left.localeCompare(right, 'fr')))
+  })
+
+  it('students are sorted by nom, prénom then id', async () => {
+    const { adapter, deps } = setup({
+      students: [
+        student({ id: 4, nom: 'Martin', prenom: 'Zoé', ine: 'D' }),
+        student({ id: 3, nom: 'Dupont', prenom: 'Léa', ine: 'C' }),
+        student({ id: 2, nom: 'Dupont', prenom: 'Léa', ine: 'B' }),
+        student({ id: 1, nom: 'Dupont', prenom: 'Abel', ine: 'A' })
+      ]
+    })
+    await runExport(deps, studentsRequest)
+    expect(
+      parse(adapter.text(PATH))
+        .slice(1)
+        .map((row) => row[3])
+    ).toEqual(['A', 'B', 'C', 'D'])
+  })
+
+  it('validation failures carry the schema message, not a generic one', async () => {
+    const { deps } = setup()
+    const missingAck = await runExport(deps, { kind: 'students', includeNames: true })
+    const missingPeriod = await runExport(deps, { kind: 'journal', includeNames: false })
+    expect(missingAck).toMatchObject({ success: false, error: 'ACKNOWLEDGEMENT_REQUIRED' })
+    expect(missingPeriod).toMatchObject({ success: false, error: 'PERIOD_REQUIRED' })
+  })
+
   it('dialog failure returns EXPORT_WRITE_FAILED without opening a file', async () => {
     const adapter = createFakeExportFileAdapter({ failOnPick: true })
     const { deps } = setup({ adapter })
