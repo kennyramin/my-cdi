@@ -205,17 +205,9 @@ describe('FrequentationGatewayDrizzle', () => {
     })
   })
 
-  describe('deleteOlderThan', () => {
-    it('deletes only rows strictly older than the cutoff', async () => {
-      const cutoff = '2024-11-25T00:30:00'
-      const keptRecent = '2026-01-15T09:00:00'
-      for (const startsAt of ['2024-11-25T00:29:59', cutoff, keptRecent]) {
-        await gateway.create({ startsAt, activity: ActivityType.WORK, studentId: 1 })
-      }
-      expect(await gateway.deleteOlderThan(cutoff)).toBe(1)
-      expect(await gateway.count()).toBe(EXPECTED_TWO)
-      expect((await gateway.getAll()).map((row) => row.startsAt)).toEqual([cutoff, keptRecent])
-      expect(await gateway.deleteOlderThan(cutoff)).toBe(0)
+  describe('retention', () => {
+    it('does not expose a purge method', () => {
+      expect('deleteOlderThan' in gateway).toBe(false)
     })
   })
 

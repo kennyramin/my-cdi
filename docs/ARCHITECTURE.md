@@ -63,7 +63,6 @@ Renderer ──► Preload (contextBridge) ──► Main (ipcMain.handle)
 2. Inject `studentGateway` into `frequentationModule`
 3. Inject `frequentationGateway` into `statisticsModule`
 4. Initialize the `settings` module (gateway + IPC controller, no cross-feature dependency)
-5. Invoke `cleanupOldFrequentations()` after all modules initialize
 
 ### Auto-Updater
 
@@ -538,7 +537,6 @@ Gateway methods follow a strict naming convention:
 | Update    | `update`                  | `update(id, data)`                       |
 | Delete    | `delete`                  | `delete(id)`                             |
 | Delete by | `deleteByXxx`             | `deleteByStudentId(id)`                  |
-| Delete by | `deleteOlderThan`         | `deleteOlderThan(cutoff)`                |
 | Count     | `count`                   | `count()`                                |
 
 No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single reads, never throws for missing rows.
@@ -550,8 +548,8 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 - **Storage**: visit start times stored as local wall-clock strings `YYYY-MM-DDTHH:mm:ss` (no timezone suffix) in SQLite; time-of-day stored as `HH:mm` strings.
 - **Display**: `formatDate` (`DD/MM/YYYY`) and `formatDateTime` (`DD/MM/YYYY HH:mm`) via `dayjs` with French locale.
 - **UI**: MUI X Date Pickers wrapped in `LocalizationProvider` with `AdapterDayjs` and `adapterLocale="fr"`.
-- **Legacy rows**: a few development databases (written 2026-04-30 to 2026-05-03) hold `…Z` suffixed timestamps; statistics read them as a UTC hour while the Journal reads them as local time. No migration — production data uses local wall-clock strings only.
-- **Cleanup**: `CLEANUP_RETENTION_YEARS = 2` — old frequentations deleted on startup (local cutoff, single `DELETE … WHERE starts_at < ?`).
+- **Legacy rows**: legacy `Z`/offset values are normalised once at startup (settings key `migrations.startsAtLocal.done`, automatic backup first).
+- **Retention**: identified visits live as long as the student record; anonymized visits are kept forever (see §17 Anonymization).
 
 ---
 
