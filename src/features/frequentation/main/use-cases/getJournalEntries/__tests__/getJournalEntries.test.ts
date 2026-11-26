@@ -8,7 +8,10 @@ import type {
   FrequentationEntity
 } from '@frequentation/entities/frequentation'
 import type { StudentEntity } from '@student/entities/student'
+import { ANONYMIZED_STUDENT_LABEL } from '@frequentation-shared'
 import type { DateRangeDto } from '@frequentation-shared'
+
+const MISSING_STUDENT_ID = 999
 
 const FALLBACK_ENTITY: FrequentationEntity = {
   id: 0,
@@ -114,6 +117,73 @@ describe('getJournalEntries', () => {
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.error).toContain('DB error')
+    }
+  })
+
+  it('returns student: null for an anonymized entry and does not call studentGateway.getById', async () => {
+    const anonymized: FrequentationWithStudentEntity = {
+      ...FREQUENTATION_ENTITY,
+      studentId: null,
+      studentNom: null,
+      studentPrenom: null,
+      studentIne: null
+    }
+    const frequentationGateway = createMockFrequentationGateway({
+      getByDateRange: vi.fn().mockResolvedValue([anonymized])
+    })
+    const studentGateway = createMockStudentGateway()
+    const dateRange: DateRangeDto = { startDate: '2026-01-15', endDate: '2026-01-15' }
+
+    const result = await getJournalEntries(frequentationGateway, studentGateway, dateRange)
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data[0]?.student).toBeNull()
+      expect(result.data[0]?.frequentation.studentName).toBe(ANONYMIZED_STUDENT_LABEL)
+      expect(result.data[0]?.frequentation.studentClass).toBe('6ème A')
+    }
+    expect(studentGateway.getById).not.toHaveBeenCalled()
+  })
+
+  it('returns student: null for an orphan row whose student is gone', async () => {
+    const orphan: FrequentationWithStudentEntity = {
+      ...FREQUENTATION_ENTITY,
+      studentId: MISSING_STUDENT_ID,
+      studentNom: null,
+      studentPrenom: null,
+      studentIne: null
+    }
+    const frequentationGateway = createMockFrequentationGateway({
+      getByDateRange: vi.fn().mockResolvedValue([orphan])
+    })
+    const studentGateway = createMockStudentGateway()
+    const dateRange: DateRangeDto = { startDate: '2026-01-15', endDate: '2026-01-15' }
+
+    const result = await getJournalEntries(frequentationGateway, studentGateway, dateRange)
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data[0]?.student).toBeNull()
+    }
+    expect(studentGateway.getById).not.toHaveBeenCalled()
+  })
+
+  it('still returns the student for a normal entry', async () => {
+    const frequentationGateway = createMockFrequentationGateway()
+    const studentGateway = createMockStudentGateway()
+    const dateRange: DateRangeDto = { startDate: '2026-01-15', endDate: '2026-01-15' }
+
+    const result = await getJournalEntries(frequentationGateway, studentGateway, dateRange)
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data[0]?.student).toEqual({
+        id: 1,
+        nom: 'Dupont',
+        prenom: 'Jean',
+        classe: '6ème A',
+        ine: '12345678X'
+      })
     }
   })
 })

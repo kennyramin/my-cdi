@@ -15,7 +15,7 @@ export function formatFrequentationResponse(
         ? ANONYMIZED_STUDENT_LABEL
         : `${entity.studentPrenom} ${entity.studentNom}`,
     studentClass: entity.studentClasse,
-    studentIne: entity.studentIne,
+    studentIne: entity.studentIne ?? '',
     createdAt: entity.createdAt,
     updatedAt: entity.updatedAt
   }

@@ -6,6 +6,7 @@ import type {
   FrequentationEntity,
   FrequentationWithStudentEntity
 } from '@frequentation/entities/frequentation'
+import { UNKNOWN_CLASS_LABEL } from '@frequentation-shared'
 import type { PeriodRangeDto } from '@statistics-shared'
 
 const TWO = 2
@@ -178,6 +179,61 @@ describe('getStatsForPeriod', () => {
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.error).toContain('DB error')
+    }
+  })
+
+  it('class counts use the snapshot after the student changed class', async () => {
+    const gateway = createMockFrequentationGateway([
+      makeFrequentation({ id: 1, studentClasse: '6A' }),
+      makeFrequentation({ id: 2, studentClasse: '6A' })
+    ])
+
+    const result = await getStatsForPeriod(gateway, RANGE)
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.classCounts).toEqual([{ classe: '6A', count: TWO }])
+    }
+  })
+
+  it('anonymized visits are counted in totals and class stats', async () => {
+    const gateway = createMockFrequentationGateway([
+      makeFrequentation({ id: 1, studentClasse: '6A' }),
+      makeFrequentation({
+        id: 2,
+        studentId: null,
+        studentNom: null,
+        studentPrenom: null,
+        studentIne: null,
+        studentClasse: '6A'
+      })
+    ])
+
+    const result = await getStatsForPeriod(gateway, RANGE)
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.totalVisits).toBe(TWO)
+      expect(result.data.classCounts).toEqual([{ classe: '6A', count: TWO }])
+    }
+  })
+
+  it('NULL snapshot and no student counts under Classe inconnue', async () => {
+    const gateway = createMockFrequentationGateway([
+      makeFrequentation({
+        studentId: null,
+        studentNom: null,
+        studentPrenom: null,
+        studentIne: null,
+        studentClasse: UNKNOWN_CLASS_LABEL
+      })
+    ])
+
+    const result = await getStatsForPeriod(gateway, RANGE)
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.classCounts).toEqual([{ classe: UNKNOWN_CLASS_LABEL, count: 1 }])
     }
   })
 })

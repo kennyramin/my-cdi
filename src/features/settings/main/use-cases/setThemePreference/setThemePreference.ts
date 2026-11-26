@@ -5,7 +5,8 @@ import { themePreferenceSchema } from '@settings-shared'
 import { THEME_STORAGE_KEY } from '@types'
 
 export type SetThemePreferenceResult =
-  { success: true; data: ThemePreferenceResponseDto } | { success: false; error: string }
+  | { success: true; data: ThemePreferenceResponseDto }
+  | { success: false; error: string }
 
 export async function setThemePreference(
   settingGateway: SettingGateway,

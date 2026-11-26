@@ -1,7 +1,7 @@
+import type { ActivityType } from '@types'
+
 export const ANONYMIZED_STUDENT_LABEL = 'Élève anonymisé'
 export const UNKNOWN_CLASS_LABEL = 'Classe inconnue'
-
-import type { ActivityType } from '@types'
 
 export interface CreateFrequentationDto {
   startsAt: string
@@ -26,7 +26,7 @@ export interface FrequentationResponseDto {
   studentId: number | null
   studentName: string
   studentClass: string
-  studentIne: string | null
+  studentIne: string
   createdAt: string
   updatedAt: string
 }

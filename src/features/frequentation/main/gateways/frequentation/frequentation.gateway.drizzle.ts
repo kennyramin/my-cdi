@@ -123,10 +123,11 @@ export class FrequentationGatewayDrizzle implements FrequentationGateway {
       .set({
         ...(dto.startsAt !== undefined && { startsAt: dto.startsAt }),
         ...(dto.activity !== undefined && { activity: dto.activity }),
-        ...(dto.studentId !== undefined && {
-          studentId: dto.studentId,
-          studentClasse: this.studentClassSnapshot(dto.studentId)
-        }),
+        ...(dto.studentId !== undefined && { studentId: dto.studentId }),
+        ...(dto.studentId !== undefined &&
+          dto.studentId !== existingFrequentation.studentId && {
+            studentClasse: this.studentClassSnapshot(dto.studentId)
+          }),
         updatedAt: now
       })
       .where(eq(frequentationTable.id, id))

@@ -6,7 +6,7 @@ import { formatFrequentationResponse } from '../helpers/formatFrequentationRespo
 
 export async function getJournalEntries(
   frequentationGateway: FrequentationGateway,
-  studentGateway: StudentGateway,
+  _studentGateway: StudentGateway,
   dateRange: DateRangeDto
 ): Promise<UseCaseResult<JournalEntryDto[]>> {
   try {
@@ -18,23 +18,20 @@ export async function getJournalEntries(
     const entries: JournalEntryDto[] = []
 
     for (const frequentation of frequentations) {
-      const student =
-        frequentation.studentId === null
-          ? null
-          : await studentGateway.getById(frequentation.studentId)
-      const frequentationResponse = formatFrequentationResponse(frequentation)
-
       entries.push({
-        frequentation: frequentationResponse,
-        student: student
-          ? {
-              id: student.id,
-              nom: student.nom,
-              prenom: student.prenom,
-              classe: student.classe,
-              ine: student.ine
-            }
-          : null
+        frequentation: formatFrequentationResponse(frequentation),
+        student:
+          frequentation.studentId === null ||
+          frequentation.studentNom === null ||
+          frequentation.studentPrenom === null
+            ? null
+            : {
+                id: frequentation.studentId,
+                nom: frequentation.studentNom,
+                prenom: frequentation.studentPrenom,
+                classe: frequentation.studentClasse,
+                ine: frequentation.studentIne ?? ''
+              }
       })
     }
 

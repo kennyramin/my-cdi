@@ -274,6 +274,41 @@ describe('FrequentationGatewayDrizzle', () => {
       })
     })
 
+    it('getAll and getByStudentId fall back to students.classe when the snapshot is NULL', async () => {
+      const visit = await createVisit(1)
+      sqlite.prepare('UPDATE frequentation SET student_classe = NULL WHERE id = ?').run(visit.id)
+      expect((await gateway.getAll())[0]?.studentClasse).toBe(FIRST_CLASS)
+      expect((await gateway.getByStudentId(1))[0]?.studentClasse).toBe(FIRST_CLASS)
+    })
+
+    it('getAll and getByStudentId fall back to Classe inconnue when both are missing', async () => {
+      const visit = await createVisit(1)
+      sqlite.prepare('UPDATE frequentation SET student_classe = NULL WHERE id = ?').run(visit.id)
+      sqlite.pragma('foreign_keys = OFF')
+      sqlite.prepare('DELETE FROM students WHERE id = 1').run()
+      expect((await gateway.getAll())[0]?.studentClasse).toBe(UNKNOWN_CLASS)
+      expect((await gateway.getByStudentId(1))[0]?.studentClasse).toBe(UNKNOWN_CLASS)
+    })
+
+    it('getByDateRange includes an anonymized (student_id NULL) visit', async () => {
+      const visit = await createVisit(1)
+      sqlite.prepare('UPDATE frequentation SET student_id = NULL WHERE id = ?').run(visit.id)
+      const results = await gateway.getByDateRange(VISIT_DAY, VISIT_DAY)
+      expect(results).toHaveLength(1)
+      expect(results[0]).toMatchObject({
+        studentId: null,
+        studentNom: null,
+        studentClasse: FIRST_CLASS
+      })
+    })
+
+    it('update with the same studentId keeps the old snapshot after a class change', async () => {
+      const visit = await createVisit(1)
+      sqlite.prepare('UPDATE students SET classe = ? WHERE id = 1').run(NEW_CLASS)
+      await gateway.update(visit.id, { studentId: 1, activity: ActivityType.READING })
+      expect(snapshotOf(visit.id)).toBe(FIRST_CLASS)
+    })
+
     it('deleting a student still cascades its visits', async () => {
       await createVisit(1)
       sqlite.prepare('DELETE FROM students WHERE id = 1').run()
