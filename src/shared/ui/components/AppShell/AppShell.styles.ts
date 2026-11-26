@@ -19,6 +19,7 @@ export const ContentColumn = styled(Box, {
   display: 'flex',
   flex: 1,
   flexDirection: 'column',
+  minWidth: 0,
   overflow: 'hidden'
 })
 

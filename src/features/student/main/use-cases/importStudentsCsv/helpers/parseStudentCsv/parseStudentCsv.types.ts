@@ -6,9 +6,15 @@ export interface ParseResult {
   errors: CsvImportError[]
 }
 
+export interface ParsedRow {
+  data: Record<string, string>
+  line: number
+}
+
 export interface ParsedCsv {
   headers: string[]
-  rows: Record<string, string>[]
+  rows: ParsedRow[]
+  structuralErrors: CsvImportError[]
 }
 
 export interface RowValidationResult {

@@ -5,16 +5,30 @@ import type {
   StudentResponseDto,
   StudentListResponseDto,
   ImportStudentsCsvPayload,
-  CsvImportResult
+  CsvImportResult,
+  AnonymizeStudentsPayload,
+  AnonymizeStudentsResult,
+  CsvRemovalPreview,
+  PreviewCsvRemovalPayload
 } from '@student-shared'
 import type {
   CreateFrequentationDto,
   UpdateFrequentationDto,
   CreateFrequentationBatchDto,
+  BatchItemErrorDto,
+  DuplicatesFoundDto,
   FrequentationResponseDto,
   JournalEntryDto
 } from '@frequentation-shared'
 import type { PeriodRangeDto, StatsForPeriodDto } from '@statistics-shared'
+import type {
+  BackupCreateResult,
+  BackupStatusDto,
+  DeleteAutomaticResultDto,
+  RestoreInput,
+  RestoreResult
+} from '@backup-shared'
+import type { ExportRequestDto, ExportResultDto } from '@export-shared'
 import type { ThemePreferenceResponseDto, UpdateThemePreferenceDto } from '@settings-shared'
 import type { ThemePreference } from '@types'
 import type {
@@ -33,6 +47,8 @@ export interface StudentApi {
   update: (input: { id: number } & UpdateStudentDto) => Promise<IpcResult<StudentResponseDto>>
   delete: (input: { id: number }) => Promise<IpcResult<void>>
   importCsv: (input: ImportStudentsCsvPayload) => Promise<IpcResult<CsvImportResult>>
+  anonymize: (input: AnonymizeStudentsPayload) => Promise<IpcResult<AnonymizeStudentsResult>>
+  previewCsvRemoval: (input: PreviewCsvRemovalPayload) => Promise<IpcResult<CsvRemovalPreview>>
 }
 
 export interface FrequentationApi {
@@ -41,9 +57,11 @@ export interface FrequentationApi {
   list: (input: { studentId?: number }) => Promise<IpcResult<FrequentationResponseDto[]>>
   update: (
     input: { id: number } & UpdateFrequentationDto
-  ) => Promise<IpcResult<FrequentationResponseDto>>
+  ) => Promise<IpcResult<FrequentationResponseDto | DuplicatesFoundDto>>
   delete: (input: { id: number }) => Promise<IpcResult<void>>
-  createBatch: (input: CreateFrequentationBatchDto) => Promise<IpcResult<{ created: number }>>
+  createBatch: (
+    input: CreateFrequentationBatchDto
+  ) => Promise<IpcResult<{ created: number; errors: BatchItemErrorDto[] } | DuplicatesFoundDto>>
   getJournalEntries: (input: {
     startDate: string
     endDate: string
@@ -69,11 +87,24 @@ export interface UpdaterAPI {
   quitAndInstall: () => Promise<void>
 }
 
+export interface BackupApi {
+  create: () => Promise<IpcResult<BackupCreateResult>>
+  restore: (input: RestoreInput) => Promise<IpcResult<RestoreResult>>
+  getStatus: () => Promise<IpcResult<BackupStatusDto>>
+  deleteAutomatic: () => Promise<IpcResult<DeleteAutomaticResultDto>>
+}
+
+export interface ExportApi {
+  run: (input: ExportRequestDto) => Promise<IpcResult<ExportResultDto>>
+}
+
 export interface ElectronAPI {
   student: StudentApi
   frequentation: FrequentationApi
   statistics: StatisticsApi
   settings: SettingsApi
+  backup: BackupApi
+  export: ExportApi
   getAppVersion: () => Promise<string>
   getInitialThemePreference: () => ThemePreference
   updater: UpdaterAPI

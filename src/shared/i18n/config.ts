@@ -5,10 +5,12 @@ import commonFr from './locales/fr/common.json'
 import studentFr from './locales/fr/student.json'
 import frequentationFr from './locales/fr/frequentation.json'
 import statisticsFr from './locales/fr/statistics.json'
+import exportFr from './locales/fr/export.json'
 import commonEn from './locales/en/common.json'
 import studentEn from './locales/en/student.json'
 import frequentationEn from './locales/en/frequentation.json'
 import statisticsEn from './locales/en/statistics.json'
+import exportEn from './locales/en/export.json'
 
 export const defaultNS = 'common'
 
@@ -18,13 +20,15 @@ i18n.use(initReactI18next).init({
       common: commonFr,
       student: studentFr,
       frequentation: frequentationFr,
-      statistics: statisticsFr
+      statistics: statisticsFr,
+      export: exportFr
     },
     en: {
       common: commonEn,
       student: studentEn,
       frequentation: frequentationEn,
-      statistics: statisticsEn
+      statistics: statisticsEn,
+      export: exportEn
     }
   },
   lng: 'fr',

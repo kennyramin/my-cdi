@@ -4,8 +4,11 @@ import { mkdirSync } from 'fs'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { autoUpdater } from 'electron-updater'
 import log from 'electron-log/main'
-import { createDbConnection, closeDbConnection, getDb } from '@shared/db/connection'
-import { runMigrations } from '@shared/db/migrate'
+import { createDbConnection, closeDbConnection, getDb, getSqlite } from '@shared/db/connection'
+import { readMigrationFiles } from 'drizzle-orm/migrator'
+import { MIGRATIONS_FOLDER, runMigrations } from '@shared/db/migrate'
+import { buildStartupErrorMessage } from './helpers/buildStartupErrorMessage'
+import { normalizeLegacyStartsAt } from '@shared/db/helpers/normalizeLegacyStartsAt'
 import { APP_CHANNELS } from '@shared/ipc/channels'
 import { UPDATER_CHANNELS } from '@shared/ipc/updaterChannels'
 import { createMainRouter } from '@shared/ipc/router'
@@ -24,7 +27,11 @@ import {
   THEME_BACKGROUNDS,
   type ThemePreference
 } from '@types'
+import { configureBackupRuntime } from '@backup/runtime'
+import { createAutomaticBackup } from '@backup/use-cases/createAutomaticBackup'
+import { backupBeforeMigration } from '@backup/use-cases/backupBeforeMigration'
 import { initializeModules } from './modules'
+import { createElectronAppLifecycle, createElectronBackupDialogs } from './backupAdapters'
 
 log.initialize()
 
@@ -182,23 +189,39 @@ if (!gotTheLock) {
     try {
       mkdirSync(DATABASE_DIR, { recursive: true })
       createDbConnection(DATABASE_PATH)
+      configureBackupRuntime({
+        getSqlite,
+        backupsDir: join(app.getPath('userData'), 'backups'),
+        now: () => new Date()
+      })
+      const backupPath = await backupBeforeMigration({
+        sqlite: getSqlite(),
+        migrations: readMigrationFiles({ migrationsFolder: MIGRATIONS_FOLDER }),
+        createAutomaticBackup
+      })
+      if (backupPath) {
+        log.info(`Pre-migration backup written to ${backupPath}`)
+      }
       runMigrations()
+      await normalizeLegacyStartsAt(getSqlite(), { createAutomaticBackup, logger: log })
       dbInitialized = true
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       log.error(`Failed to initialize database: ${message}`)
       log.error(`Database path: ${DATABASE_PATH}`)
-      dialog.showErrorBox(
-        'Database Error',
-        `Failed to initialize the database.\n\nPath: ${DATABASE_PATH}\nError: ${message}\n\nIf the database schema is outdated, delete the file and restart the app.`
-      )
+      dialog.showErrorBox('Database Error', buildStartupErrorMessage(error, DATABASE_PATH))
       closeDbConnection()
       app.quit()
       return
     }
 
     if (dbInitialized) {
-      initializeModules(ipcMain).catch((error: unknown) => {
+      initializeModules(ipcMain, {
+        dialogs: createElectronBackupDialogs(),
+        lifecycle: createElectronAppLifecycle(),
+        documentsPath: app.getPath('documents'),
+        liveDbPath: DATABASE_PATH
+      }).catch((error: unknown) => {
         const message = error instanceof Error ? error.message : 'Unknown error'
         log.error(`Failed to initialize modules: ${message}`)
       })

@@ -1,0 +1,29 @@
+{
+  "button": {
+    "statistics": "Export",
+    "students": "Export list"
+  },
+  "title": {
+    "statistics": "Export statistics",
+    "students": "Export the student list"
+  },
+  "kind": {
+    "legend": "Data to export",
+    "journal": "Visit journal",
+    "visitsByDay": "Visits per day",
+    "visitsByActivity": "Visits per activity",
+    "visitsByClass": "Visits per class"
+  },
+  "includeNames": "Include student names",
+  "includeNamesHint": "Only available for the journal. Other exports never contain names.",
+  "period": "Period: {{start}} to {{end}}",
+  "confirm": "Export",
+  "cancel": "Cancel",
+  "success_one": "{{count}} row exported",
+  "success_other": "{{count}} rows exported",
+  "namesWarning": "The file will contain students' personal data. Store it safely.",
+  "students": {
+    "description": "The file will contain each student's last name, first name, class, INE and visit count.",
+    "acknowledge": "I understand this file contains personal data and is not encrypted."
+  }
+}

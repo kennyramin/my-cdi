@@ -8,6 +8,7 @@ import {
   useDeleteFrequentation
 } from '../useFrequentationMutations'
 import { ActivityType } from '@types'
+import { frequentationKeys } from '../../frequentationKeys'
 import { statisticsKeys } from '@statistics/api/statisticsKeys'
 
 const FREQUENTATION_ID_TARGET = 5
@@ -115,6 +116,57 @@ describe('useCreateFrequentationBatch', () => {
     await waitFor(() => expect(result.current.isError).toBe(true))
     expect(result.current.error?.message).toBe('boom')
   })
+
+  it('returns duplicates without invalidating or throwing', async () => {
+    const duplicates = [
+      {
+        studentId: STUDENT_ID_FIRST,
+        studentName: 'Léa Martin',
+        existingStartsAt: '2026-04-01T09:00:00',
+        existingActivity: ActivityType.WORK
+      }
+    ]
+    vi.stubGlobal('electronAPI', {
+      frequentation: {
+        createBatch: vi.fn().mockResolvedValue({ success: true, data: { created: 0, duplicates } })
+      }
+    })
+    const { wrapper, invalidateSpy } = createInvalidationSpiedWrapper()
+    const { result } = renderHook(() => useCreateFrequentationBatch(), { wrapper })
+    act(() => {
+      result.current.mutate({
+        frequentations: [
+          {
+            startsAt: '2026-04-01T09:10:00',
+            activity: ActivityType.WORK,
+            studentId: STUDENT_ID_FIRST
+          }
+        ]
+      })
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toEqual({ created: 0, duplicates })
+    expect(invalidateSpy).not.toHaveBeenCalled()
+  })
+
+  it('invalidates frequentation and statistics queries on a normal result', async () => {
+    const { wrapper, invalidateSpy } = createInvalidationSpiedWrapper()
+    const { result } = renderHook(() => useCreateFrequentationBatch(), { wrapper })
+    act(() => {
+      result.current.mutate({
+        frequentations: [
+          {
+            startsAt: '2026-04-01T09:10:00',
+            activity: ActivityType.WORK,
+            studentId: STUDENT_ID_FIRST
+          }
+        ]
+      })
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: frequentationKeys.all })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: statisticsKeys.all })
+  })
 })
 
 describe('useDeleteFrequentation', () => {
@@ -205,5 +257,47 @@ describe('useUpdateFrequentation', () => {
     )
     await waitFor(() => expect(result.current.isError).toBe(true))
     expect(result.current.error?.message).toBe('boom')
+  })
+})
+
+describe('useUpdateFrequentation duplicates contract', () => {
+  it('returns duplicates without invalidating queries', async () => {
+    const duplicates = [
+      {
+        studentId: STUDENT_ID_FIRST,
+        studentName: 'Léa Martin',
+        existingStartsAt: '2026-04-01T09:00:00',
+        existingActivity: ActivityType.WORK
+      }
+    ]
+    vi.stubGlobal('electronAPI', {
+      frequentation: {
+        update: vi.fn().mockResolvedValue({ success: true, data: { created: 0, duplicates } })
+      }
+    })
+    const { wrapper, invalidateSpy } = createInvalidationSpiedWrapper()
+    const { result } = renderHook(() => useUpdateFrequentation(), { wrapper })
+    act(() =>
+      result.current.mutate({ id: FREQUENTATION_ID_UPDATE, activity: ActivityType.READING })
+    )
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toEqual({ created: 0, duplicates })
+    expect(invalidateSpy).not.toHaveBeenCalled()
+  })
+
+  it('invalidates frequentation and statistics queries on a normal result', async () => {
+    vi.stubGlobal('electronAPI', {
+      frequentation: {
+        update: vi.fn().mockResolvedValue({ success: true, data: { id: FREQUENTATION_ID_UPDATE } })
+      }
+    })
+    const { wrapper, invalidateSpy } = createInvalidationSpiedWrapper()
+    const { result } = renderHook(() => useUpdateFrequentation(), { wrapper })
+    act(() =>
+      result.current.mutate({ id: FREQUENTATION_ID_UPDATE, activity: ActivityType.READING })
+    )
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: frequentationKeys.all })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: statisticsKeys.all })
   })
 })

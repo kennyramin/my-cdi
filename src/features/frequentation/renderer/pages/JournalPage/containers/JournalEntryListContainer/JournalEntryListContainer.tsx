@@ -12,7 +12,7 @@ import { useJournalEntries } from '@frequentation/api/useFrequentationQueries'
 import { useActivityLabels } from '@frequentation/hooks/useActivityLabels'
 import { toJournalEntryViewModel } from '@frequentation/helpers/journalEntryTransformers'
 import { getActivityTone } from '@frequentation/helpers/activityFormatters'
-import { buildInitials } from '@frequentation/helpers/buildInitials'
+import { getEntryAvatar } from '@frequentation/helpers/getEntryAvatar'
 import { useDeleteFrequentation } from '@frequentation/api/useFrequentationMutations'
 import { useJournalEntrySelection } from './hooks/useJournalEntrySelection'
 import { useEntryPeriodFilter } from './hooks/useEntryPeriodFilter'
@@ -20,10 +20,11 @@ import { useSearchFilter } from './hooks/useSearchFilter'
 import { filterEntriesByPeriod } from './helpers/filterEntriesByPeriod'
 import { filterJournalEntriesBySearchTerm } from './helpers/filterJournalEntriesBySearchTerm'
 import { getEntryPeriod } from './helpers/getEntryPeriod'
+import { intersectSelectedIds } from './helpers/intersectSelectedIds'
 import { JournalEntryToolbarPresenter } from './presenters/JournalEntryToolbarPresenter'
 import { JournalEntryRowPresenter } from './presenters/JournalEntryRowPresenter'
 import { JournalBatchActionsContainer } from './containers/JournalBatchActionsContainer'
-import { EntriesScroll, ListCard } from './JournalEntryListContainer.styles'
+import { EntriesList, EntriesScroll, ListCard } from './JournalEntryListContainer.styles'
 import type { JournalEntryRowPresenterProps } from './presenters/JournalEntryRowPresenter'
 import type { EntryPeriodFilter } from './helpers/filterEntriesByPeriod'
 import type { JournalEntryViewModel } from '@frequentation/types'
@@ -40,7 +41,7 @@ export function JournalEntryListContainer({
   onEditEntry
 }: JournalEntryListContainerProps) {
   const { t } = useTranslation('frequentation')
-  const { selectedIds, toggle, selectAll, clearSelection } = useJournalEntrySelection()
+  const { selectedIds, toggle, selectAll, clearSelection } = useJournalEntrySelection(selectedDate)
   const { period, setPeriod } = useEntryPeriodFilter()
   const { searchTerm, setSearchTerm } = useSearchFilter()
   const { data, isLoading } = useJournalEntries({ startDate: selectedDate, endDate: selectedDate })
@@ -55,12 +56,17 @@ export function JournalEntryListContainer({
   const theme = useTheme()
 
   const dtos = data ?? []
-  const entries = dtos.map((dto) => toJournalEntryViewModel(dto, getLabel, theme.palette.activity))
+  const entries = dtos.map((dto) =>
+    toJournalEntryViewModel(dto, getLabel, theme.palette.activity, t('anonymizedStudent'))
+  )
   const filteredByPeriod = filterEntriesByPeriod(entries, period)
   const filtered = filterJournalEntriesBySearchTerm(filteredByPeriod, searchTerm)
 
+  const visibleIds = filtered.map((entry) => entry.id)
+  const visibleSelectedIds = intersectSelectedIds(selectedIds, visibleIds)
+
   function handleSelectAll() {
-    selectAll(entries.map((entry) => entry.id))
+    selectAll(visibleIds)
   }
 
   function handleDeleteClick(entry: JournalEntryViewModel) {
@@ -113,17 +119,21 @@ export function JournalEntryListContainer({
 
   function buildRowProps(entry: JournalEntryViewModel): JournalEntryRowPresenterProps {
     const period = getEntryPeriod(entry.startsAt)
+    const time = dayjs(entry.startsAt).format(TIME_FORMAT)
+    const avatar = getEntryAvatar(entry)
     return {
-      initials: buildInitials(entry.student.prenom, entry.student.nom),
-      avatarColorSeed: entry.student.id,
+      initials: avatar.initials,
+      avatarColorSeed: avatar.colorSeed,
+      isAnonymized: entry.isAnonymized,
       displayName: entry.student.displayName,
       classe: entry.student.classe,
-      time: dayjs(entry.startsAt).format(TIME_FORMAT),
+      time,
       periodLabel: period === 'morning' ? t('period.morning') : t('period.afternoon'),
       period,
       activityTone: getActivityTone(entry.activity),
       activityLabel: entry.activityLabel,
       selected: selectedIds.includes(entry.id),
+      onSelectChange: () => toggle(entry.id),
       onRowClick: (event) => handleRowClick(entry, event),
       onEditClick: (event) => handleRowEditClick(entry, event),
       onDeleteClick: (event) => handleRowDeleteClick(entry, event)
@@ -140,8 +150,8 @@ export function JournalEntryListContainer({
         onSearchChange={handleSearchChange}
       />
       <JournalBatchActionsContainer
-        selectedIds={selectedIds}
-        totalCount={entries.length}
+        selectedIds={visibleSelectedIds}
+        totalCount={filtered.length}
         onSelectAll={handleSelectAll}
         onClearSelection={clearSelection}
         onAfterDelete={clearSelection}
@@ -157,9 +167,11 @@ export function JournalEntryListContainer({
             description={t('emptyHint')}
           />
         ) : (
-          filtered.map((entry) => (
-            <JournalEntryRowPresenter key={entry.id} {...buildRowProps(entry)} />
-          ))
+          <EntriesList aria-label={t('present')}>
+            {filtered.map((entry) => (
+              <JournalEntryRowPresenter key={entry.id} {...buildRowProps(entry)} />
+            ))}
+          </EntriesList>
         )}
       </EntriesScroll>
       <ConfirmDialog

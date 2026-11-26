@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { formatStudentResponse } from '../formatStudentResponse'
 import type { StudentEntity } from '@student/entities/student'
 
+const VISIT_COUNT = 4
+
 describe('formatStudentResponse', () => {
   it('maps entity to StudentResponseDto', () => {
     const entity: StudentEntity = {
@@ -13,7 +15,7 @@ describe('formatStudentResponse', () => {
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T00:00:00.000Z'
     }
-    const dto = formatStudentResponse(entity)
+    const dto = formatStudentResponse(entity, VISIT_COUNT)
     expect(dto.id).toBe(1)
     expect(dto.nom).toBe('Dupont')
     expect(dto.prenom).toBe('Jean')
@@ -22,5 +24,6 @@ describe('formatStudentResponse', () => {
     expect(dto.fullName).toBe('Jean Dupont')
     expect(dto.createdAt).toBe('2024-01-01T00:00:00.000Z')
     expect(dto.updatedAt).toBe('2024-01-01T00:00:00.000Z')
+    expect(dto.visitCount).toBe(VISIT_COUNT)
   })
 })

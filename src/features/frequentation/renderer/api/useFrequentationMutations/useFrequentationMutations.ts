@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { resolveIpcErrorMessage } from '@lib/ipc/resolveIpcErrorMessage'
 import { frequentationKeys } from '../frequentationKeys'
 import { statisticsKeys } from '@statistics/api/statisticsKeys'
+import { isDuplicatesFound } from '@frequentation-shared'
 import type { CreateFrequentationBatchDto, UpdateFrequentationDto } from '@frequentation-shared'
 
 export function useCreateFrequentationBatch() {
@@ -16,7 +17,10 @@ export function useCreateFrequentationBatch() {
       }
       return result.data
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (isDuplicatesFound(data)) {
+        return
+      }
       queryClient.invalidateQueries({ queryKey: frequentationKeys.all })
       queryClient.invalidateQueries({ queryKey: statisticsKeys.all })
     }
@@ -34,7 +38,10 @@ export function useUpdateFrequentation() {
       }
       return result.data
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (isDuplicatesFound(data)) {
+        return
+      }
       queryClient.invalidateQueries({ queryKey: frequentationKeys.all })
       queryClient.invalidateQueries({ queryKey: statisticsKeys.all })
     }

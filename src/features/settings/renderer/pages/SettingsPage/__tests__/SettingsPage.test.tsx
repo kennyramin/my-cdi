@@ -32,6 +32,15 @@ function stubStatefulThemeApi() {
         return { success: true, data: preference }
       })
     },
+    backup: {
+      getStatus: vi.fn().mockResolvedValue({
+        success: true,
+        data: { lastBackupAt: null, automaticCount: 0 }
+      }),
+      create: vi.fn(),
+      restore: vi.fn(),
+      deleteAutomatic: vi.fn()
+    },
     getInitialThemePreference: vi.fn().mockReturnValue(DEFAULT_THEME_PREFERENCE)
   })
 }
@@ -84,5 +93,13 @@ describe('SettingsPage', () => {
     })
     expect(screen.getByRole('button', { name: 'Rose' })).toHaveAttribute('data-active', 'true')
     expect(screen.getByRole('button', { name: 'Clair' })).toHaveAttribute('data-active', 'true')
+  })
+
+  it('renders the data section with the backup status', async () => {
+    render(<SettingsPage />, { wrapper: makeWrapper() })
+
+    expect(screen.getByText('Données')).toBeInTheDocument()
+    expect(await screen.findByText('Dernière sauvegarde : jamais')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sauvegarder maintenant' })).toBeInTheDocument()
   })
 })

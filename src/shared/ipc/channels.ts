@@ -8,7 +8,9 @@ export const STUDENT_CHANNELS = {
   LIST: 'student.list',
   UPDATE: 'student.update',
   DELETE: 'student.delete',
-  IMPORT_CSV: 'student.importCsv'
+  IMPORT_CSV: 'student.importCsv',
+  ANONYMIZE: 'student.anonymize',
+  PREVIEW_CSV_REMOVAL: 'student.previewCsvRemoval'
 } as const
 
 export const FREQUENTATION_CHANNELS = {
@@ -30,9 +32,22 @@ export const SETTINGS_CHANNELS = {
   SET_THEME: 'settings.setTheme'
 } as const
 
+export const BACKUP_CHANNELS = {
+  CREATE: 'backup.create',
+  RESTORE: 'backup.restore',
+  GET_STATUS: 'backup.getStatus',
+  DELETE_AUTOMATIC: 'backup.deleteAutomatic'
+} as const
+
+export const EXPORT_CHANNELS = {
+  RUN: 'export.run'
+} as const
+
 export type AppChannel = (typeof APP_CHANNELS)[keyof typeof APP_CHANNELS]
 export type StudentChannel = (typeof STUDENT_CHANNELS)[keyof typeof STUDENT_CHANNELS]
 export type FrequentationChannel =
   (typeof FREQUENTATION_CHANNELS)[keyof typeof FREQUENTATION_CHANNELS]
 export type StatisticsChannel = (typeof STATISTICS_CHANNELS)[keyof typeof STATISTICS_CHANNELS]
 export type SettingsChannel = (typeof SETTINGS_CHANNELS)[keyof typeof SETTINGS_CHANNELS]
+export type BackupChannel = (typeof BACKUP_CHANNELS)[keyof typeof BACKUP_CHANNELS]
+export type ExportChannel = (typeof EXPORT_CHANNELS)[keyof typeof EXPORT_CHANNELS]

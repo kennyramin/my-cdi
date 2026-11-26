@@ -11,13 +11,36 @@
     "month": "Ce mois",
     "quarter": "Ce trimestre",
     "semester": "Ce semestre",
-    "year": "Cette année",
+    "schoolYear": "Année scolaire",
     "custom": "Personnalisé"
   },
   "charts": {
-    "weekly": "Fréquentation par jour",
+    "weekly": "Fréquentation par jour de la semaine",
+    "classes": "Fréquentation par classe",
+    "classesEmpty": "Aucune visite sur cette période",
     "activities": "Activités",
     "trend": "Évolution sur la période",
-    "visits": "visites"
+    "visits": "visites",
+    "dotTooltip_one": "{{date}} : {{count}} visite",
+    "dotTooltip_other": "{{date}} : {{count}} visites",
+    "trendSummary": "Du {{start}} au {{end}} : {{visits}} sur {{days}}, maximum {{max}} le {{maxDate}}",
+    "trendSummaryEmpty": "Du {{start}} au {{end}} : aucune visite",
+    "visitsCount_one": "{{count}} visite",
+    "visitsCount_other": "{{count}} visites",
+    "activeDays_one": "{{count}} jour avec visites",
+    "activeDays_other": "{{count}} jours avec visites"
+  },
+  "customRange": {
+    "start": "Date de début",
+    "end": "Date de fin",
+    "errors": {
+      "incomplete": "Renseignez les deux dates",
+      "endBeforeStart": "La date de fin doit être postérieure ou égale à la date de début"
+    }
+  },
+  "error": {
+    "title": "Impossible de charger les statistiques",
+    "retry": "Réessayer",
+    "refreshFailed": "Les données affichées n'ont pas pu être actualisées : {{message}}"
   }
 }

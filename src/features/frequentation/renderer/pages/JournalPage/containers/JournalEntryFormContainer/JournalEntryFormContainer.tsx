@@ -3,11 +3,11 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Controller } from 'react-hook-form'
 import dayjs from 'dayjs'
-import { Card } from '@ui/components/Card'
 import { Button } from '@ui/components/Button'
 import { Icon } from '@ui/components/Icon'
 import { Toast } from '@ui/components/Toast'
 import { useTypeToSearch } from '@ui/hooks/useTypeToSearch'
+import { DuplicateWarningDialogPresenter } from '@frequentation/presenters/DuplicateWarningDialogPresenter'
 import { ActivityGridPresenter } from '@frequentation/presenters/ActivityGridPresenter'
 import { buildActivityTiles } from '@frequentation/presenters/ActivityGridPresenter/helpers/buildActivityTiles'
 import { buildActivityTileNodes } from '@frequentation/presenters/ActivityGridPresenter/helpers/buildActivityTileNodes'
@@ -18,9 +18,17 @@ import type { AutocompleteOption } from '@ui/components/Autocomplete'
 import { TimeRowPresenter } from './presenters/TimeRowPresenter'
 import { periodFromTime } from './presenters/TimeRowPresenter/helpers/periodFromTime'
 
-import { EntryForm, SectionLabel } from './JournalEntryFormContainer.styles'
+import {
+  EntryForm,
+  FutureDateHelperText,
+  SUBMIT_BAR_ATTRIBUTE,
+  SectionLabel,
+  FormCard,
+  SubmitBar
+} from './JournalEntryFormContainer.styles'
 
 const TIME_FORMAT = 'HH:mm'
+const FUTURE_DATE_HELPER_ID = 'journal-future-date-helper'
 
 interface StudentChip {
   id: number
@@ -40,6 +48,7 @@ export function JournalEntryFormContainer({
   const { t } = useTranslation('frequentation')
   const [timePickerOpen, setTimePickerOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
+  const submitButtonRef = useRef<HTMLButtonElement | null>(null)
   useTypeToSearch(searchInputRef)
   const {
     form,
@@ -51,12 +60,24 @@ export function JournalEntryFormContainer({
     handleStudentSelect,
     handleStudentRemove,
     isStudentLoading,
+    isFutureDate,
     isSubmitting,
+    pendingDuplicates,
+    confirmDuplicates,
+    cancelDuplicates,
+    getActivityLabel,
     toast,
     dismissToast
   } = useJournalEntryForm({ selectedDate, onSubmitted })
 
-  const isDisabled = isSubmitting || !form.formState.isValid
+  // The clicked button is disabled while the request runs, so the browser drops focus to <body>
+  // and the dialog has nothing to restore it to: hand focus back explicitly on cancel/dismiss.
+  function handleCancelDuplicates() {
+    cancelDuplicates()
+    submitButtonRef.current?.focus()
+  }
+
+  const isDisabled = isSubmitting || !form.formState.isValid || isFutureDate
 
   function buildStudentChips(selectedIds: number[]): StudentChip[] {
     return studentOptions
@@ -85,7 +106,7 @@ export function JournalEntryFormContainer({
   }
 
   return (
-    <Card>
+    <FormCard>
       <SectionLabel variant="overline">{t('form.newEntry')}</SectionLabel>
       <Controller
         control={form.control}
@@ -139,17 +160,32 @@ export function JournalEntryFormContainer({
             />
           )}
         />
-        <Button
-          type="submit"
-          variant="primary"
-          fullWidth
-          disabled={isDisabled}
-          iconLeft={<Icon name="check_circle" />}
-        >
-          {t('form.submit')}
-        </Button>
+        <SubmitBar {...{ [SUBMIT_BAR_ATTRIBUTE]: '' }}>
+          <Button
+            ref={submitButtonRef}
+            type="submit"
+            variant="primary"
+            fullWidth
+            disabled={isDisabled}
+            aria-describedby={isFutureDate ? FUTURE_DATE_HELPER_ID : undefined}
+            iconLeft={<Icon name="check_circle" />}
+          >
+            {t('form.submit')}
+          </Button>
+          {isFutureDate && (
+            <FutureDateHelperText id={FUTURE_DATE_HELPER_ID} variant="caption" role="status">
+              {t('form.futureNotAllowed')}
+            </FutureDateHelperText>
+          )}
+        </SubmitBar>
       </EntryForm>
+      <DuplicateWarningDialogPresenter
+        duplicates={pendingDuplicates}
+        onConfirm={confirmDuplicates}
+        onCancel={handleCancelDuplicates}
+        getActivityLabel={getActivityLabel}
+      />
       <Toast toast={toast} onClose={dismissToast} />
-    </Card>
+    </FormCard>
   )
 }

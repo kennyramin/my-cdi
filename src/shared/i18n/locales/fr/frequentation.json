@@ -16,16 +16,22 @@
     "startsAt": "Date et heure",
     "selectStudents": "Élève(s)",
     "searchStudent": "Rechercher un élève…",
+    "futureNotAllowed": "Impossible d'enregistrer une présence dans le futur",
     "submit": "Enregistrer",
     "cancel": "Annuler",
-    "successMessage": "Fréquentation(s) enregistrée(s)"
+    "successMessage": "Fréquentation(s) enregistrée(s)",
+    "allFailed": "Aucune présence enregistrée : {{count}} élève(s) introuvable(s).",
+    "partialSuccess": "{{created}} présence(s) enregistrée(s). {{failed}} élève(s) introuvable(s), toujours sélectionné(s) pour réessayer."
   },
+  "anonymizedStudent": "Élève anonymisé",
   "loading": "Chargement…",
   "present": "Présents",
   "searchPlaceholder": "Rechercher…",
   "emptyHint": "Sélectionnez des élèves et enregistrez leur présence",
   "row": {
     "edit": "Modifier",
+    "select": "Sélectionner {{name}}",
+    "selectAnonymized": "Sélectionner un élève anonymisé ({{classe}}, {{time}})",
     "delete": "Supprimer",
     "confirmDelete": "Voulez-vous vraiment supprimer cette fréquentation ?"
   },
@@ -49,7 +55,22 @@
   },
   "edit": {
     "title": "Modifier l'entrée",
-    "save": "Enregistrer"
+    "save": "Enregistrer",
+    "date": "Date",
+    "time": "Heure",
+    "student": "Élève",
+    "anonymizedStudentLocked": "Un élève anonymisé ne peut pas être réassocié à une personne.",
+    "studentRequired": "Sélectionnez un élève dans la liste",
+    "dateTimeRequired": "Renseignez la date et l'heure",
+    "original": "Entrée d'origine"
+  },
+  "duplicate": {
+    "title": "Présence déjà enregistrée",
+    "intro_one": "{{count}} élève a déjà une présence à moins de {{minutes}} minutes :",
+    "intro_other": "{{count}} élèves ont déjà une présence à moins de {{minutes}} minutes :",
+    "line": "{{name}} — déjà enregistrée à {{time}} ({{activity}})",
+    "confirm": "Enregistrer quand même",
+    "cancel": "Annuler"
   },
   "calendar": {
     "previousMonth": "Mois précédent",

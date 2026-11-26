@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { AnonymizeStudentsResult } from '@student-shared'
 import { useBatchDelete } from '../useBatchDelete'
+import { useAnonymizeDialog } from '../../../../hooks/useAnonymizeDialog'
 
 interface UseStudentBatchActionsOptions {
   selectedIds: number[]
@@ -9,13 +11,21 @@ interface UseStudentBatchActionsOptions {
   onSelectAll: () => void
   onClearSelection: () => void
   onAfterDelete: () => void
+  onAfterAnonymize: (result: AnonymizeStudentsResult) => void
 }
 
 const NO_SELECTION = 0
 
 export function useStudentBatchActions(options: UseStudentBatchActionsOptions) {
-  const { selectedIds, selectedCount, totalCount, onSelectAll, onClearSelection, onAfterDelete } =
-    options
+  const {
+    selectedIds,
+    selectedCount,
+    totalCount,
+    onSelectAll,
+    onClearSelection,
+    onAfterDelete,
+    onAfterAnonymize
+  } = options
   const { t: tCommon } = useTranslation('common')
   const { t: tStudent } = useTranslation('student')
   const [showConfirm, setShowConfirm] = useState(false)
@@ -26,6 +36,8 @@ export function useStudentBatchActions(options: UseStudentBatchActionsOptions) {
       setShowConfirm(false)
     }
   })
+
+  const anonymize = useAnonymizeDialog({ onSuccess: onAfterAnonymize })
 
   const isAllSelected = selectedCount === totalCount && totalCount > NO_SELECTION
   const hasSelection = selectedCount > NO_SELECTION
@@ -44,6 +56,12 @@ export function useStudentBatchActions(options: UseStudentBatchActionsOptions) {
     }
   }
 
+  function handleAnonymizeClick() {
+    if (hasSelection) {
+      anonymize.openFor(selectedIds)
+    }
+  }
+
   function handleConfirmDelete() {
     batchDelete(selectedIds)
   }
@@ -56,7 +74,8 @@ export function useStudentBatchActions(options: UseStudentBatchActionsOptions) {
 
   return {
     showConfirm,
-    isPending,
+    isPending: isPending || anonymize.isPending,
+    anonymize,
     isAllSelected,
     hasSelection,
     selectToggleLabel,
@@ -66,6 +85,7 @@ export function useStudentBatchActions(options: UseStudentBatchActionsOptions) {
     confirmButtonLabel: tCommon('app.delete'),
     handleSelectToggle,
     handleDeleteClick,
+    handleAnonymizeClick,
     handleConfirmDelete,
     closeConfirm
   } as const

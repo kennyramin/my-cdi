@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger'
 
@@ -8,4 +8,5 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   iconLeft?: ReactNode
   iconRight?: ReactNode
   children?: ReactNode
+  ref?: Ref<HTMLButtonElement>
 }

@@ -20,10 +20,9 @@ export interface StudentTableRowPresenterProps {
   onCheckboxChange: () => void
   onCheckboxClick: (event: MouseEvent<HTMLButtonElement>) => void
   onEditClick: (event: MouseEvent<HTMLButtonElement>) => void
+  onAnonymizeClick: (event: MouseEvent<HTMLButtonElement>) => void
   onDeleteClick: (event: MouseEvent<HTMLButtonElement>) => void
 }
-
-const VISITS_PLACEHOLDER = '—'
 
 export function StudentTableRowPresenter({
   student,
@@ -32,9 +31,11 @@ export function StudentTableRowPresenter({
   onCheckboxChange,
   onCheckboxClick,
   onEditClick,
+  onAnonymizeClick,
   onDeleteClick
 }: StudentTableRowPresenterProps) {
   const { t } = useTranslation('common')
+  const { t: tStudent } = useTranslation('student')
 
   return (
     <tr data-selected={selected}>
@@ -44,7 +45,9 @@ export function StudentTableRowPresenter({
           onChange={onCheckboxChange}
           onClick={onCheckboxClick}
           size="small"
-          aria-label={t('app.select')}
+          slotProps={{
+            input: { 'aria-label': tStudent('row.selectStudent', { name: student.displayName }) }
+          }}
         />
       </td>
       <td>
@@ -58,10 +61,15 @@ export function StudentTableRowPresenter({
         <ClassTag>{student.classe}</ClassTag>
       </td>
       <IneCell>{student.ine}</IneCell>
-      <VisitsCell>{VISITS_PLACEHOLDER}</VisitsCell>
+      <VisitsCell>{student.visitCount}</VisitsCell>
       <td>
         <RowActions>
           <IconButton iconName="edit" aria-label={t('app.edit')} onClick={onEditClick} />
+          <IconButton
+            iconName="person_remove"
+            aria-label={tStudent('anonymize.rowActionNamed', { name: student.displayName })}
+            onClick={onAnonymizeClick}
+          />
           <IconButton
             iconName="delete"
             tone="danger"

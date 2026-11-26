@@ -6,6 +6,7 @@ import { Icon } from '@ui/components/Icon'
 import { CONTROL_HEIGHTS, FONT_WEIGHTS, RADII, TINT_ALPHAS, TYPE_SCALE } from '@ui/theme'
 
 const SEARCH_WRAPPER_MAX_WIDTH_PX = 220
+const SEARCH_MIN_WIDTH_PX = 140
 
 export const TITLE_ICON_FONT_SIZE_PX = TYPE_SCALE.h6
 export const SEARCH_ICON_FONT_SIZE_PX = TYPE_SCALE.subtitle1
@@ -29,6 +30,9 @@ export const ToolbarRoot = styled('div', {
 })(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
+  flexWrap: 'wrap',
+  rowGap: theme.spacing(1),
+  columnGap: theme.spacing(1.5),
   justifyContent: 'space-between',
   paddingInline: theme.spacing(2.5),
   paddingBlock: theme.spacing(2),
@@ -62,6 +66,10 @@ export const ToolbarControls = styled('div', {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
   display: 'flex',
+  flexWrap: 'wrap',
+  flex: '1 1 auto',
+  justifyContent: 'flex-end',
+  minWidth: 0,
   alignItems: 'center',
   gap: theme.spacing(1.5)
 }))
@@ -69,6 +77,8 @@ export const ToolbarControls = styled('div', {
 export const SearchField = styled(TextField, {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
+  flex: `1 1 ${SEARCH_MIN_WIDTH_PX}px`,
+  minWidth: `${SEARCH_MIN_WIDTH_PX}px`,
   maxWidth: `${SEARCH_WRAPPER_MAX_WIDTH_PX}px`,
   '& .MuiOutlinedInput-root': {
     height: `${CONTROL_HEIGHTS.sm}px`,

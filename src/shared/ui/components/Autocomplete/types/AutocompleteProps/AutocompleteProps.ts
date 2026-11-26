@@ -16,4 +16,12 @@ export interface AutocompleteProps<T> {
   maxResults?: number
   disableCloseOnSelect?: boolean
   inputRef?: RefObject<HTMLInputElement | null>
+  disabled?: boolean
+  ariaLabel?: string
+  ariaDescribedBy?: string
+  /** Id of the native input, so an external <label htmlFor> can name it. */
+  inputId?: string
+  invalid?: boolean
+  /** When false the typed/selected text is left to the caller (single-value fields). */
+  clearInputOnSelect?: boolean
 }

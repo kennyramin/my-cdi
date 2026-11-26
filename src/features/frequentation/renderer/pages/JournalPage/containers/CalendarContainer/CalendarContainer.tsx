@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Loader } from '@ui/components/Loader'
 import { useCalendar } from './hooks/useCalendar'
 import { useMonthEntryCounts } from './hooks/useMonthEntryCounts'
+import { useCalendarKeyboardNavigation } from './hooks/useCalendarKeyboardNavigation'
 import { buildCalendarMonth } from './helpers/buildCalendarMonth'
 import { CalendarDayPresenter } from './presenters/CalendarViewPresenter/presenters/CalendarDayPresenter'
 import { CalendarViewPresenter } from './presenters/CalendarViewPresenter'
@@ -21,6 +22,8 @@ export function CalendarContainer({ selectedDate, onSelectDate }: CalendarContai
     }
   )
   const { daysWithVisits, isLoading } = useMonthEntryCounts(viewMonth)
+  const cells = buildCalendarMonth(viewMonth, dayjs(), selectedDate, daysWithVisits)
+  const { tabbableIso, handleDayFocus, handleDayKeyDown } = useCalendarKeyboardNavigation(cells)
 
   if (isLoading) {
     return (
@@ -30,21 +33,26 @@ export function CalendarContainer({ selectedDate, onSelectDate }: CalendarContai
     )
   }
 
-  const cells = buildCalendarMonth(viewMonth, dayjs(), selectedDate, daysWithVisits).map(
-    (cell) => ({
-      ...cell,
-      onClick: () => {
-        selectDay(cell.iso)
-      }
-    })
-  )
   const weekdayNodes: ReactNode[] = WEEKDAY_LABELS.map((label) => (
     <WeekdayLabel key={label} variant="overline">
       {label}
     </WeekdayLabel>
   ))
   const dayNodes: ReactNode[] = cells.map((cell) => (
-    <CalendarDayPresenter key={cell.iso} cell={cell} onClick={cell.onClick} />
+    <CalendarDayPresenter
+      key={cell.iso}
+      cell={cell}
+      tabIndex={cell.iso === tabbableIso ? 0 : -1}
+      onClick={() => {
+        selectDay(cell.iso)
+      }}
+      onFocus={() => {
+        handleDayFocus(cell.iso)
+      }}
+      onKeyDown={(event) => {
+        handleDayKeyDown(event, cell.iso)
+      }}
+    />
   ))
 
   return (

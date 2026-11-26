@@ -29,6 +29,13 @@
       "when": 1788705488400,
       "tag": "0003_create_settings_table",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1795698164943,
+      "tag": "0004_anonymize_snapshot_nullable_student",
+      "breakpoints": true
     }
   ]
 }

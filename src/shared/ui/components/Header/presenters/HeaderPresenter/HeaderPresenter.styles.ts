@@ -1,3 +1,4 @@
+import type { ElementType } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { styled } from '@mui/material/styles'
@@ -32,7 +33,7 @@ export const TitleBlock = styled(Box, {
 
 export const Title = styled(Typography, {
   shouldForwardProp: shouldForwardStyledProp
-})(({ theme }) => ({
+})<{ component?: ElementType }>(({ theme }) => ({
   letterSpacing: '-0.3px',
   color: theme.palette.text.primary
 }))

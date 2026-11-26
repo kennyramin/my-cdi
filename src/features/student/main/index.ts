@@ -1,14 +1,18 @@
 import type { IpcMain } from 'electron'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import { StudentGatewayDrizzle } from './gateways/student'
+import { StudentGatewayDrizzle, type StudentDb } from './gateways/student'
 import { registerStudentController } from './controllers/student'
 
+export interface StudentModuleDeps {
+  createAutomaticBackup: (reason: 'anonymization') => Promise<string>
+}
+
 export function initializeStudentModule(
-  db: BetterSQLite3Database<Record<string, unknown>>,
-  ipcMain: IpcMain
+  db: StudentDb,
+  ipcMain: IpcMain,
+  deps: StudentModuleDeps
 ): StudentGatewayDrizzle {
   const studentGateway = new StudentGatewayDrizzle(db)
-  registerStudentController(ipcMain, studentGateway)
+  registerStudentController(ipcMain, studentGateway, deps.createAutomaticBackup)
   return studentGateway
 }
 

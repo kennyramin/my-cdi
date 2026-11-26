@@ -1,0 +1,1 @@
+export { getEntryAvatar } from './getEntryAvatar'

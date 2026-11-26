@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Autocomplete } from '../Autocomplete'
 import type { AutocompleteOption } from '../types/AutocompleteProps'
 
@@ -109,5 +109,69 @@ describe('Autocomplete', () => {
     const input = screen.getByRole('combobox')
     screen.getByRole('button', { name: 'focus search' }).click()
     expect(document.activeElement).toBe(input)
+  })
+  it('disables the input and opens no popup when disabled', async () => {
+    render(<Autocomplete options={STUDENT_OPTIONS} onSelect={vi.fn()} disabled />)
+    const input = screen.getByRole('combobox')
+    expect(input).toBeDisabled()
+    await userEvent.type(input, 'alic')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('exposes an accessible name through ariaLabel', () => {
+    render(<Autocomplete options={STUDENT_OPTIONS} onSelect={vi.fn()} ariaLabel="Élève" />)
+    expect(screen.getByRole('combobox', { name: 'Élève' })).toBeInTheDocument()
+  })
+
+  it('keeps the typed text after a selection when clearInputOnSelect is false', async () => {
+    const onInputChange = vi.fn()
+    render(
+      <Autocomplete
+        options={STUDENT_OPTIONS}
+        onSelect={vi.fn()}
+        onInputChange={onInputChange}
+        clearInputOnSelect={false}
+      />
+    )
+    await userEvent.click(screen.getByRole('combobox'))
+    await userEvent.click(screen.getByText('Alice Martin'))
+    expect(onInputChange).not.toHaveBeenCalledWith('')
+  })
+
+  it('keeps the selected label in a controlled input when clearInputOnSelect is false', async () => {
+    function Controlled() {
+      const [text, setText] = useState('')
+      return (
+        <Autocomplete
+          options={STUDENT_OPTIONS}
+          onSelect={(option) => setText(option.label)}
+          inputValue={text}
+          onInputChange={setText}
+          clearInputOnSelect={false}
+        />
+      )
+    }
+    render(<Controlled />)
+    await userEvent.click(screen.getByRole('combobox'))
+    await userEvent.click(screen.getByText('Alice Martin'))
+    expect(screen.getByRole('combobox')).toHaveValue('Alice Martin')
+  })
+
+  it('forwards inputId, ariaDescribedBy and invalid to the native input', () => {
+    render(
+      <>
+        <label htmlFor="my-input">Nom</label>
+        <Autocomplete
+          options={STUDENT_OPTIONS}
+          onSelect={vi.fn()}
+          inputId="my-input"
+          ariaDescribedBy="help"
+          invalid
+        />
+      </>
+    )
+    const input = screen.getByLabelText('Nom')
+    expect(input).toHaveAttribute('aria-describedby', 'help')
+    expect(input).toBeInvalid()
   })
 })

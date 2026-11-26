@@ -1,3 +1,4 @@
+import type { ElementType } from 'react'
 import Typography from '@mui/material/Typography'
 import { styled } from '@mui/material/styles'
 import { shouldForwardStyledProp } from '@ui/helpers/shouldForwardStyledProp'
@@ -15,7 +16,7 @@ export const CalendarHeader = styled('div', {
 
 export const MonthTitle = styled(Typography, {
   shouldForwardProp: shouldForwardStyledProp
-})({
+})<{ component?: ElementType }>({
   margin: 0
 })
 

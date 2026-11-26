@@ -1,3 +1,4 @@
+import type { ElementType } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { styled } from '@mui/material/styles'
@@ -33,7 +34,7 @@ export const StatCardLabel = styled(Typography, {
 
 export const StatCardValue = styled(Typography, {
   shouldForwardProp: shouldForwardStyledProp
-})({
+})<{ component?: ElementType }>({
   fontFamily: MONO_FONT_FAMILY,
   fontWeight: FONT_WEIGHTS.bold,
   letterSpacing: '-1px',

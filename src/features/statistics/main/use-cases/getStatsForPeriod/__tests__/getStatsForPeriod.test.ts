@@ -6,6 +6,7 @@ import type {
   FrequentationEntity,
   FrequentationWithStudentEntity
 } from '@frequentation/entities/frequentation'
+import { UNKNOWN_CLASS_LABEL } from '@frequentation-shared'
 import type { PeriodRangeDto } from '@statistics-shared'
 
 const TWO = 2
@@ -18,6 +19,7 @@ const FALLBACK_ENTITY: FrequentationEntity = {
   startsAt: '2026-01-15T09:00:00.000Z',
   activity: ActivityType.WORK,
   studentId: 1,
+  studentClasse: null,
   createdAt: '2026-01-15T09:00:00.000Z',
   updatedAt: '2026-01-15T09:00:00.000Z'
 }
@@ -52,6 +54,9 @@ function createMockFrequentationGateway(
     update: vi.fn().mockResolvedValue(null),
     delete: vi.fn().mockResolvedValue(false),
     deleteByStudentId: vi.fn().mockResolvedValue(0),
+    createManyChecked: vi.fn(),
+    updateChecked: vi.fn(),
+    getWithStudentById: vi.fn(),
     count: vi.fn().mockResolvedValue(0)
   }
 }
@@ -134,12 +139,13 @@ describe('getStatsForPeriod', () => {
     }
   })
 
-  it('computes morning and afternoon rates from UTC hour', async () => {
+  it('classifies visits by the local wall-clock hour of startsAt', async () => {
+    expect(new Date('2026-11-25T12:30:00').getUTCHours()).toBe(11) // precondition: TZ=Europe/Paris
     const gateway = createMockFrequentationGateway([
-      makeFrequentation({ id: 1, startsAt: '2026-01-15T08:00:00.000Z' }),
-      makeFrequentation({ id: TWO, startsAt: '2026-01-15T11:00:00.000Z' }),
-      makeFrequentation({ id: THREE, startsAt: '2026-01-15T14:00:00.000Z' }),
-      makeFrequentation({ id: FOUR, startsAt: '2026-01-15T16:00:00.000Z' })
+      makeFrequentation({ id: 1, startsAt: '2026-11-25T12:30:00' }),
+      makeFrequentation({ id: TWO, startsAt: '2026-06-10T13:15:00' }),
+      makeFrequentation({ id: THREE, startsAt: '2026-11-25T11:50:00' }),
+      makeFrequentation({ id: FOUR, startsAt: '2026-11-25T08:05:00' })
     ])
 
     const result = await getStatsForPeriod(gateway, RANGE)
@@ -176,6 +182,61 @@ describe('getStatsForPeriod', () => {
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.error).toContain('DB error')
+    }
+  })
+
+  it('groups class counts by the class carried by each visit', async () => {
+    const gateway = createMockFrequentationGateway([
+      makeFrequentation({ id: 1, studentClasse: '6A' }),
+      makeFrequentation({ id: 2, studentClasse: '6A' })
+    ])
+
+    const result = await getStatsForPeriod(gateway, RANGE)
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.classCounts).toEqual([{ classe: '6A', count: TWO }])
+    }
+  })
+
+  it('anonymized visits are counted in totals and class stats', async () => {
+    const gateway = createMockFrequentationGateway([
+      makeFrequentation({ id: 1, studentClasse: '6A' }),
+      makeFrequentation({
+        id: 2,
+        studentId: null,
+        studentNom: null,
+        studentPrenom: null,
+        studentIne: null,
+        studentClasse: '6A'
+      })
+    ])
+
+    const result = await getStatsForPeriod(gateway, RANGE)
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.totalVisits).toBe(TWO)
+      expect(result.data.classCounts).toEqual([{ classe: '6A', count: TWO }])
+    }
+  })
+
+  it('a visit carrying the unknown-class label counts under that label', async () => {
+    const gateway = createMockFrequentationGateway([
+      makeFrequentation({
+        studentId: null,
+        studentNom: null,
+        studentPrenom: null,
+        studentIne: null,
+        studentClasse: UNKNOWN_CLASS_LABEL
+      })
+    ])
+
+    const result = await getStatsForPeriod(gateway, RANGE)
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.classCounts).toEqual([{ classe: UNKNOWN_CLASS_LABEL, count: 1 }])
     }
   })
 })
