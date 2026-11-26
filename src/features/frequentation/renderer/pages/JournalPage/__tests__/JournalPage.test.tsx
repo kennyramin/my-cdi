@@ -98,4 +98,64 @@ describe('JournalPage', () => {
     expect(within(dialog).getByText('?')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Enregistrer' })).toBeEnabled()
   })
+
+  it('saves an anonymized entry with only its id and activity, without any student identity', async () => {
+    const user = userEvent.setup()
+    const ENTRY_ID = 9
+    const day = dayjs().format('YYYY-MM-DD')
+    const startsAt = `${day}T10:00:00`
+    const update = vi.fn().mockResolvedValue({
+      success: true,
+      data: {
+        id: ENTRY_ID,
+        startsAt,
+        activity: ActivityType.WORK,
+        studentId: null,
+        studentName: 'Élève anonymisé',
+        studentClass: '5C',
+        studentIne: '',
+        createdAt: startsAt,
+        updatedAt: startsAt
+      }
+    })
+    vi.stubGlobal('electronAPI', {
+      student: {
+        list: vi.fn().mockResolvedValue({ success: true, data: { students: [] } })
+      },
+      frequentation: {
+        getJournalEntries: vi.fn().mockResolvedValue({
+          success: true,
+          data: [
+            {
+              frequentation: {
+                id: ENTRY_ID,
+                startsAt,
+                activity: ActivityType.WORK,
+                studentId: null,
+                studentName: 'Élève anonymisé',
+                studentClass: '5C',
+                studentIne: '',
+                createdAt: startsAt,
+                updatedAt: startsAt
+              },
+              student: null
+            }
+          ]
+        }),
+        createBatch: vi.fn(),
+        update,
+        delete: vi.fn()
+      }
+    })
+    render(withQuery(<JournalPage />))
+    await user.click(await screen.findByText('Élève anonymisé'))
+    const dialog = await screen.findByRole('dialog')
+
+    await user.click(within(dialog).getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => {
+      expect(update).toHaveBeenCalledWith({ id: ENTRY_ID, activity: ActivityType.WORK })
+    })
+    expect(update.mock.calls[0]?.[0]).not.toHaveProperty('studentId')
+  })
 })

@@ -12,7 +12,7 @@ import { useJournalEntries } from '@frequentation/api/useFrequentationQueries'
 import { useActivityLabels } from '@frequentation/hooks/useActivityLabels'
 import { toJournalEntryViewModel } from '@frequentation/helpers/journalEntryTransformers'
 import { getActivityTone } from '@frequentation/helpers/activityFormatters'
-import { buildInitials, ANONYMOUS_INITIALS } from '@frequentation/helpers/buildInitials'
+import { getEntryAvatar } from '@frequentation/helpers/getEntryAvatar'
 import { useDeleteFrequentation } from '@frequentation/api/useFrequentationMutations'
 import { useJournalEntrySelection } from './hooks/useJournalEntrySelection'
 import { useEntryPeriodFilter } from './hooks/useEntryPeriodFilter'
@@ -120,16 +120,12 @@ export function JournalEntryListContainer({
   function buildRowProps(entry: JournalEntryViewModel): JournalEntryRowPresenterProps {
     const period = getEntryPeriod(entry.startsAt)
     const time = dayjs(entry.startsAt).format(TIME_FORMAT)
+    const avatar = getEntryAvatar(entry)
     return {
-      initials: entry.isAnonymized
-        ? ANONYMOUS_INITIALS
-        : buildInitials(entry.student.prenom, entry.student.nom),
-      avatarColorSeed: entry.student.id,
-      avatarNeutral: entry.isAnonymized,
+      initials: avatar.initials,
+      avatarColorSeed: avatar.colorSeed,
+      isAnonymized: entry.isAnonymized,
       displayName: entry.student.displayName,
-      selectName: entry.isAnonymized
-        ? t('row.anonymizedName', { classe: entry.student.classe, time })
-        : entry.student.displayName,
       classe: entry.student.classe,
       time,
       periodLabel: period === 'morning' ? t('period.morning') : t('period.afternoon'),

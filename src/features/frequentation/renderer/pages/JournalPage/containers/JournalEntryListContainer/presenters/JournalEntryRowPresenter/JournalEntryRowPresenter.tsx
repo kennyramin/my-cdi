@@ -19,9 +19,8 @@ import {
 export interface JournalEntryRowPresenterProps {
   initials: string
   avatarColorSeed: number | null
-  avatarNeutral: boolean
+  isAnonymized: boolean
   displayName: string
-  selectName: string
   classe: string
   time: string
   periodLabel: string
@@ -38,9 +37,8 @@ export interface JournalEntryRowPresenterProps {
 export function JournalEntryRowPresenter({
   initials,
   avatarColorSeed,
-  avatarNeutral,
+  isAnonymized,
   displayName,
-  selectName,
   classe,
   time,
   periodLabel,
@@ -54,6 +52,9 @@ export function JournalEntryRowPresenter({
   onDeleteClick
 }: JournalEntryRowPresenterProps) {
   const { t } = useTranslation('frequentation')
+  const selectLabel = isAnonymized
+    ? t('row.selectAnonymized', { classe, time })
+    : t('row.select', { name: displayName })
 
   return (
     <Row onClick={onRowClick} $isSelected={selected}>
@@ -62,9 +63,9 @@ export function JournalEntryRowPresenter({
         checked={selected}
         onChange={onSelectChange}
         onClick={(event) => event.stopPropagation()}
-        slotProps={{ input: { 'aria-label': t('row.select', { name: selectName }) } }}
+        slotProps={{ input: { 'aria-label': selectLabel } }}
       />
-      <Avatar initials={initials} colorSeed={avatarColorSeed} neutral={avatarNeutral} />
+      <Avatar initials={initials} colorSeed={avatarColorSeed} neutral={isAnonymized} />
       <RowMain>
         <StudentName>
           {displayName}

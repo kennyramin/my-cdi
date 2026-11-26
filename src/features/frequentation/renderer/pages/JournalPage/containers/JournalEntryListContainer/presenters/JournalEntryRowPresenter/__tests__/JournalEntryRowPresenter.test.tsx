@@ -15,9 +15,8 @@ const PERIOD_LABEL = 'Matin'
 const baseProps: JournalEntryRowPresenterProps = {
   initials: 'JD',
   avatarColorSeed: STUDENT_ID,
-  avatarNeutral: false,
+  isAnonymized: false,
   displayName: 'Jean Dupont',
-  selectName: 'Jean Dupont',
   classe: '3ème A',
   time: ENTRY_TIME,
   periodLabel: PERIOD_LABEL,
@@ -46,9 +45,8 @@ describe('JournalEntryRowPresenter', () => {
     const anonymizedProps = {
       initials: '?',
       avatarColorSeed: null,
-      avatarNeutral: true,
+      isAnonymized: true,
       displayName: 'Élève anonymisé',
-      selectName: 'un élève anonymisé (5C, 09:00)',
       classe: '5C'
     }
 
@@ -60,13 +58,21 @@ describe('JournalEntryRowPresenter', () => {
       expect(container.textContent).not.toMatch(/undefined|null/)
       const avatar = screen.getByText('?')
       const reference = renderRow({ initials: 'AB', avatarColorSeed: 1 })
-      const referenceAvatar = reference.container.querySelector('.MuiAvatar-root')
-      expect(referenceAvatar).not.toBeNull()
-      if (referenceAvatar) {
-        expect(getComputedStyle(avatar).backgroundColor).not.toBe(
-          getComputedStyle(referenceAvatar).backgroundColor
-        )
-      }
+      const referenceAvatar = reference.getByText('AB')
+      expect(referenceAvatar).toHaveClass('MuiAvatar-root')
+      expect(getComputedStyle(avatar).backgroundColor).not.toBe(
+        getComputedStyle(referenceAvatar).backgroundColor
+      )
+    })
+
+    it('hides the placeholder avatar from assistive technology', () => {
+      renderRow(anonymizedProps)
+      expect(screen.getByText('?').closest('[aria-hidden="true"]')).not.toBeNull()
+    })
+
+    it('keeps the identified avatar exposed', () => {
+      renderRow()
+      expect(screen.getByText('JD').closest('[aria-hidden="true"]')).toBeNull()
     })
 
     it('edit and delete buttons stay enabled', () => {

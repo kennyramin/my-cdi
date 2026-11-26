@@ -16,7 +16,13 @@ export function Avatar({
     ? theme.palette.action.disabledBackground
     : avatarColor(colorSeed, theme.palette).bg
   return (
-    <AvatarRoot className={className} $bg={bg} $neutral={isNeutral} $size={size}>
+    <AvatarRoot
+      className={className}
+      aria-hidden={isNeutral ? true : undefined}
+      $bg={bg}
+      $neutral={isNeutral}
+      $size={size}
+    >
       {initials}
     </AvatarRoot>
   )

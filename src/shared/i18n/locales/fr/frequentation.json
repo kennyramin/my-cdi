@@ -29,7 +29,7 @@
   "row": {
     "edit": "Modifier",
     "select": "Sélectionner {{name}}",
-    "anonymizedName": "un élève anonymisé ({{classe}}, {{time}})",
+    "selectAnonymized": "Sélectionner un élève anonymisé ({{classe}}, {{time}})",
     "delete": "Supprimer",
     "confirmDelete": "Voulez-vous vraiment supprimer cette fréquentation ?"
   },
