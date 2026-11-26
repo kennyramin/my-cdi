@@ -5,6 +5,8 @@ import type { UseCaseResult } from '@lib/use-case'
 import type { StudentGateway } from '@student/gateways/student'
 import type { StudentResponseDto, CreateStudentDto } from '@student-shared'
 
+const NEW_STUDENT_VISIT_COUNT = 0
+
 interface CreateStudentDeps {
   gateway: StudentGateway
 }
@@ -32,5 +34,5 @@ export async function createStudent(
   }
 
   const entity = await deps.gateway.create(parseResult.data)
-  return { success: true, data: formatStudentResponse(entity) }
+  return { success: true, data: formatStudentResponse(entity, NEW_STUDENT_VISIT_COUNT) }
 }

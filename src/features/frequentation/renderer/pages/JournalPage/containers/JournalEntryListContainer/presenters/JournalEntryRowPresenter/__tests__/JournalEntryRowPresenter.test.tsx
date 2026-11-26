@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@mui/material/styles'
 import i18n from '@shared/i18n/config'
@@ -21,6 +22,7 @@ const baseProps = {
   activityTone: 'work' as const,
   activityLabel: 'Travail',
   selected: false,
+  onSelectChange: vi.fn(),
   onRowClick: vi.fn(),
   onEditClick: vi.fn(),
   onDeleteClick: vi.fn()
@@ -36,15 +38,12 @@ function renderRow(props: Partial<Parameters<typeof JournalEntryRowPresenter>[0]
   )
 }
 
-function findRow(): Element {
-  const row = document.querySelector('[role="row"]')
-  if (!row) {
-    throw new Error('Row not found')
-  }
-  return row
-}
-
 describe('JournalEntryRowPresenter', () => {
+  it('does not use the invalid row role', () => {
+    renderRow()
+    expect(document.querySelector('[role="row"]')).toBeNull()
+  })
+
   it('renders student name, class, time, and activity label', () => {
     renderRow()
     expect(screen.getByText('Jean Dupont')).toBeInTheDocument()
@@ -68,7 +67,7 @@ describe('JournalEntryRowPresenter', () => {
   it('clicking the row triggers onRowClick', () => {
     const onRowClick = vi.fn()
     renderRow({ onRowClick })
-    fireEvent.click(findRow())
+    fireEvent.click(screen.getByRole('listitem'))
     expect(onRowClick).toHaveBeenCalledTimes(1)
   })
 
@@ -84,5 +83,68 @@ describe('JournalEntryRowPresenter', () => {
     renderRow({ onEditClick })
     fireEvent.click(screen.getByRole('button', { name: /modifier/i }))
     expect(onEditClick).toHaveBeenCalledTimes(1)
+  })
+
+  describe('selection checkbox', () => {
+    const CHECKBOX_NAME = 'Sélectionner Jean Dupont'
+
+    it('renders a real checkbox named "Sélectionner Jean Dupont"', () => {
+      renderRow()
+      const box = screen.getByRole('checkbox', { name: CHECKBOX_NAME })
+      expect(box).toBeInstanceOf(HTMLInputElement)
+      expect(box).toHaveAttribute('type', 'checkbox')
+    })
+
+    it('reflects selected through checked', () => {
+      const { unmount } = renderRow({ selected: false })
+      expect(screen.getByRole('checkbox', { name: CHECKBOX_NAME })).not.toBeChecked()
+      unmount()
+      renderRow({ selected: true })
+      expect(screen.getByRole('checkbox', { name: CHECKBOX_NAME })).toBeChecked()
+    })
+
+    it('clicking the checkbox calls onSelectChange once and not onRowClick', async () => {
+      const user = userEvent.setup()
+      const onSelectChange = vi.fn()
+      const onRowClick = vi.fn()
+      renderRow({ onSelectChange, onRowClick })
+      await user.click(screen.getByRole('checkbox', { name: CHECKBOX_NAME }))
+      expect(onSelectChange).toHaveBeenCalledTimes(1)
+      expect(onRowClick).not.toHaveBeenCalled()
+    })
+
+    it('Space on the focused checkbox calls onSelectChange once and not onRowClick or onEditClick', async () => {
+      const user = userEvent.setup()
+      const onSelectChange = vi.fn()
+      const onRowClick = vi.fn()
+      const onEditClick = vi.fn()
+      renderRow({ onSelectChange, onRowClick, onEditClick })
+      await user.tab()
+      expect(screen.getByRole('checkbox', { name: CHECKBOX_NAME })).toHaveFocus()
+      await user.keyboard(' ')
+      expect(onSelectChange).toHaveBeenCalledTimes(1)
+      expect(onRowClick).not.toHaveBeenCalled()
+      expect(onEditClick).not.toHaveBeenCalled()
+    })
+
+    it('Ctrl-click on the checkbox calls onSelectChange once and not onRowClick', () => {
+      const onSelectChange = vi.fn()
+      const onRowClick = vi.fn()
+      renderRow({ onSelectChange, onRowClick })
+      fireEvent.click(screen.getByRole('checkbox', { name: CHECKBOX_NAME }), { ctrlKey: true })
+      expect(onSelectChange).toHaveBeenCalledTimes(1)
+      expect(onRowClick).not.toHaveBeenCalled()
+    })
+
+    it('tab order is checkbox, edit, delete', async () => {
+      const user = userEvent.setup()
+      renderRow()
+      await user.tab()
+      expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: CHECKBOX_NAME }))
+      await user.tab()
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Modifier' }))
+      await user.tab()
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Supprimer' }))
+    })
   })
 })

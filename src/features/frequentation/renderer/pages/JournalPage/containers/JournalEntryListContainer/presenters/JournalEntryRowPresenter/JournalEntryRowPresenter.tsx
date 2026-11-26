@@ -10,6 +10,7 @@ import {
   PeriodTag,
   Row,
   RowActions,
+  RowCheckbox,
   RowMain,
   StudentName,
   TimeText
@@ -26,6 +27,7 @@ export interface JournalEntryRowPresenterProps {
   activityTone: ActivityTone
   activityLabel: string
   selected: boolean
+  onSelectChange: () => void
   onRowClick: (event: React.MouseEvent) => void
   onEditClick: (event: React.MouseEvent) => void
   onDeleteClick: (event: React.MouseEvent) => void
@@ -42,6 +44,7 @@ export function JournalEntryRowPresenter({
   activityTone,
   activityLabel,
   selected,
+  onSelectChange,
   onRowClick,
   onEditClick,
   onDeleteClick
@@ -49,7 +52,14 @@ export function JournalEntryRowPresenter({
   const { t } = useTranslation('frequentation')
 
   return (
-    <Row role="row" onClick={onRowClick} $isSelected={selected}>
+    <Row onClick={onRowClick} $isSelected={selected}>
+      <RowCheckbox
+        size="small"
+        checked={selected}
+        onChange={onSelectChange}
+        onClick={(event) => event.stopPropagation()}
+        slotProps={{ input: { 'aria-label': t('row.select', { name: displayName }) } }}
+      />
       <Avatar initials={initials} colorSeed={avatarColorSeed} />
       <RowMain>
         <StudentName>

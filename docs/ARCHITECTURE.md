@@ -294,12 +294,12 @@ export function CalendarViewPresenter({ dayNodes }: CalendarViewPresenterProps) 
 }
 ```
 
-Conditional rendering (`cond ? <A/> : null`) and early returns choosing *what* to render stay in presenters; everything else derived moves up.
+Conditional rendering (`cond ? <A/> : null`) and early returns choosing _what_ to render stay in presenters; everything else derived moves up.
 
 ### Styling: `styled()` in `.styles.ts`, theme as single source of truth
 
 - **Zero inline `sx={{...}}`** in feature or shared/ui components. All styling lives in `XPresenter.styles.ts` (or `XContainer.styles.ts`) as `styled()` components from `@mui/material/styles`.
-- **The MUI theme (`@ui/theme`) is the only source of design tokens.** `global.css` contains nothing but the font `@import` lines; element resets, scrollbar styling and the base body styles live in the `MuiCssBaseline` overrides in `theme.ts`. Never use CSS custom properties (`var(--...)`), hardcoded hex/rgba colors or raw px `fontSize` in components — resolve everything from the theme.
+- **The MUI theme (`@ui/theme`) is the only source of design tokens.** Fonts are bundled locally from npm (`@fontsource/inter`, `@fontsource/jetbrains-mono`, `material-icons`) and imported in `src/renderer/main.tsx`; there is no global stylesheet. Element resets, scrollbar styling and the base body styles live in the `MuiCssBaseline` overrides in `theme.ts`. Never use CSS custom properties (`var(--...)`), hardcoded hex/rgba colors or raw px `fontSize` in components — resolve everything from the theme.
 - MUI v9's `styled()` serialises style objects with emotion's raw CSS serializer and does **not** resolve MUI system props (`mt`, `px`, `gap`, `bgcolor`, …) — they would reach the stylesheet unprocessed and be silently dropped. Style objects therefore use **real CSS properties** and `theme.spacing()` for spacing-scale values (`paddingInline: theme.spacing(1)`, `backgroundColor`, `gap: theme.spacing(0.75)`), never system-prop shorthands.
 - Every styled call passes the shared prop filter:
 
@@ -355,7 +355,9 @@ Search is case-insensitive multi-field match (`nom`, `prenom`, `classe`, `ine`).
 Consistent 3-layer architecture for any list with multi-select:
 
 1. **Selection hook** (`useStudentSelection` / `useJournalEntrySelection`)
-   - `useState<number[]>` for `selectedIds`
+   - `useJournalEntrySelection(scopeKey)` resets when the scope (selected date) changes
+   - `useStudentSelection`: `useState<number[]>` for `selectedIds`
+   - `useJournalEntrySelection`: `useState<{ scopeKey, ids }>`; ids are only exposed while `scopeKey` matches the current scope
    - `toggle(id)`, `selectAll(ids)`, `clearSelection()`, `isSelected(id)`
 
 2. **Batch actions container** (`StudentBatchActionsContainer` / `JournalBatchActionsContainer`)
@@ -495,6 +497,7 @@ Per [React docs](https://react.dev/learn/you-might-not-need-an-effect), `useEffe
 - `usePageTitle` — syncs with `document.title`
 - `useKeyboardShortcuts` — syncs with `document` key events
 - `useAutoUpdater` — syncs with Electron auto-updater
+- `useElementWidth` — syncs with the browser `ResizeObserver` (measured chart width)
 
 **Forbidden in all other cases** — derive state during render, not in effects.
 
@@ -526,16 +529,17 @@ Feature dialogs (e.g., `JournalEntryEditDialogPresenter`) use `Modal` directly. 
 
 Gateway methods follow a strict naming convention:
 
-| Action    | Pattern       | Example                 |
-| --------- | ------------- | ----------------------- |
-| Create    | `create`      | `create(student)`       |
-| Read one  | `getById`     | `getById(id)`           |
-| Read by   | `getByXxx`    | `getByClass(class)`     |
-| Read all  | `getAll`      | `getAll()`              |
-| Update    | `update`      | `update(id, data)`      |
-| Delete    | `delete`      | `delete(id)`            |
-| Delete by | `deleteByXxx` | `deleteByStudentId(id)` |
-| Count     | `count`       | `count()`               |
+| Action    | Pattern                   | Example                                  |
+| --------- | ------------------------- | ---------------------------------------- |
+| Create    | `create`                  | `create(student)`                        |
+| Read one  | `getById`                 | `getById(id)`                            |
+| Read by   | `getByXxx`                | `getByClass(class)`                      |
+| Read all  | `getAll`                  | `getAll()`                               |
+| Update    | `update`                  | `update(id, data)`                       |
+| Delete    | `delete`                  | `delete(id)`                             |
+| Delete by | `deleteByXxx`             | `deleteByStudentId(id)`                  |
+| Delete by | `deleteOlderThan`         | `deleteOlderThan(cutoff)`                |
+| Count     | `count`                   | `count()`                                |
 
 No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single reads, never throws for missing rows.
 
@@ -543,10 +547,11 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 
 ## 17. Date / Time Handling
 
-- **Storage**: dates stored as ISO strings in SQLite; time-of-day stored as `HH:mm` strings.
+- **Storage**: visit start times stored as local wall-clock strings `YYYY-MM-DDTHH:mm:ss` (no timezone suffix) in SQLite; time-of-day stored as `HH:mm` strings.
 - **Display**: `formatDate` (`DD/MM/YYYY`) and `formatDateTime` (`DD/MM/YYYY HH:mm`) via `dayjs` with French locale.
 - **UI**: MUI X Date Pickers wrapped in `LocalizationProvider` with `AdapterDayjs` and `adapterLocale="fr"`.
-- **Cleanup**: `CLEANUP_RETENTION_YEARS = 2` — old frequentations deleted on startup.
+- **Legacy rows**: a few development databases (written 2026-04-30 to 2026-05-03) hold `…Z` suffixed timestamps; statistics read them as a UTC hour while the Journal reads them as local time. No migration — production data uses local wall-clock strings only.
+- **Cleanup**: `CLEANUP_RETENTION_YEARS = 2` — old frequentations deleted on startup (local cutoff, single `DELETE … WHERE starts_at < ?`).
 
 ---
 
@@ -580,11 +585,14 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 **Frontend pure helpers transform DTOs into SVG primitives:**
 
 - `buildDonutSlices(activityCounts)` → SVG path `d` strings + colors
-- `buildTrendPath(dailyCounts, dimensions)` → SVG path `M...L...`, area path, dot coordinates, Y-axis labels
+- `buildTrendPath(dailyCounts, range, dimensions)` → time-scaled SVG path `M...L...`, area path, dot coordinates, zero-based Y-axis labels and first/last-day X labels (`dimensions.width` comes from `useElementWidth`, the measured container width)
 - `buildWeeklyBars(dailyCounts)` → bar heights in px, weekday labels, weekend vs weekday colors
+- `buildClassBars(classCounts)` → top-10 class rows with proportional bar widths (non-zero shares keep a minimum visible width); rendered as plain styled boxes in the "visits by class" card
 - `svgArc()` computes SVG arc paths for donut slices
 
 Presenters (`ActivityDonutChart`, `MonthlyTrendChart`, `WeeklyBarChart`) render raw `<svg>` elements from these helpers.
+
+**Range travels with the data.** `useStatsForPeriod` returns `{ range, stats }`; with `keepPreviousData`, the page passes the range of the *displayed* data (`dataRange`) to the trend chart and marks the content `data-stale` / `aria-busy` while placeholder data is shown or the custom range is invalid. Custom ranges treat years outside `MIN_CUSTOM_YEAR`..`MAX_CUSTOM_YEAR` as `incomplete` (announced politely with `role="status"`; only `endBeforeStart` is a `role="alert"`).
 
 ---
 
@@ -712,7 +720,7 @@ const activityIcons: Record<ActivityType, string> = { ... }
 
 ### Theme Factory (`@ui/theme`)
 
-`src/shared/ui/theme/theme.ts` is a single module (no barrel-file split, §22.6) that owns the whole design system: the `ACCENT_COLORS`/`THEME_PALETTES` palette maps, the numeric token exports (`TYPE_SCALE`, `FONT_WEIGHTS`, `RADII`, `CONTROL_HEIGHTS`, `TINT_ALPHAS`, `MONO_FONT_FAMILY`), the palette augmentation (`sidebar`/`surface`/`dividerStrong`/`activity` slots) and the `createAppTheme(preference)` factory. The factory caches instances in a `Map` keyed by `accent:mode`, so switching themes reuses objects instead of rebuilding them. A theme is a **complete** color change: `THEME_PALETTES[accent][mode]` provides hue-tinted sidebar/surface/card/text/border tokens and shadows per accent×mode (the purple entries are the original default palette, unchanged), while status colors (`info`/`success`/`warning`/`error` and the non-relaxation `activity` tones) stay semantic and follow only the mode, never the brand hue. Accent colors cover primary (with a contrast-safe `contrastText`, e.g. dark text on yellow) and the accent-derived `activity.relaxation` tone. `THEME_BACKGROUNDS[accent][mode]` in `src/shared/types/theme.ts` is the single source for both `palette.background.default` and the main-process `BrowserWindow.backgroundColor`, so the themed window background is painted before React mounts. `export const theme` is the default purple/dark instance, kept for consumers outside the React tree (tests, non-hook helpers). Components must receive theme-dependent values through `useTheme()`/styled callbacks, not through module-level constants. MUI's `colorSchemes`/`useColorScheme` API was deliberately not adopted: in v9 those hooks exist only on the CSS-variables provider, while this app uses the emotion `ThemeProvider` — swapping complete themes via the `createAppTheme` factory is the documented pattern for multiple branded themes on that path.
+`src/shared/ui/theme/theme.ts` is a single module (no barrel-file split, §22.6) that owns the whole design system: the `ACCENT_COLORS`/`THEME_PALETTES` palette maps, the numeric token exports (`TYPE_SCALE`, `FONT_WEIGHTS`, `RADII`, `CONTROL_HEIGHTS`, `TINT_ALPHAS`, `MONO_FONT_FAMILY`), the palette augmentation (`sidebar`/`surface`/`dividerStrong`/`focusRing`/`activity` slots; `focusRing` is a per-accent×mode shade tested at >= 3:1 on every backdrop and drives the global `:focus-visible` ring, so components must not define their own translucent focus outlines) and the `createAppTheme(preference)` factory. The factory caches instances in a `Map` keyed by `accent:mode`, so switching themes reuses objects instead of rebuilding them. A theme is a **complete** color change: `THEME_PALETTES[accent][mode]` provides hue-tinted sidebar/surface/card/text/border tokens and shadows per accent×mode (the purple entries are the original default palette, unchanged), while status colors (`info`/`success`/`warning`/`error` and the non-relaxation `activity` tones) stay semantic and follow only the mode, never the brand hue. Accent colors cover primary (with a contrast-safe `contrastText`, e.g. dark text on yellow) and the accent-derived `activity.relaxation` tone. `THEME_BACKGROUNDS[accent][mode]` in `src/shared/types/theme.ts` is the single source for both `palette.background.default` and the main-process `BrowserWindow.backgroundColor`, so the themed window background is painted before React mounts. `export const theme` is the default purple/dark instance, kept for consumers outside the React tree (tests, non-hook helpers). Components must receive theme-dependent values through `useTheme()`/styled callbacks, not through module-level constants. MUI's `colorSchemes`/`useColorScheme` API was deliberately not adopted: in v9 those hooks exist only on the CSS-variables provider, while this app uses the emotion `ThemeProvider` — swapping complete themes via the `createAppTheme` factory is the documented pattern for multiple branded themes on that path.
 
 ### Enum-to-Display Metadata
 
@@ -729,7 +737,7 @@ const activityIcons: Record<ActivityType, string> = { ... }
 | `Modal`         | Dialog wrapper with custom width mapping       |
 | `ErrorBoundary` | Global render-error catch + fallback UI        |
 
-`.styles.ts` files export `styled()` components (plus `*_PX` size constants) built with `@mui/material/styles` `styled()` using plain CSS properties and `theme.spacing()` — never MUI system props — and the shared `shouldForwardStyledProp` filter; not MUI `sx`. All design tokens come from the MUI theme (`@ui/theme`): palette (including the custom `sidebar`/`surface`/`dividerStrong`/`activity` slots), `TYPE_SCALE` + `FONT_WEIGHTS` for typography, `RADII`, `TINT_ALPHAS` and `theme.shadows[1..4]`. `global.css` contains only the font imports.
+`.styles.ts` files export `styled()` components (plus `*_PX` size constants) built with `@mui/material/styles` `styled()` using plain CSS properties and `theme.spacing()` — never MUI system props — and the shared `shouldForwardStyledProp` filter; not MUI `sx`. All design tokens come from the MUI theme (`@ui/theme`): palette (including the custom `sidebar`/`surface`/`dividerStrong`/`activity` slots), `TYPE_SCALE` + `FONT_WEIGHTS` for typography, `RADII`, `TINT_ALPHAS` and `theme.shadows[1..4]`. Fonts are bundled locally from npm (`@fontsource/inter`, `@fontsource/jetbrains-mono`, `material-icons`) and imported in `src/renderer/main.tsx`; there is no global stylesheet.
 
 ---
 
@@ -778,10 +786,12 @@ Every artifact lives as close as possible to its consumer. Only hoist when share
 | `@frequentation/*`      | `src/features/frequentation/renderer/*` | `src/features/frequentation/main/*` |
 | `@statistics/*`         | `src/features/statistics/renderer/*`    | `src/features/statistics/main/*`    |
 | `@settings/*`           | `src/features/settings/renderer/*`      | `src/features/settings/main/*`      |
+| `@backup/*`             | `src/features/backup/renderer/*`        | `src/features/backup/main/*`        |
 | `@student-shared`       | `src/features/student/shared`           | `src/features/student/shared`       |
 | `@frequentation-shared` | `src/features/frequentation/shared`     | `src/features/frequentation/shared` |
 | `@statistics-shared`    | `src/features/statistics/shared`        | `src/features/statistics/shared`    |
 | `@settings-shared`      | `src/features/settings/shared`          | `src/features/settings/shared`      |
+| `@backup-shared`        | `src/features/backup/shared`            | `src/features/backup/shared`        |
 | `@shared/*`             | `src/shared/*`                          | `src/shared/*`                      |
 | `@ui/*`                 | `src/shared/ui/*`                       | N/A                                 |
 | `@lib`                  | `src/shared/lib`                        | `src/shared/lib`                    |
@@ -809,6 +819,10 @@ Every artifact lives as close as possible to its consumer. Only hoist when share
 ### Test Bootstrapping
 
 `vitest.config.ts` loads `shared/test/setup.ts` which imports `@testing-library/jest-dom/vitest` matchers.
+
+`vitest.config.ts` sets `process.env.TZ = 'Europe/Paris'` so the suite runs in the users' timezone.
+
+`npm run check:layout` (Electron + Playwright, not part of vitest; needs `PLAYWRIGHT_MODULE` pointing at a Playwright install) checks overflow, the sticky journal submit bar and keyboard-focus visibility on the built app. It leaves `better-sqlite3` on the Electron ABI, so run `npm test` (which realigns) or `npm run rebuild:tests` before using vitest again.
 
 ### Renderer Test Mocking
 

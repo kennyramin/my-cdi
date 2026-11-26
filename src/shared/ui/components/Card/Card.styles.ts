@@ -5,7 +5,7 @@ import type { CardPadding } from './types/CardProps'
 
 const PADDING_NONE_STEPS = 0
 const PADDING_COMPACT_STEPS = 2
-const PADDING_DEFAULT_STEPS = 2.5
+export const PADDING_DEFAULT_STEPS = 2.5
 
 const PADDING_STEPS: Record<CardPadding, number> = {
   none: PADDING_NONE_STEPS,

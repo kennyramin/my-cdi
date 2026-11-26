@@ -12,7 +12,7 @@ describe('usePeriodFilter', () => {
       'Ce mois',
       'Ce trimestre',
       'Ce semestre',
-      'Cette année',
+      'Année scolaire',
       'Personnalisé'
     ])
   })
@@ -24,7 +24,7 @@ describe('usePeriodFilter', () => {
     ])
   })
 
-  it('forwards clicks for enabled buttons', () => {
+  it('forwards clicks for preset buttons', () => {
     const onChange = vi.fn()
     const buttons = renderHook(() => usePeriodFilter('month', onChange)).result.current
     const week = buttons.find((button) => button.key === 'week')
@@ -32,12 +32,11 @@ describe('usePeriodFilter', () => {
     expect(onChange).toHaveBeenCalledWith('week')
   })
 
-  it('swallows clicks for the disabled custom button', () => {
+  it('forwards clicks for the custom button', () => {
     const onChange = vi.fn()
     const buttons = renderHook(() => usePeriodFilter('month', onChange)).result.current
     const custom = buttons.find((button) => button.key === 'custom')
-    expect(custom?.disabled).toBe(true)
     custom?.onSelect()
-    expect(onChange).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenCalledWith('custom')
   })
 })

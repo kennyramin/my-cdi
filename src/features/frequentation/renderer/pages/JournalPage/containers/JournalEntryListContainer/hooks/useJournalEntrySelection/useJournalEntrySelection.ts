@@ -1,18 +1,36 @@
 import { useState } from 'react'
 
-export function useJournalEntrySelection() {
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
+interface SelectionState {
+  scopeKey: string
+  ids: number[]
+}
+
+const EMPTY_IDS: number[] = []
+
+export function useJournalEntrySelection(scopeKey: string) {
+  const [selection, setSelection] = useState<SelectionState>({ scopeKey, ids: EMPTY_IDS })
+
+  // Adjust state while rendering: a selection belongs to one scope; drop it when the scope changes.
+  if (selection.scopeKey !== scopeKey) {
+    setSelection({ scopeKey, ids: EMPTY_IDS })
+  }
+
+  const selectedIds = selection.scopeKey === scopeKey ? selection.ids : EMPTY_IDS
 
   function toggle(id: number) {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]))
+    setSelection((prev) => {
+      const base = prev.scopeKey === scopeKey ? prev.ids : EMPTY_IDS
+      const ids = base.includes(id) ? base.filter((sid) => sid !== id) : [...base, id]
+      return { scopeKey, ids }
+    })
   }
 
   function selectAll(ids: number[]) {
-    setSelectedIds(ids)
+    setSelection({ scopeKey, ids })
   }
 
   function clearSelection() {
-    setSelectedIds([])
+    setSelection({ scopeKey, ids: EMPTY_IDS })
   }
 
   function isSelected(id: number) {

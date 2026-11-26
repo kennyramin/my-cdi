@@ -47,10 +47,6 @@ export const AccentSwatchButton = styled('button', {
       '&::before': {
         boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, TINT_ALPHAS.border)}`
       }
-    },
-    '&:focus-visible': {
-      outline: `2px solid ${alpha(theme.palette.primary.main, TINT_ALPHAS.border)}`,
-      outlineOffset: '2px'
     }
   })
 )

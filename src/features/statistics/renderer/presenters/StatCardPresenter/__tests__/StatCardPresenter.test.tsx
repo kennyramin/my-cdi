@@ -22,6 +22,19 @@ describe('StatCardPresenter', () => {
     expect(screen.getByText('1,247')).toBeInTheDocument()
   })
 
+  it('keeps the value out of the heading outline (the label names the card)', () => {
+    render(
+      <StatCardPresenter
+        iconName="people"
+        iconBg={SAMPLE_ICON_BG}
+        iconColor={SAMPLE_ICON_COLOR}
+        label="Visites totales"
+        value="1,247"
+      />
+    )
+    expect(screen.queryByRole('heading')).toBeNull()
+  })
+
   it('renders the delta with up sign when sign is up', () => {
     render(
       <StatCardPresenter

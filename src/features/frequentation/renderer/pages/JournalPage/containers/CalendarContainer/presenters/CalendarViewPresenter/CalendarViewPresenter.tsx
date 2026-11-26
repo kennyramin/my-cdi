@@ -17,7 +17,9 @@ export function CalendarViewPresenter({
   return (
     <Card>
       <CalendarHeader>
-        <MonthTitle variant="subtitle1">{monthLabel}</MonthTitle>
+        <MonthTitle variant="subtitle1" component="h2">
+          {monthLabel}
+        </MonthTitle>
         <NavGroup>
           <IconButton iconName="chevron_left" aria-label={prevLabel} onClick={onPrev} />
           <IconButton iconName="today" aria-label={todayLabel} onClick={onToday} />

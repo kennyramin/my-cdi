@@ -21,5 +21,6 @@ export async function getStudent(
     return { success: false, error: 'Student not found', code: ErrorCode.STUDENT_NOT_FOUND }
   }
 
-  return { success: true, data: formatStudentResponse(entity) }
+  const visitCount = await deps.gateway.countVisitsByStudentId(entity.id)
+  return { success: true, data: formatStudentResponse(entity, visitCount) }
 }

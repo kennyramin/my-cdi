@@ -19,3 +19,11 @@ export const EntriesScroll = styled('div', {
   overflowY: 'auto',
   padding: theme.spacing(1)
 }))
+
+export const EntriesList = styled('ul', {
+  shouldForwardProp: shouldForwardStyledProp
+})({
+  listStyle: 'none',
+  margin: 0,
+  padding: 0
+})

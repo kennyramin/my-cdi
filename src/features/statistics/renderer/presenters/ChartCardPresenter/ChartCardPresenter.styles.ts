@@ -1,3 +1,4 @@
+import type { ElementType } from 'react'
 import Typography from '@mui/material/Typography'
 import { styled } from '@mui/material/styles'
 import { shouldForwardStyledProp } from '@ui/helpers/shouldForwardStyledProp'
@@ -5,7 +6,7 @@ import { Icon } from '@ui/components/Icon'
 
 export const ChartCardTitle = styled(Typography, {
   shouldForwardProp: shouldForwardStyledProp
-})(({ theme }) => ({
+})<{ component?: ElementType }>(({ theme }) => ({
   color: theme.palette.text.primary,
   marginBottom: theme.spacing(2),
   display: 'flex',

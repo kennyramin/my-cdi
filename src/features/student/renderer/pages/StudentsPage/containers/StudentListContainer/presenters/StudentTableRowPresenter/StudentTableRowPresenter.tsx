@@ -23,8 +23,6 @@ export interface StudentTableRowPresenterProps {
   onDeleteClick: (event: MouseEvent<HTMLButtonElement>) => void
 }
 
-const VISITS_PLACEHOLDER = '—'
-
 export function StudentTableRowPresenter({
   student,
   initials,
@@ -35,6 +33,7 @@ export function StudentTableRowPresenter({
   onDeleteClick
 }: StudentTableRowPresenterProps) {
   const { t } = useTranslation('common')
+  const { t: tStudent } = useTranslation('student')
 
   return (
     <tr data-selected={selected}>
@@ -44,7 +43,9 @@ export function StudentTableRowPresenter({
           onChange={onCheckboxChange}
           onClick={onCheckboxClick}
           size="small"
-          aria-label={t('app.select')}
+          slotProps={{
+            input: { 'aria-label': tStudent('row.selectStudent', { name: student.displayName }) }
+          }}
         />
       </td>
       <td>
@@ -58,7 +59,7 @@ export function StudentTableRowPresenter({
         <ClassTag>{student.classe}</ClassTag>
       </td>
       <IneCell>{student.ine}</IneCell>
-      <VisitsCell>{VISITS_PLACEHOLDER}</VisitsCell>
+      <VisitsCell>{student.visitCount}</VisitsCell>
       <td>
         <RowActions>
           <IconButton iconName="edit" aria-label={t('app.edit')} onClick={onEditClick} />

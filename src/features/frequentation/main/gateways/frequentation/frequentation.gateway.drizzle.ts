@@ -1,5 +1,5 @@
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import { eq, and, gte, lte } from 'drizzle-orm'
+import { eq, and, gte, lt, lte } from 'drizzle-orm'
 import type { FrequentationGateway } from './frequentation.gateway'
 import type {
   FrequentationEntity,
@@ -157,6 +157,14 @@ export class FrequentationGatewayDrizzle implements FrequentationGateway {
     await this.db.delete(frequentationTable).where(eq(frequentationTable.studentId, studentId))
     const after = await this.count()
     return before - after
+  }
+
+  async deleteOlderThan(cutoff: string): Promise<number> {
+    const result = this.db
+      .delete(frequentationTable)
+      .where(lt(frequentationTable.startsAt, cutoff))
+      .run()
+    return result.changes
   }
 
   async count(): Promise<number> {

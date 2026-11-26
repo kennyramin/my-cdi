@@ -4,7 +4,8 @@ import {
   STUDENT_CHANNELS,
   FREQUENTATION_CHANNELS,
   STATISTICS_CHANNELS,
-  SETTINGS_CHANNELS
+  SETTINGS_CHANNELS,
+  BACKUP_CHANNELS
 } from '@shared/ipc/channels'
 import { UPDATER_CHANNELS, type UpdaterChannel } from '@shared/ipc/updaterChannels'
 import { parseThemePreferenceFromArgv } from '@lib/themePreference'
@@ -47,6 +48,12 @@ const electronAPI = {
   settings: {
     getTheme: () => invoke(SETTINGS_CHANNELS.GET_THEME, undefined),
     setTheme: (input: unknown) => invoke(SETTINGS_CHANNELS.SET_THEME, input)
+  },
+  backup: {
+    create: () => invoke(BACKUP_CHANNELS.CREATE, undefined),
+    restore: (input: unknown) => invoke(BACKUP_CHANNELS.RESTORE, input),
+    getStatus: () => invoke(BACKUP_CHANNELS.GET_STATUS, undefined),
+    deleteAutomatic: () => invoke(BACKUP_CHANNELS.DELETE_AUTOMATIC, undefined)
   },
   getInitialThemePreference: () => parseThemePreferenceFromArgv(process.argv),
   getAppVersion: async (): Promise<string> => {

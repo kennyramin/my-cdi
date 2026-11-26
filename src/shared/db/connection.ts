@@ -22,6 +22,13 @@ export function getDb() {
   return databaseInstance
 }
 
+export function getSqlite(): Database.Database {
+  if (!sqliteInstance) {
+    throw new Error('Database not initialized. Call createDbConnection() first.')
+  }
+  return sqliteInstance
+}
+
 export function closeDbConnection() {
   sqliteInstance?.pragma('wal_checkpoint(TRUNCATE)')
   sqliteInstance?.close()

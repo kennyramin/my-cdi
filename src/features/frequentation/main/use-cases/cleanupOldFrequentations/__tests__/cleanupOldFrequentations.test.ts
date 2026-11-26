@@ -1,10 +1,16 @@
 import { describe, it, expect, vi } from 'vitest'
-import { ActivityType } from '@types'
-import { cleanupOldFrequentations, CLEANUP_RETENTION_YEARS } from '../cleanupOldFrequentations'
+import {
+  cleanupOldFrequentations,
+  buildRetentionCutoff,
+  CLEANUP_RETENTION_YEARS
+} from '../cleanupOldFrequentations'
 import type { FrequentationGateway } from '@frequentation/gateways/frequentation'
-import type { FrequentationWithStudentEntity } from '@frequentation/entities/frequentation'
 
-const EXTRA_YEARS = 1
+const NOW_YEAR = 2026
+const NOW_MONTH_INDEX = 10
+const NOW_DAY = 25
+const NOW_MINUTES = 30
+const DELETED_COUNT = 3
 
 function createMockGateway(overrides: Partial<FrequentationGateway> = {}): FrequentationGateway {
   return {
@@ -16,70 +22,39 @@ function createMockGateway(overrides: Partial<FrequentationGateway> = {}): Frequ
     update: vi.fn(),
     delete: vi.fn().mockResolvedValue(true),
     deleteByStudentId: vi.fn(),
+    deleteOlderThan: vi.fn().mockResolvedValue(0),
     count: vi.fn().mockResolvedValue(0),
     ...overrides
   }
 }
 
-function buildOldEntry(): FrequentationWithStudentEntity {
-  const old = new Date()
-  old.setFullYear(old.getFullYear() - (CLEANUP_RETENTION_YEARS + EXTRA_YEARS))
-  return {
-    id: 1,
-    startsAt: old.toISOString(),
-    activity: ActivityType.WORK,
-    studentId: 1,
-    studentNom: 'Dupont',
-    studentPrenom: 'Jean',
-    studentClasse: '6ème A',
-    studentIne: '12345678X',
-    createdAt: old.toISOString(),
-    updatedAt: old.toISOString()
-  }
+function buildNow(): Date {
+  return new Date(NOW_YEAR, NOW_MONTH_INDEX, NOW_DAY, 0, NOW_MINUTES, 0)
 }
 
 describe('cleanupOldFrequentations', () => {
-  it('returns deletedCount of 0 when no entries', async () => {
-    const gateway = createMockGateway()
-    const result = await cleanupOldFrequentations(gateway)
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.deletedCount).toBe(0)
-    }
+  it('builds a local cutoff two years back', () => {
+    expect(buildRetentionCutoff(buildNow())).toBe('2024-11-25T00:30:00')
   })
 
-  it('deletes entries older than retention years', async () => {
-    const oldEntry = buildOldEntry()
+  it('deletes with a single gateway call', async () => {
     const gateway = createMockGateway({
-      getAll: vi.fn().mockResolvedValue([oldEntry])
+      deleteOlderThan: vi.fn().mockResolvedValue(DELETED_COUNT)
     })
-    const result = await cleanupOldFrequentations(gateway)
+    const result = await cleanupOldFrequentations(gateway, buildNow())
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.data.deletedCount).toBe(1)
+      expect(result.data.deletedCount).toBe(DELETED_COUNT)
     }
-    expect(gateway.delete).toHaveBeenCalledWith(oldEntry.id)
-  })
-
-  it('does not delete recent entries', async () => {
-    const recentEntry: FrequentationWithStudentEntity = {
-      ...buildOldEntry(),
-      startsAt: new Date().toISOString()
-    }
-    const gateway = createMockGateway({
-      getAll: vi.fn().mockResolvedValue([recentEntry])
-    })
-    const result = await cleanupOldFrequentations(gateway)
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.deletedCount).toBe(0)
-    }
+    expect(gateway.deleteOlderThan).toHaveBeenCalledTimes(1)
+    expect(gateway.deleteOlderThan).toHaveBeenCalledWith('2024-11-25T00:30:00')
+    expect(gateway.getAll).not.toHaveBeenCalled()
     expect(gateway.delete).not.toHaveBeenCalled()
   })
 
   it('returns error when gateway throws', async () => {
     const gateway = createMockGateway({
-      getAll: vi.fn().mockRejectedValue(new Error('DB error'))
+      deleteOlderThan: vi.fn().mockRejectedValue(new Error('DB error'))
     })
     const result = await cleanupOldFrequentations(gateway)
     expect(result.success).toBe(false)

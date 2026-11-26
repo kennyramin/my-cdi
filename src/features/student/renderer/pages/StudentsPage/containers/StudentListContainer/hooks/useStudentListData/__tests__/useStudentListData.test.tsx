@@ -10,6 +10,7 @@ const STUDENT_ID_SECOND = 2
 const STUDENT_ID_THIRD = 3
 const STUDENT_COUNT = 3
 const SINGLE_RESULT = 1
+const EXPECTED_FETCH_COUNT = 2
 
 const MOCK_DTOS: StudentResponseDto[] = [
   {
@@ -20,7 +21,8 @@ const MOCK_DTOS: StudentResponseDto[] = [
     ine: '111A',
     fullName: 'Jean Dupont',
     createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z'
+    updatedAt: '2026-01-01T00:00:00Z',
+    visitCount: 0
   },
   {
     id: STUDENT_ID_SECOND,
@@ -30,7 +32,8 @@ const MOCK_DTOS: StudentResponseDto[] = [
     ine: '222B',
     fullName: 'Marie Martin',
     createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z'
+    updatedAt: '2026-01-01T00:00:00Z',
+    visitCount: 0
   },
   {
     id: STUDENT_ID_THIRD,
@@ -40,7 +43,8 @@ const MOCK_DTOS: StudentResponseDto[] = [
     ine: '333C',
     fullName: 'Luc Bernard',
     createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z'
+    updatedAt: '2026-01-01T00:00:00Z',
+    visitCount: 0
   }
 ]
 
@@ -54,12 +58,27 @@ function createWrapper() {
 }
 
 describe('useStudentListData', () => {
+  let listMock: ReturnType<typeof vi.fn>
+
   beforeEach(() => {
-    vi.stubGlobal('electronAPI', {
-      student: {
-        list: vi.fn().mockResolvedValue({ success: true, data: { students: MOCK_DTOS } })
-      }
+    listMock = vi.fn().mockResolvedValue({ success: true, data: { students: MOCK_DTOS } })
+    vi.stubGlobal('electronAPI', { student: { list: listMock } })
+  })
+
+  it('refetches the student list on every mount', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } }
     })
+    function Wrapper({ children }: { children: ReactNode }) {
+      return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    }
+
+    const first = renderHook(() => useStudentListData(), { wrapper: Wrapper })
+    await waitFor(() => expect(first.result.current.students.length).toBe(STUDENT_COUNT))
+    first.unmount()
+
+    renderHook(() => useStudentListData(), { wrapper: Wrapper })
+    await waitFor(() => expect(listMock).toHaveBeenCalledTimes(EXPECTED_FETCH_COUNT))
   })
 
   it('fetches and returns students as view models', async () => {

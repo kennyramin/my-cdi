@@ -54,6 +54,7 @@ function createMockFrequentationGateway(
     update: vi.fn().mockResolvedValue(null),
     delete: vi.fn().mockResolvedValue(false),
     deleteByStudentId: vi.fn().mockResolvedValue(0),
+    deleteOlderThan: vi.fn().mockResolvedValue(0),
     count: vi.fn().mockResolvedValue(0),
     ...overrides
   }
@@ -66,8 +67,9 @@ function createMockStudentGateway(): StudentGateway {
     getAll: vi.fn().mockResolvedValue([]),
     update: vi.fn().mockResolvedValue(STUDENT_ENTITY),
     delete: vi.fn().mockResolvedValue(true),
-    getByClass: vi.fn().mockResolvedValue([]),
-    getByIds: vi.fn().mockResolvedValue([])
+    getByIds: vi.fn().mockResolvedValue([]),
+    getAllWithVisitCount: vi.fn().mockResolvedValue([]),
+    countVisitsByStudentId: vi.fn().mockResolvedValue(0)
   }
 }
 
