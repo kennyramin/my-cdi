@@ -5,6 +5,7 @@ import {
   CHECKBOX_FOCUS_VISIBLE_SELECTOR,
   createAppTheme,
   FOCUS_VISIBLE_SELECTOR,
+  getWarningTextColor,
   theme
 } from '../theme'
 import { THEME_ACCENTS, THEME_MODES, DEFAULT_THEME_PREFERENCE, THEME_BACKGROUNDS } from '@types'
@@ -212,6 +213,23 @@ describe('createAppTheme', () => {
         const label = `${preference.accent}/${preference.mode} ring on ${backdropName}`
         expect(contrastRatio(palette.focusRing, backdropColor), label).toBeGreaterThanOrEqual(
           WCAG_NON_TEXT_RATIO
+        )
+      }
+    }
+  })
+
+  it('keeps warning text at 4.5:1 or more on every surface of every combination', () => {
+    for (const preference of ALL_PREFERENCES) {
+      const { palette } = createAppTheme(preference)
+      const warningText = getWarningTextColor(palette)
+      for (const backdrop of [
+        palette.background.default,
+        palette.background.paper,
+        palette.surface
+      ]) {
+        const label = `${preference.accent}/${preference.mode} warning text on ${backdrop}`
+        expect(contrastRatio(warningText, backdrop), label).toBeGreaterThanOrEqual(
+          WCAG_AA_NORMAL_TEXT_RATIO
         )
       }
     }

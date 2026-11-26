@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box'
 import { styled } from '@mui/material/styles'
 import { shouldForwardStyledProp } from '@ui/helpers/shouldForwardStyledProp'
+import { getWarningTextColor } from '@ui/theme'
 
 export const DataLayout = styled(Box, {
   shouldForwardProp: shouldForwardStyledProp
@@ -16,7 +17,7 @@ export const StatusLine = styled(Box, {
   ...theme.typography.body1,
   color: theme.palette.text.primary,
   '&[data-warning="true"]': {
-    color: theme.palette.warning.main
+    color: getWarningTextColor(theme.palette)
   },
   '&[data-loading="true"]': {
     color: theme.palette.text.secondary

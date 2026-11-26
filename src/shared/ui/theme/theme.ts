@@ -1,4 +1,10 @@
-import { alpha, createTheme, type PaletteOptions, type Theme } from '@mui/material/styles'
+import {
+  alpha,
+  createTheme,
+  type Palette,
+  type PaletteOptions,
+  type Theme
+} from '@mui/material/styles'
 import { serializeThemePreference } from '@lib/themePreference'
 import {
   DEFAULT_THEME_PREFERENCE,
@@ -415,6 +421,14 @@ declare module '@mui/material/styles' {
   }
 }
 
+/** Light-mode warning shade readable as text (the base amber is only 3.2:1 on white). */
+const LIGHT_WARNING_TEXT = '#975304'
+
+/** Warning colour for text: >= 4.5:1 (WCAG 1.4.3) on the card, page and surface backdrops. */
+export function getWarningTextColor(palette: Pick<Palette, 'mode' | 'warning'>): string {
+  return palette.mode === 'light' ? palette.warning.dark : palette.warning.main
+}
+
 function buildPaletteOptions(accent: ThemeAccent, mode: ThemeMode): PaletteOptions {
   const paletteTokens = THEME_PALETTES[accent][mode]
   const accentColors = ACCENT_COLORS[accent][mode]
@@ -432,7 +446,8 @@ function buildPaletteOptions(accent: ThemeAccent, mode: ThemeMode): PaletteOptio
       main: paletteTokens.success
     },
     warning: {
-      main: paletteTokens.warning
+      main: paletteTokens.warning,
+      ...(mode === 'light' && { dark: LIGHT_WARNING_TEXT })
     },
     error: {
       main: paletteTokens.danger
