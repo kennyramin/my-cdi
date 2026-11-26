@@ -44,3 +44,23 @@ export function hasPendingMigrations(
   const lastApplied = Number(last.created_at)
   return migrations.some((migration) => lastApplied < migration.folderMillis)
 }
+
+export function readBackupMigrationMillis(
+  sqlite: Pick<Database.Database, 'prepare'>
+): number | null {
+  const hasMigrationsTable = sqlite
+    .prepare<[string], UserTableRow>(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?"
+    )
+    .get(MIGRATIONS_TABLE)
+  if (!hasMigrationsTable) {
+    return null
+  }
+  const row = sqlite
+    .prepare<[], AppliedRow>(`SELECT MAX(created_at) AS created_at FROM ${MIGRATIONS_TABLE}`)
+    .get()
+  if (!row || row.created_at === null) {
+    return null
+  }
+  return Number(row.created_at)
+}

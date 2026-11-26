@@ -6,7 +6,11 @@ import { readMigrationFiles } from 'drizzle-orm/migrator'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { getLatestMigrationMillis, hasPendingMigrations } from '../migrationLevel'
+import {
+  getLatestMigrationMillis,
+  hasPendingMigrations,
+  readBackupMigrationMillis
+} from '../migrationLevel'
 
 const MIGRATIONS_FOLDER = join(process.cwd(), 'drizzle')
 const FIRST_MIGRATIONS_COUNT = 2
@@ -82,5 +86,21 @@ describe('getLatestMigrationMillis', () => {
     const journal = JSON.parse(readFileSync(join(MIGRATIONS_FOLDER, 'meta/_journal.json'), 'utf8'))
     const whens: number[] = journal.entries.map((entry: { when: number }) => entry.when)
     expect(getLatestMigrationMillis(MIGRATIONS_FOLDER)).toBe(whens[whens.length - 1])
+  })
+})
+
+describe('readBackupMigrationMillis', () => {
+  it('is null when the migrations table is absent', () => {
+    expect(readBackupMigrationMillis(sqlite)).toBeNull()
+  })
+
+  it('is null when the migrations table is empty', () => {
+    sqlite.exec('CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY, created_at NUMERIC)')
+    expect(readBackupMigrationMillis(sqlite)).toBeNull()
+  })
+
+  it('is the latest applied migration for a migrated database', () => {
+    migrate(drizzle(sqlite), { migrationsFolder: MIGRATIONS_FOLDER })
+    expect(readBackupMigrationMillis(sqlite)).toBe(latest)
   })
 })

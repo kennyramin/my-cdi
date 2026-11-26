@@ -1,1 +1,5 @@
-export { getLatestMigrationMillis, hasPendingMigrations } from './migrationLevel'
+export {
+  getLatestMigrationMillis,
+  hasPendingMigrations,
+  readBackupMigrationMillis
+} from './migrationLevel'
