@@ -294,7 +294,7 @@ export function CalendarViewPresenter({ dayNodes }: CalendarViewPresenterProps) 
 }
 ```
 
-Conditional rendering (`cond ? <A/> : null`) and early returns choosing *what* to render stay in presenters; everything else derived moves up.
+Conditional rendering (`cond ? <A/> : null`) and early returns choosing _what_ to render stay in presenters; everything else derived moves up.
 
 ### Styling: `styled()` in `.styles.ts`, theme as single source of truth
 
@@ -355,7 +355,9 @@ Search is case-insensitive multi-field match (`nom`, `prenom`, `classe`, `ine`).
 Consistent 3-layer architecture for any list with multi-select:
 
 1. **Selection hook** (`useStudentSelection` / `useJournalEntrySelection`)
-   - `useState<number[]>` for `selectedIds`
+   - `useJournalEntrySelection(scopeKey)` resets when the scope (selected date) changes
+   - `useStudentSelection`: `useState<number[]>` for `selectedIds`
+   - `useJournalEntrySelection`: `useState<{ scopeKey, ids }>`; ids are only exposed while `scopeKey` matches the current scope
    - `toggle(id)`, `selectAll(ids)`, `clearSelection()`, `isSelected(id)`
 
 2. **Batch actions container** (`StudentBatchActionsContainer` / `JournalBatchActionsContainer`)
@@ -526,16 +528,17 @@ Feature dialogs (e.g., `JournalEntryEditDialogPresenter`) use `Modal` directly. 
 
 Gateway methods follow a strict naming convention:
 
-| Action    | Pattern       | Example                 |
-| --------- | ------------- | ----------------------- |
-| Create    | `create`      | `create(student)`       |
-| Read one  | `getById`     | `getById(id)`           |
-| Read by   | `getByXxx`    | `getByClass(class)`     |
-| Read all  | `getAll`      | `getAll()`              |
-| Update    | `update`      | `update(id, data)`      |
-| Delete    | `delete`      | `delete(id)`            |
-| Delete by | `deleteByXxx` | `deleteByStudentId(id)` |
-| Count     | `count`       | `count()`               |
+| Action    | Pattern                   | Example                                  |
+| --------- | ------------------------- | ---------------------------------------- |
+| Create    | `create`                  | `create(student)`                        |
+| Read one  | `getById`                 | `getById(id)`                            |
+| Read by   | `getByXxx`                | `getByClass(class)`                      |
+| Read all  | `getAll`                  | `getAll()`                               |
+| Update    | `update`                  | `update(id, data)`                       |
+| Delete    | `delete`                  | `delete(id)`                             |
+| Delete by | `deleteByXxx`             | `deleteByStudentId(id)`                  |
+| Delete by | `deleteOlderThan`         | `deleteOlderThan(cutoff)`                |
+| Count     | `count`                   | `count()`                                |
 
 No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single reads, never throws for missing rows.
 
@@ -543,10 +546,10 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 
 ## 17. Date / Time Handling
 
-- **Storage**: dates stored as ISO strings in SQLite; time-of-day stored as `HH:mm` strings.
+- **Storage**: visit start times stored as local wall-clock strings `YYYY-MM-DDTHH:mm:ss` (no timezone suffix) in SQLite; time-of-day stored as `HH:mm` strings.
 - **Display**: `formatDate` (`DD/MM/YYYY`) and `formatDateTime` (`DD/MM/YYYY HH:mm`) via `dayjs` with French locale.
 - **UI**: MUI X Date Pickers wrapped in `LocalizationProvider` with `AdapterDayjs` and `adapterLocale="fr"`.
-- **Cleanup**: `CLEANUP_RETENTION_YEARS = 2` — old frequentations deleted on startup.
+- **Cleanup**: `CLEANUP_RETENTION_YEARS = 2` — old frequentations deleted on startup (local cutoff, single `DELETE … WHERE starts_at < ?`).
 
 ---
 
@@ -809,6 +812,8 @@ Every artifact lives as close as possible to its consumer. Only hoist when share
 ### Test Bootstrapping
 
 `vitest.config.ts` loads `shared/test/setup.ts` which imports `@testing-library/jest-dom/vitest` matchers.
+
+`vitest.config.ts` sets `process.env.TZ = 'Europe/Paris'` so the suite runs in the users' timezone.
 
 ### Renderer Test Mocking
 

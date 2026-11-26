@@ -20,6 +20,7 @@ import { useSearchFilter } from './hooks/useSearchFilter'
 import { filterEntriesByPeriod } from './helpers/filterEntriesByPeriod'
 import { filterJournalEntriesBySearchTerm } from './helpers/filterJournalEntriesBySearchTerm'
 import { getEntryPeriod } from './helpers/getEntryPeriod'
+import { intersectSelectedIds } from './helpers/intersectSelectedIds'
 import { JournalEntryToolbarPresenter } from './presenters/JournalEntryToolbarPresenter'
 import { JournalEntryRowPresenter } from './presenters/JournalEntryRowPresenter'
 import { JournalBatchActionsContainer } from './containers/JournalBatchActionsContainer'
@@ -40,7 +41,7 @@ export function JournalEntryListContainer({
   onEditEntry
 }: JournalEntryListContainerProps) {
   const { t } = useTranslation('frequentation')
-  const { selectedIds, toggle, selectAll, clearSelection } = useJournalEntrySelection()
+  const { selectedIds, toggle, selectAll, clearSelection } = useJournalEntrySelection(selectedDate)
   const { period, setPeriod } = useEntryPeriodFilter()
   const { searchTerm, setSearchTerm } = useSearchFilter()
   const { data, isLoading } = useJournalEntries({ startDate: selectedDate, endDate: selectedDate })
@@ -59,8 +60,11 @@ export function JournalEntryListContainer({
   const filteredByPeriod = filterEntriesByPeriod(entries, period)
   const filtered = filterJournalEntriesBySearchTerm(filteredByPeriod, searchTerm)
 
+  const visibleIds = filtered.map((entry) => entry.id)
+  const visibleSelectedIds = intersectSelectedIds(selectedIds, visibleIds)
+
   function handleSelectAll() {
-    selectAll(entries.map((entry) => entry.id))
+    selectAll(visibleIds)
   }
 
   function handleDeleteClick(entry: JournalEntryViewModel) {
@@ -140,8 +144,8 @@ export function JournalEntryListContainer({
         onSearchChange={handleSearchChange}
       />
       <JournalBatchActionsContainer
-        selectedIds={selectedIds}
-        totalCount={entries.length}
+        selectedIds={visibleSelectedIds}
+        totalCount={filtered.length}
         onSelectAll={handleSelectAll}
         onClearSelection={clearSelection}
         onAfterDelete={clearSelection}

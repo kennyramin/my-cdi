@@ -13,5 +13,6 @@ export interface FrequentationGateway {
   update(id: number, dto: UpdateFrequentationDto): Promise<FrequentationEntity | null>
   delete(id: number): Promise<boolean>
   deleteByStudentId(studentId: number): Promise<number>
+  deleteOlderThan(cutoff: string): Promise<number>
   count(): Promise<number>
 }

@@ -1,2 +1,6 @@
-export { cleanupOldFrequentations, CLEANUP_RETENTION_YEARS } from './cleanupOldFrequentations'
+export {
+  cleanupOldFrequentations,
+  buildRetentionCutoff,
+  CLEANUP_RETENTION_YEARS
+} from './cleanupOldFrequentations'
 export type { CleanupResult } from './cleanupOldFrequentations'
