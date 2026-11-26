@@ -71,6 +71,12 @@ export interface ImportStudentsCsvPayload {
   onDuplicateIne?: CsvDuplicateInePolicy
   removeAbsent?: boolean
   removalConfirmation?: string
+  removalExpectation?: CsvRemovalExpectation
+}
+
+export interface CsvRemovalExpectation {
+  count: number
+  fingerprint: string
 }
 
 export type CsvRemovalBlockedReason = 'rowErrors' | 'emptyFile'
@@ -79,6 +85,7 @@ export interface CsvRemovalPreview {
   toRemove: number
   total: number
   sample: string[]
+  fingerprint: string
   blockedReason?: CsvRemovalBlockedReason
 }
 

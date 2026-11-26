@@ -201,7 +201,15 @@ export function useCsvImportButton(): CsvImportButtonState & CsvImportButtonActi
 
       importStudents(
         removeAbsent
-          ? { ...payload, removeAbsent: true, removalConfirmation: confirmationText }
+          ? {
+              ...payload,
+              removeAbsent: true,
+              removalConfirmation: confirmationText,
+              removalExpectation: {
+                count: removalPreview?.toRemove ?? 0,
+                fingerprint: removalPreview?.fingerprint ?? ''
+              }
+            }
           : payload,
         {
           onSuccess: (data) => {

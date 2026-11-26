@@ -111,7 +111,7 @@ describe('registerStudentController', () => {
     })
     expect(result).toEqual({
       success: true,
-      data: { toRemove: 1, total: 1, sample: ['Jean Dupont'] }
+      data: { toRemove: 1, total: 1, sample: ['Jean Dupont'], fingerprint: expect.any(String) }
     })
     expect(createAutomaticBackup).not.toHaveBeenCalled()
   })

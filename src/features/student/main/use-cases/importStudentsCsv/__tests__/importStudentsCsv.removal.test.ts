@@ -64,8 +64,27 @@ describe('importStudentsCsv with removeAbsent', () => {
     )
   }
 
-  function run(csv: string, extra: { removeAbsent?: boolean; removalConfirmation?: string } = {}) {
-    return importStudentsCsv({ gateway, createAutomaticBackup: backup }, { csv, ...extra })
+  interface RunExtra {
+    removeAbsent?: boolean
+    removalConfirmation?: string
+    onDuplicateIne?: 'skip' | 'replace'
+    previewedCsv?: string
+  }
+
+  // Mirrors the renderer: the removal is previewed first and the preview is sent back with the import
+  async function run(csv: string, extra: RunExtra = {}) {
+    const { previewedCsv, ...payload } = extra
+    if (!payload.removeAbsent) {
+      return importStudentsCsv({ gateway, createAutomaticBackup: backup }, { csv, ...payload })
+    }
+    const preview = await previewCsvRemoval({ gateway }, { csv: previewedCsv ?? csv })
+    const removalExpectation = preview.success
+      ? { count: preview.data.toRemove, fingerprint: preview.data.fingerprint }
+      : undefined
+    return importStudentsCsv(
+      { gateway, createAutomaticBackup: backup },
+      { csv, ...payload, removalExpectation }
+    )
   }
 
   const fileKeeping = (...ines: string[]): string =>
@@ -235,14 +254,10 @@ describe('importStudentsCsv with removeAbsent', () => {
   it('duplicate policy is forced to replace', async () => {
     seed('A', 'Before')
     seed('B')
-    const result = await importStudentsCsv(
-      { gateway, createAutomaticBackup: backup },
-      {
-        csv: `${HEADER}\nAfter;Prenom;3B;A\nNom;Prenom;3B;B`,
-        removeAbsent: true,
-        onDuplicateIne: 'skip'
-      }
-    )
+    const result = await run(`${HEADER}\nAfter;Prenom;3B;A\nNom;Prenom;3B;B`, {
+      removeAbsent: true,
+      onDuplicateIne: 'skip'
+    })
     expect(result.success && result.data.updated).toBe(2)
     expect(count('students', "nom = 'After'")).toBe(1)
   })
@@ -337,6 +352,63 @@ describe('importStudentsCsv with removeAbsent', () => {
         result.success && (result.data.anonymized ?? 0) + (result.data.deletedWithoutVisits ?? 0)
       ).toBe(toRemove)
       expect(count('students')).toBe(ELEVEN - toRemove + 1)
+    })
+
+    it('refuses when the file changed after the preview and would remove another set', async () => {
+      seed('A')
+      seed('B')
+      seed('C')
+      const previewed = fileKeeping('A', 'B')
+      const changedOnDisk = fileKeeping('A', 'C')
+
+      const result = await run(changedOnDisk, { removeAbsent: true, previewedCsv: previewed })
+
+      expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+      expect(count('students')).toBe(3)
+      expect(backup).not.toHaveBeenCalled()
+    })
+
+    it('refuses when a student was added between the preview and the import', async () => {
+      seed('A')
+      const csv = fileKeeping('A')
+      const preview = await previewCsvRemoval({ gateway }, { csv })
+      seed('LATE')
+      const expectation = preview.success
+        ? { count: preview.data.toRemove, fingerprint: preview.data.fingerprint }
+        : undefined
+
+      const result = await importStudentsCsv(
+        { gateway, createAutomaticBackup: backup },
+        { csv, removeAbsent: true, removalExpectation: expectation }
+      )
+
+      expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+      expect(count('students')).toBe(2)
+    })
+
+    it('refuses a removal without the previewed expectation', async () => {
+      seed('A')
+      seed('B')
+
+      const result = await importStudentsCsv(
+        { gateway, createAutomaticBackup: backup },
+        { csv: fileKeeping('A'), removeAbsent: true }
+      )
+
+      expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+      expect(count('students')).toBe(2)
+    })
+
+    it('refuses a malformed expectation', async () => {
+      seed('A')
+      const csv = fileKeeping('A')
+      for (const removalExpectation of [{ count: '1', fingerprint: 'x' }, { count: 1 }, 'x']) {
+        const result = await importStudentsCsv(
+          { gateway, createAutomaticBackup: backup },
+          { csv, removeAbsent: true, removalExpectation }
+        )
+        expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+      }
     })
 
     it('malformed payload fields are refused', async () => {

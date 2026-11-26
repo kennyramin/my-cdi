@@ -61,7 +61,13 @@ describe('previewCsvRemoval', () => {
     )
     expect(result).toEqual({
       success: true,
-      data: { toRemove: 0, total: 1, sample: [], blockedReason: 'rowErrors' }
+      data: {
+        toRemove: 0,
+        total: 1,
+        sample: [],
+        fingerprint: expect.any(String),
+        blockedReason: 'rowErrors'
+      }
     })
   })
 
@@ -79,6 +85,27 @@ describe('previewCsvRemoval', () => {
       { gateway: gatewayWith([student(1, 'A', 'B', 'X')]) },
       { csv: `${HEADER}\nA;B;3B;x` }
     )
-    expect(result).toEqual({ success: true, data: { toRemove: 0, total: 1, sample: [] } })
+    expect(result).toEqual({
+      success: true,
+      data: { toRemove: 0, total: 1, sample: [], fingerprint: expect.any(String) }
+    })
+  })
+
+  it('returns a fingerprint that follows the removed set', async () => {
+    const students = [student(1, 'A', 'B', 'X'), student(2, 'C', 'D', 'Y')]
+    const keepX = await previewCsvRemoval(
+      { gateway: gatewayWith(students) },
+      { csv: `${HEADER}\nA;B;3B;X` }
+    )
+    const keepY = await previewCsvRemoval(
+      { gateway: gatewayWith(students) },
+      { csv: `${HEADER}\nC;D;3B;Y` }
+    )
+
+    expect(keepX.success && keepY.success).toBe(true)
+    if (keepX.success && keepY.success) {
+      expect(keepX.data.fingerprint).toMatch(/^[0-9a-f]{64}$/)
+      expect(keepX.data.fingerprint).not.toBe(keepY.data.fingerprint)
+    }
   })
 })

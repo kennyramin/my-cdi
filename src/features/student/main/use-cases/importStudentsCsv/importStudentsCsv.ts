@@ -2,6 +2,7 @@ import type { StudentGateway } from '@student/gateways/student'
 import type { StudentEntity } from '@student/entities/student'
 import { parseStudentCsv } from './helpers/parseStudentCsv'
 import { normalizeIne } from './helpers/normalizeIne'
+import { fingerprintRemoval } from './helpers/fingerprintRemoval'
 import { planCsvRemoval } from './helpers/planCsvRemoval'
 import { isRemovalConfirmed, requiresRemovalConfirmation } from '@student-shared'
 import type {
@@ -19,7 +20,10 @@ const importStudentsCsvSchema = z.object({
   csv: z.string(),
   onDuplicateIne: z.enum(['skip', 'replace']).optional(),
   removeAbsent: z.boolean().optional(),
-  removalConfirmation: z.string().optional()
+  removalConfirmation: z.string().optional(),
+  removalExpectation: z
+    .object({ count: z.number().int().nonnegative(), fingerprint: z.string() })
+    .optional()
 })
 
 const ANONYMIZATION_BACKUP_REASON = 'anonymization'
@@ -93,6 +97,14 @@ async function runImport(
     const { blockedReason, toRemove } = planCsvRemoval(existingStudents, parsed)
     if (blockedReason !== undefined) {
       return failure(`Removal blocked: ${blockedReason}`, ErrorCode.VALIDATION_ERROR)
+    }
+    const expectation = input.removalExpectation
+    if (
+      expectation === undefined ||
+      expectation.count !== toRemove.length ||
+      expectation.fingerprint !== fingerprintRemoval(toRemove)
+    ) {
+      return failure('Removal preview is out of date', ErrorCode.VALIDATION_ERROR)
     }
     if (
       requiresRemovalConfirmation(toRemove.length, existingStudents.length) &&

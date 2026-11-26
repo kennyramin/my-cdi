@@ -7,6 +7,8 @@ import { theme } from '@ui/theme'
 import { StudentCsvImportButtonPresenter } from '../StudentCsvImportButtonPresenter'
 import type { CsvRemovalPreview } from '@student-shared'
 
+const FINGERPRINT = 'fingerprint-of-the-previewed-removal'
+
 type PresenterProps = Parameters<typeof StudentCsvImportButtonPresenter>[0]
 
 const NONE = 0
@@ -84,7 +86,7 @@ describe('StudentCsvImportButtonPresenter removal option', () => {
   })
 
   it('locks the update existing checkbox while removal is on', () => {
-    withPreview({ toRemove: NONE, total: TOTAL, sample: [] })
+    withPreview({ toRemove: NONE, total: TOTAL, sample: [], fingerprint: FINGERPRINT })
     const checkbox = screen.getByLabelText('Mettre à jour les élèves existants')
     expect(checkbox).toBeChecked()
     expect(checkbox).toBeDisabled()
@@ -93,31 +95,47 @@ describe('StudentCsvImportButtonPresenter removal option', () => {
   })
 
   it('shows count, total and the names', () => {
-    withPreview({ toRemove: 2, total: 5, sample: ['Anne Martin', 'Jean Dupont'] })
+    withPreview({
+      toRemove: 2,
+      total: 5,
+      sample: ['Anne Martin', 'Jean Dupont'],
+      fingerprint: FINGERPRINT
+    })
     expect(screen.getByText('2 élèves sur 5 seront retirés :')).toBeInTheDocument()
     expect(screen.getByText('Anne Martin')).toBeInTheDocument()
     expect(screen.queryByText(/… et \d+ autres/)).not.toBeInTheDocument()
   })
 
   it('uses the singular for one student', () => {
-    withPreview({ toRemove: 1, total: 5, sample: ['Anne Martin'] })
+    withPreview({ toRemove: 1, total: 5, sample: ['Anne Martin'], fingerprint: FINGERPRINT })
     expect(screen.getByText('1 élève sur 5 sera retiré :')).toBeInTheDocument()
   })
 
   it('shows at most 20 names and the remaining count', () => {
-    withPreview({ toRemove: OVER_SAMPLE_TOTAL, total: TOTAL, sample: buildNames(MAX_SAMPLE + 3) })
+    withPreview({
+      toRemove: OVER_SAMPLE_TOTAL,
+      total: TOTAL,
+      sample: buildNames(MAX_SAMPLE + 3),
+      fingerprint: FINGERPRINT
+    })
     expect(screen.getAllByText(/^Prénom\d+ Nom\d+$/)).toHaveLength(MAX_SAMPLE)
     expect(screen.getByText('… et 5 autres')).toBeInTheDocument()
   })
 
   it('says there is nobody to remove', () => {
-    withPreview({ toRemove: NONE, total: 5, sample: [] })
+    withPreview({ toRemove: NONE, total: 5, sample: [], fingerprint: FINGERPRINT })
     expect(screen.getByText('Aucun élève à retirer.')).toBeInTheDocument()
   })
 
   it('explains a rowErrors block and never shows the raw code', () => {
     withPreview(
-      { toRemove: NONE, total: 5, sample: [], blockedReason: 'rowErrors' },
+      {
+        toRemove: NONE,
+        total: 5,
+        sample: [],
+        fingerprint: FINGERPRINT,
+        blockedReason: 'rowErrors'
+      },
       { canSubmit: false }
     )
     expect(screen.getByText(/lignes en erreur/)).toBeInTheDocument()
@@ -128,7 +146,13 @@ describe('StudentCsvImportButtonPresenter removal option', () => {
 
   it('explains an emptyFile block', () => {
     withPreview(
-      { toRemove: NONE, total: 5, sample: [], blockedReason: 'emptyFile' },
+      {
+        toRemove: NONE,
+        total: 5,
+        sample: [],
+        fingerprint: FINGERPRINT,
+        blockedReason: 'emptyFile'
+      },
       { canSubmit: false }
     )
     expect(screen.getByText(/aucun élève valide/)).toBeInTheDocument()
@@ -142,7 +166,7 @@ describe('StudentCsvImportButtonPresenter removal option', () => {
 
   it('shows the typed confirmation field with the exact phrase above the threshold', async () => {
     const props = withPreview(
-      { toRemove: TWELVE, total: TOTAL, sample: buildNames(3) },
+      { toRemove: TWELVE, total: TOTAL, sample: buildNames(3), fingerprint: FINGERPRINT },
       { needsConfirmation: true, confirmationPhrase: 'RETIRER 12', canSubmit: false }
     )
     expect(screen.getByLabelText('Pour confirmer, tapez RETIRER 12')).toBeInTheDocument()
@@ -152,7 +176,7 @@ describe('StudentCsvImportButtonPresenter removal option', () => {
   })
 
   it('has no confirmation field below the threshold', () => {
-    withPreview({ toRemove: 2, total: TOTAL, sample: buildNames(2) })
+    withPreview({ toRemove: 2, total: TOTAL, sample: buildNames(2), fingerprint: FINGERPRINT })
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Importer et retirer' })).toBeEnabled()
   })
@@ -164,7 +188,7 @@ describe('StudentCsvImportButtonPresenter removal option', () => {
 
   it('shows the removal counts in the result warning', () => {
     withPreview(
-      { toRemove: 1, total: 5, sample: ['Anne Martin'] },
+      { toRemove: 1, total: 5, sample: ['Anne Martin'], fingerprint: FINGERPRINT },
       {
         result: {
           created: 0,
@@ -192,7 +216,7 @@ describe('StudentCsvImportButtonPresenter removal option', () => {
 
   it('announces the preview politely and focuses the confirmation field', () => {
     withPreview(
-      { toRemove: TWELVE, total: TOTAL, sample: buildNames(3) },
+      { toRemove: TWELVE, total: TOTAL, sample: buildNames(3), fingerprint: FINGERPRINT },
       { needsConfirmation: true, confirmationPhrase: 'RETIRER 12', canSubmit: false }
     )
     expect(

@@ -5,6 +5,7 @@ import type { StudentEntity } from '@student/entities/student'
 import type { StudentGateway } from '@student/gateways/student'
 import type { CsvRemovalPreview } from '@student-shared'
 import { parseStudentCsv } from '../importStudentsCsv/helpers/parseStudentCsv'
+import { fingerprintRemoval } from '../importStudentsCsv/helpers/fingerprintRemoval'
 import { planCsvRemoval } from '../importStudentsCsv/helpers/planCsvRemoval'
 
 const previewSchema = z.object({ csv: z.string() })
@@ -48,6 +49,7 @@ export async function previewCsvRemoval(
       toRemove: toRemove.length,
       total: existing.length,
       sample,
+      fingerprint: fingerprintRemoval(toRemove),
       ...(blockedReason !== undefined && { blockedReason })
     }
   }

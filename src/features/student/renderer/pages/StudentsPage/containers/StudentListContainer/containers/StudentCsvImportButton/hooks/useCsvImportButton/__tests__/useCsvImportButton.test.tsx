@@ -6,6 +6,8 @@ import '@shared/i18n/config'
 import { readFileBuffer } from '../../../helpers/decodeCsvFile'
 import { useCsvImportButton } from '../useCsvImportButton'
 
+const FINGERPRINT = 'fingerprint-of-the-previewed-removal'
+
 vi.mock('../../../helpers/decodeCsvFile', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../../helpers/decodeCsvFile')>()
   return { ...original, readFileBuffer: vi.fn(original.readFileBuffer) }
@@ -315,7 +317,7 @@ describe('useCsvImportButton removal of absent students', () => {
   }
 
   it('is OFF by default with no preview', () => {
-    stubApi({ toRemove: 0, total: 0, sample: [] })
+    stubApi({ toRemove: 0, total: 0, sample: [], fingerprint: FINGERPRINT })
     const { states } = setup()
     expect(latest(states).removeAbsent).toBe(false)
     expect(latest(states).removalPreview).toBeNull()
@@ -323,7 +325,7 @@ describe('useCsvImportButton removal of absent students', () => {
   })
 
   it('turns updateExisting on and restores the previous choice when unchecked', async () => {
-    stubApi({ toRemove: 0, total: 1, sample: [] })
+    stubApi({ toRemove: 0, total: 1, sample: [], fingerprint: FINGERPRINT })
     const { states } = setup()
     expect(latest(states).updateExisting).toBe(false)
     await checkRemoval(states)
@@ -334,7 +336,7 @@ describe('useCsvImportButton removal of absent students', () => {
   })
 
   it('keeps updateExisting on when the user had enabled it before', async () => {
-    stubApi({ toRemove: 0, total: 1, sample: [] })
+    stubApi({ toRemove: 0, total: 1, sample: [], fingerprint: FINGERPRINT })
     const { states } = setup()
     act(() => {
       latest(states).handleToggleUpdateExisting()
@@ -345,7 +347,12 @@ describe('useCsvImportButton removal of absent students', () => {
   })
 
   it('requests the preview with the decoded csv when a file is chosen after checking', async () => {
-    const { previewCsvRemoval } = stubApi({ toRemove: 2, total: 5, sample: SAMPLE_NAMES })
+    const { previewCsvRemoval } = stubApi({
+      toRemove: 2,
+      total: 5,
+      sample: SAMPLE_NAMES,
+      fingerprint: FINGERPRINT
+    })
     const { states, selectFile } = setup()
     await openWithFile(states, selectFile)
     await checkRemoval(states)
@@ -355,7 +362,12 @@ describe('useCsvImportButton removal of absent students', () => {
   })
 
   it('requests the preview when the file is chosen while already checked', async () => {
-    const { previewCsvRemoval } = stubApi({ toRemove: 2, total: 5, sample: SAMPLE_NAMES })
+    const { previewCsvRemoval } = stubApi({
+      toRemove: 2,
+      total: 5,
+      sample: SAMPLE_NAMES,
+      fingerprint: FINGERPRINT
+    })
     const { states, selectFile } = setup()
     await checkRemoval(states)
     expect(previewCsvRemoval).not.toHaveBeenCalled()
@@ -367,14 +379,25 @@ describe('useCsvImportButton removal of absent students', () => {
   })
 
   it('does not request a preview while the option is off', async () => {
-    const { previewCsvRemoval } = stubApi({ toRemove: 0, total: 0, sample: [] })
+    const { previewCsvRemoval } = stubApi({
+      toRemove: 0,
+      total: 0,
+      sample: [],
+      fingerprint: FINGERPRINT
+    })
     const { states, selectFile } = setup()
     await openWithFile(states, selectFile)
     expect(previewCsvRemoval).not.toHaveBeenCalled()
   })
 
   it('blocks submit for a blocked preview', async () => {
-    stubApi({ toRemove: 0, total: 5, sample: [], blockedReason: 'rowErrors' })
+    stubApi({
+      toRemove: 0,
+      total: 5,
+      sample: [],
+      fingerprint: FINGERPRINT,
+      blockedReason: 'rowErrors'
+    })
     const { states, selectFile } = setup()
     await openWithFile(states, selectFile)
     await checkRemoval(states)
@@ -383,7 +406,13 @@ describe('useCsvImportButton removal of absent students', () => {
   })
 
   it('blocks submit for an empty file', async () => {
-    stubApi({ toRemove: 0, total: 5, sample: [], blockedReason: 'emptyFile' })
+    stubApi({
+      toRemove: 0,
+      total: 5,
+      sample: [],
+      fingerprint: FINGERPRINT,
+      blockedReason: 'emptyFile'
+    })
     const { states, selectFile } = setup()
     await openWithFile(states, selectFile)
     await checkRemoval(states)
@@ -392,7 +421,7 @@ describe('useCsvImportButton removal of absent students', () => {
   })
 
   it('keeps submit disabled until the preview has loaded', async () => {
-    stubApi({ toRemove: 1, total: 5, sample: ['Jean Dupont'] })
+    stubApi({ toRemove: 1, total: 5, sample: ['Jean Dupont'], fingerprint: FINGERPRINT })
     const { states, selectFile } = setup()
     await openWithFile(states, selectFile)
     expect(latest(states).canSubmit).toBe(true)
@@ -416,7 +445,7 @@ describe('useCsvImportButton removal of absent students', () => {
   })
 
   it('allows submit when there is nothing to remove', async () => {
-    stubApi({ toRemove: 0, total: 5, sample: [] })
+    stubApi({ toRemove: 0, total: 5, sample: [], fingerprint: FINGERPRINT })
     const { states, selectFile } = setup()
     await openWithFile(states, selectFile)
     await checkRemoval(states)
@@ -426,7 +455,7 @@ describe('useCsvImportButton removal of absent students', () => {
   })
 
   it('requires the exact typed phrase over the threshold, case and spaces tolerated', async () => {
-    stubApi({ toRemove: 12, total: TOTAL_STUDENTS, sample: SAMPLE_NAMES })
+    stubApi({ toRemove: 12, total: TOTAL_STUDENTS, sample: SAMPLE_NAMES, fingerprint: FINGERPRINT })
     const { states, selectFile } = setup()
     await openWithFile(states, selectFile)
     await checkRemoval(states)
@@ -447,7 +476,7 @@ describe('useCsvImportButton removal of absent students', () => {
   })
 
   it('does not need a confirmation below the threshold', async () => {
-    stubApi({ toRemove: 2, total: TOTAL_STUDENTS, sample: SAMPLE_NAMES })
+    stubApi({ toRemove: 2, total: TOTAL_STUDENTS, sample: SAMPLE_NAMES, fingerprint: FINGERPRINT })
     const { states, selectFile } = setup()
     await openWithFile(states, selectFile)
     await checkRemoval(states)
@@ -457,7 +486,12 @@ describe('useCsvImportButton removal of absent students', () => {
   })
 
   it('sends removeAbsent and the typed confirmation on submit', async () => {
-    const { importCsv } = stubApi({ toRemove: 12, total: TOTAL_STUDENTS, sample: SAMPLE_NAMES })
+    const { importCsv } = stubApi({
+      toRemove: 12,
+      total: TOTAL_STUDENTS,
+      sample: SAMPLE_NAMES,
+      fingerprint: FINGERPRINT
+    })
     const { states, selectFile } = setup()
     await openWithFile(states, selectFile)
     await checkRemoval(states)
@@ -474,13 +508,19 @@ describe('useCsvImportButton removal of absent students', () => {
         csv: CSV_CONTENT,
         onDuplicateIne: 'replace',
         removeAbsent: true,
-        removalConfirmation: 'retirer 12'
+        removalConfirmation: 'retirer 12',
+        removalExpectation: { count: 12, fingerprint: FINGERPRINT }
       })
     )
   })
 
   it('sends neither field when the option is unchecked', async () => {
-    const { importCsv } = stubApi({ toRemove: 2, total: 5, sample: SAMPLE_NAMES })
+    const { importCsv } = stubApi({
+      toRemove: 2,
+      total: 5,
+      sample: SAMPLE_NAMES,
+      fingerprint: FINGERPRINT
+    })
     const { states, selectFile } = setup()
     await openWithFile(states, selectFile)
     await checkRemoval(states)
@@ -496,7 +536,7 @@ describe('useCsvImportButton removal of absent students', () => {
 
   it('shows the real removal counts in the success toast', async () => {
     stubApi(
-      { toRemove: 5, total: TOTAL_STUDENTS / 2, sample: ['Jean Dupont'] },
+      { toRemove: 5, total: TOTAL_STUDENTS / 2, sample: ['Jean Dupont'], fingerprint: FINGERPRINT },
       vi.fn().mockResolvedValue({
         success: true,
         data: {
@@ -523,7 +563,7 @@ describe('useCsvImportButton removal of absent students', () => {
 
   it('re-runs the preview, clears the confirmation and explains when the main process refuses', async () => {
     const { previewCsvRemoval } = stubApi(
-      { toRemove: 12, total: TOTAL_STUDENTS, sample: ['Jean Dupont'] },
+      { toRemove: 12, total: TOTAL_STUDENTS, sample: ['Jean Dupont'], fingerprint: FINGERPRINT },
       vi.fn().mockResolvedValue({ success: false, error: 'refused' })
     )
     const { states, selectFile } = setup()
@@ -545,9 +585,50 @@ describe('useCsvImportButton removal of absent students', () => {
     expect(latest(states).removeAbsent).toBe(true)
   })
 
+  it('sends the refreshed fingerprint when the user retries after a refusal', async () => {
+    const REFRESHED_FINGERPRINT = 'fingerprint-after-the-file-changed'
+    const importCsv = vi
+      .fn()
+      .mockResolvedValueOnce({ success: false, error: 'refused' })
+      .mockResolvedValue(IMPORT_OK)
+    const { previewCsvRemoval } = stubApi(
+      { toRemove: 2, total: TOTAL_STUDENTS, sample: ['Jean Dupont'], fingerprint: FINGERPRINT },
+      importCsv
+    )
+    previewCsvRemoval
+      .mockResolvedValueOnce({
+        success: true,
+        data: { toRemove: 2, total: TOTAL_STUDENTS, sample: [], fingerprint: FINGERPRINT }
+      })
+      .mockResolvedValue({
+        success: true,
+        data: { toRemove: 3, total: TOTAL_STUDENTS, sample: [], fingerprint: REFRESHED_FINGERPRINT }
+      })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    await checkRemoval(states)
+    await waitFor(() => expect(latest(states).removalPreview).not.toBeNull())
+    await act(async () => {
+      latest(states).handleSubmit()
+    })
+    await waitFor(() => expect(latest(states).removalPreview?.toRemove).toBe(3))
+
+    await act(async () => {
+      latest(states).handleSubmit()
+    })
+
+    await waitFor(() =>
+      expect(importCsv).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          removalExpectation: { count: 3, fingerprint: REFRESHED_FINGERPRINT }
+        })
+      )
+    )
+  })
+
   it('shows the plain error when the import fails without removal', async () => {
     stubApi(
-      { toRemove: 0, total: 1, sample: [] },
+      { toRemove: 0, total: 1, sample: [], fingerprint: FINGERPRINT },
       vi.fn().mockResolvedValue({ success: false, error: 'refused' })
     )
     const { states, selectFile } = setup()
@@ -560,7 +641,7 @@ describe('useCsvImportButton removal of absent students', () => {
 
   it('unchecks removal and clears the preview after a removal that left row errors', async () => {
     stubApi(
-      { toRemove: 12, total: TOTAL_STUDENTS, sample: ['Jean Dupont'] },
+      { toRemove: 12, total: TOTAL_STUDENTS, sample: ['Jean Dupont'], fingerprint: FINGERPRINT },
       vi.fn().mockResolvedValue({
         success: true,
         data: {
@@ -592,7 +673,12 @@ describe('useCsvImportButton removal of absent students', () => {
   })
 
   it('does not submit when canSubmit is false', async () => {
-    const { importCsv } = stubApi({ toRemove: 12, total: TOTAL_STUDENTS, sample: [] })
+    const { importCsv } = stubApi({
+      toRemove: 12,
+      total: TOTAL_STUDENTS,
+      sample: [],
+      fingerprint: FINGERPRINT
+    })
     const { states, selectFile } = setup()
     await openWithFile(states, selectFile)
     await checkRemoval(states)
@@ -607,7 +693,10 @@ describe('useCsvImportButton removal of absent students', () => {
     const previewCsvRemoval = vi
       .fn()
       .mockResolvedValueOnce({ success: false, error: 'boom' })
-      .mockResolvedValueOnce({ success: true, data: { toRemove: 0, total: 3, sample: [] } })
+      .mockResolvedValueOnce({
+        success: true,
+        data: { toRemove: 0, total: 3, sample: [], fingerprint: FINGERPRINT }
+      })
     vi.stubGlobal('electronAPI', { student: { importCsv: vi.fn(), previewCsvRemoval } })
     const { states, selectFile } = setup()
     await openWithFile(states, selectFile)
@@ -624,7 +713,8 @@ describe('useCsvImportButton removal of absent students', () => {
     const { previewCsvRemoval } = stubApi({
       toRemove: 12,
       total: TOTAL_STUDENTS,
-      sample: SAMPLE_NAMES
+      sample: SAMPLE_NAMES,
+      fingerprint: FINGERPRINT
     })
     const { states, selectFile } = setup()
     await openWithFile(states, selectFile)
@@ -643,7 +733,7 @@ describe('useCsvImportButton removal of absent students', () => {
   })
 
   it('resets the option to OFF when the modal is closed', async () => {
-    stubApi({ toRemove: 0, total: 5, sample: [] })
+    stubApi({ toRemove: 0, total: 5, sample: [], fingerprint: FINGERPRINT })
     const { states, selectFile } = setup()
     await openWithFile(states, selectFile)
     await checkRemoval(states)
@@ -665,7 +755,12 @@ describe('useCsvImportButton removal of absent students', () => {
     const encode = (text: string) => new TextEncoder().encode(text).buffer
 
     it('ignores the decode of file A when file B was chosen meanwhile', async () => {
-      const { previewCsvRemoval } = stubApi({ toRemove: 0, total: 1, sample: [] })
+      const { previewCsvRemoval } = stubApi({
+        toRemove: 0,
+        total: 1,
+        sample: [],
+        fingerprint: FINGERPRINT
+      })
       const slow = deferred()
       vi.mocked(readFileBuffer).mockReturnValueOnce(slow.promise)
       const { states, selectFile } = setup()
@@ -688,7 +783,12 @@ describe('useCsvImportButton removal of absent students', () => {
     })
 
     it('ignores a decode finishing after the option was toggled off', async () => {
-      const { previewCsvRemoval } = stubApi({ toRemove: 0, total: 1, sample: [] })
+      const { previewCsvRemoval } = stubApi({
+        toRemove: 0,
+        total: 1,
+        sample: [],
+        fingerprint: FINGERPRINT
+      })
       const slow = deferred()
       const { states, selectFile } = setup()
       await openWithFile(states, selectFile)
@@ -703,7 +803,12 @@ describe('useCsvImportButton removal of absent students', () => {
     })
 
     it('requests the preview once when toggled off then on during the read', async () => {
-      const { previewCsvRemoval } = stubApi({ toRemove: 0, total: 1, sample: [] })
+      const { previewCsvRemoval } = stubApi({
+        toRemove: 0,
+        total: 1,
+        sample: [],
+        fingerprint: FINGERPRINT
+      })
       const slow = deferred()
       const { states, selectFile } = setup()
       await openWithFile(states, selectFile)
@@ -734,7 +839,10 @@ describe('useCsvImportButton removal of absent students', () => {
         latest(states).closeModal()
       })
       await act(async () => {
-        answer({ success: true, data: { toRemove: 3, total: 5, sample: ['X Y'] } })
+        answer({
+          success: true,
+          data: { toRemove: 3, total: 5, sample: ['X Y'], fingerprint: FINGERPRINT }
+        })
       })
       expect(latest(states).removalPreview).toBeNull()
       act(() => {
