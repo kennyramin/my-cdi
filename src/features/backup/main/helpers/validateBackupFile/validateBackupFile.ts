@@ -2,9 +2,11 @@ import Database from 'better-sqlite3'
 import { closeSync, copyFileSync, mkdtempSync, openSync, readSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { AppError, ErrorCode } from '@lib/errors'
 import { isLiveDatabasePath } from '../isLiveDatabasePath'
-import { readBackupMigrationMillis } from '../migrationLevel'
+import { getLatestMigrationMillis, readBackupMigrationMillis } from '../migrationLevel'
 
 const SQLITE_HEADER = 'SQLite format 3\0'
 const HEADER_ENCODING = 'latin1'
@@ -16,7 +18,7 @@ const REQUIRED_TABLES = ['students', 'frequentation'] as const
 interface ValidateBackupFileInput {
   filePath: string
   liveDbPath: string
-  latestMigrationMillis: number
+  migrationsFolder: string
 }
 
 function hasSqliteHeader(filePath: string): boolean {
@@ -77,12 +79,35 @@ function inspectDatabase(copyPath: string, latestMigrationMillis: number): void 
       throw new AppError(ErrorCode.RESTORE_MISSING_TABLES, 'The backup lacks required tables')
     }
     const backupMillis = readBackupMigrationMillis(db)
-    if (backupMillis !== null && backupMillis > latestMigrationMillis) {
+    // Without migration rows the next start would re-run every migration on existing tables
+    if (backupMillis === null) {
+      throw new AppError(
+        ErrorCode.RESTORE_UNKNOWN_SCHEMA,
+        'The backup has no migration information'
+      )
+    }
+    if (backupMillis > latestMigrationMillis) {
       throw new AppError(
         ErrorCode.RESTORE_NEWER_VERSION,
         'The backup comes from a newer version of the application'
       )
     }
+  } finally {
+    db.close()
+  }
+}
+
+// The same migrator the application runs at startup, applied to the throwaway copy
+function dryRunMigrations(copyPath: string, migrationsFolder: string): void {
+  const db = new Database(copyPath, { fileMustExist: true })
+  try {
+    migrate(drizzle(db), { migrationsFolder })
+  } catch (error) {
+    throw new AppError(
+      ErrorCode.RESTORE_MIGRATION_FAILED,
+      'The backup cannot be migrated to the current version',
+      { cause: error }
+    )
   } finally {
     db.close()
   }
@@ -102,7 +127,7 @@ function copyToScratch(filePath: string, scratchDir: string): string {
 
 // Validates a throwaway copy: opening a WAL-flagged backup would create -wal/-shm beside it
 export function validateBackupFile(input: ValidateBackupFileInput): void {
-  const { filePath, liveDbPath, latestMigrationMillis } = input
+  const { filePath, liveDbPath, migrationsFolder } = input
   if (!hasSqliteHeader(filePath)) {
     throw new AppError(ErrorCode.RESTORE_NOT_A_DATABASE, 'The file is not a SQLite database')
   }
@@ -111,7 +136,9 @@ export function validateBackupFile(input: ValidateBackupFileInput): void {
   }
   const scratchDir = mkdtempSync(join(tmpdir(), TEMP_DIR_PREFIX))
   try {
-    inspectDatabase(copyToScratch(filePath, scratchDir), latestMigrationMillis)
+    const copyPath = copyToScratch(filePath, scratchDir)
+    inspectDatabase(copyPath, getLatestMigrationMillis(migrationsFolder))
+    dryRunMigrations(copyPath, migrationsFolder)
   } finally {
     rmSync(scratchDir, { recursive: true, force: true })
   }

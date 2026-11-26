@@ -115,6 +115,8 @@
       "corrupted": "Cette sauvegarde est corrompue",
       "missingTables": "Cette sauvegarde ne contient pas toutes les données attendues",
       "newerVersion": "Cette sauvegarde provient d'une version plus récente de l'application",
+      "unknownSchema": "Cette sauvegarde ne contient pas d'information de version et ne peut pas être utilisée",
+      "migrationFailed": "Cette sauvegarde ne peut pas être mise à niveau vers la version actuelle",
       "failed": "La restauration a échoué ; vos données d'origine ont été conservées. L'application redémarre."
     }
   },

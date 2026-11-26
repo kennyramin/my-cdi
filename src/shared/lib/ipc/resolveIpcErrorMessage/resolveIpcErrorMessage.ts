@@ -14,6 +14,8 @@ const ERROR_MESSAGE_KEYS: Record<string, string> = {
   [ErrorCode.RESTORE_CORRUPTED]: 'errors.restore.corrupted',
   [ErrorCode.RESTORE_MISSING_TABLES]: 'errors.restore.missingTables',
   [ErrorCode.RESTORE_NEWER_VERSION]: 'errors.restore.newerVersion',
+  [ErrorCode.RESTORE_UNKNOWN_SCHEMA]: 'errors.restore.unknownSchema',
+  [ErrorCode.RESTORE_MIGRATION_FAILED]: 'errors.restore.migrationFailed',
   [ErrorCode.RESTORE_FAILED]: 'errors.restore.failed',
   [ErrorCode.UNKNOWN_ERROR]: 'app.unknownError'
 }

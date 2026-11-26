@@ -55,6 +55,8 @@ describe('resolveIpcErrorMessage', () => {
       ErrorCode.RESTORE_CORRUPTED,
       ErrorCode.RESTORE_MISSING_TABLES,
       ErrorCode.RESTORE_NEWER_VERSION,
+      ErrorCode.RESTORE_UNKNOWN_SCHEMA,
+      ErrorCode.RESTORE_MIGRATION_FAILED,
       ErrorCode.RESTORE_FAILED
     ]
     for (const code of codes) {

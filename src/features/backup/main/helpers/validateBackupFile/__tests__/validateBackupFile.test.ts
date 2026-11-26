@@ -1,8 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
+import { readMigrationFiles } from 'drizzle-orm/migrator'
 import { createHash } from 'node:crypto'
 import {
   chmodSync,
+  copyFileSync,
   closeSync,
   existsSync,
   mkdirSync,
@@ -19,9 +23,11 @@ import { join } from 'node:path'
 import { AppError, ErrorCode } from '@lib/errors'
 import { validateBackupFile } from '../validateBackupFile'
 
-const LATEST_MILLIS = 1_700_000_000_000
-const OLDER_OFFSET_MS = 1000
-const OLDER_MILLIS = LATEST_MILLIS - OLDER_OFFSET_MS
+const MIGRATIONS_TABLE = '__drizzle_migrations'
+const MIGRATIONS_FOLDER = join(process.cwd(), 'drizzle')
+const ALL_MIGRATIONS = readMigrationFiles({ migrationsFolder: MIGRATIONS_FOLDER })
+const LATEST_MILLIS = Math.max(...ALL_MIGRATIONS.map((m) => m.folderMillis))
+const FORGET_LAST_MIGRATION = `DELETE FROM ${MIGRATIONS_TABLE} WHERE created_at = (SELECT MAX(created_at) FROM ${MIGRATIONS_TABLE})`
 const NEWER_OFFSET_MS = 1
 const SQLITE_HEADER_BYTES = 100
 const PAGE_ROWS = 400
@@ -30,36 +36,66 @@ const PAGE_PAYLOAD = 'x'.repeat(PAYLOAD_LENGTH)
 const CORRUPT_OFFSET = 4096
 const CORRUPT_LENGTH = 8192
 const CORRUPT_BYTE = 0xff
-const REQUIRED_TABLES = ['students', 'frequentation']
+const PARTIAL_MIGRATIONS_COUNT = 2
 
 interface MakeDbOptions {
-  tables?: string[]
-  migrationMillis?: number | null
+  dropTables?: string[]
+  extraMigrationMillis?: number
+  migrationsFolder?: string
 }
 
+// Same as the application: a database migrated by drizzle with the real migration files
 function makeDb(path: string, options: MakeDbOptions = {}): void {
-  const { tables = REQUIRED_TABLES, migrationMillis = LATEST_MILLIS } = options
+  const { dropTables = [], extraMigrationMillis, migrationsFolder = MIGRATIONS_FOLDER } = options
   const db = new Database(path)
   try {
-    for (const table of tables) {
-      db.exec(`CREATE TABLE ${table} (id INTEGER PRIMARY KEY, name TEXT)`)
+    migrate(drizzle(db), { migrationsFolder })
+    for (const table of dropTables) {
+      db.exec(`DROP TABLE ${table}`)
     }
-    if (migrationMillis !== null) {
-      db.exec('CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY, created_at NUMERIC)')
-      db.prepare('INSERT INTO __drizzle_migrations (created_at) VALUES (?)').run(migrationMillis)
+    if (extraMigrationMillis !== undefined) {
+      db.prepare(`INSERT INTO ${MIGRATIONS_TABLE} (hash, created_at) VALUES ('x', ?)`).run(
+        extraMigrationMillis
+      )
     }
   } finally {
     db.close()
   }
 }
 
+function execOn(path: string, sql: string): void {
+  const db = new Database(path)
+  try {
+    db.exec(sql)
+  } finally {
+    db.close()
+  }
+}
+
+// An older release: only the first migrations exist in its journal
+function makePartialMigrationsFolder(target: string): string {
+  const folder = join(target, 'partial-migrations')
+  const journal = JSON.parse(
+    readFileSync(join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8')
+  ) as { entries: { tag: string }[] }
+  journal.entries = journal.entries.slice(0, PARTIAL_MIGRATIONS_COUNT)
+  mkdirSync(join(folder, 'meta'), { recursive: true })
+  writeFileSync(join(folder, 'meta', '_journal.json'), JSON.stringify(journal))
+  for (const entry of journal.entries) {
+    copyFileSync(join(MIGRATIONS_FOLDER, `${entry.tag}.sql`), join(folder, `${entry.tag}.sql`))
+  }
+  return folder
+}
+
 function makeBigDb(path: string): void {
   makeDb(path)
   const db = new Database(path)
   try {
-    const insert = db.prepare('INSERT INTO students (name) VALUES (?)')
+    const insert = db.prepare(
+      "INSERT INTO students (nom, prenom, classe, ine, created_at, updated_at) VALUES (?, 'p', 'c', ?, 'd', 'd')"
+    )
     for (let i = 0; i < PAGE_ROWS; i += 1) {
-      insert.run(`${PAGE_PAYLOAD}${i}`)
+      insert.run(`${PAGE_PAYLOAD}${i}`, `ine${i}`)
     }
   } finally {
     db.close()
@@ -89,8 +125,8 @@ function expectCode(action: () => void, code: ErrorCode): void {
 let dir: string
 let livePath: string
 
-function validate(filePath: string, latestMigrationMillis = LATEST_MILLIS): void {
-  validateBackupFile({ filePath, liveDbPath: livePath, latestMigrationMillis })
+function validate(filePath: string, migrationsFolder = MIGRATIONS_FOLDER): void {
+  validateBackupFile({ filePath, liveDbPath: livePath, migrationsFolder })
 }
 
 beforeEach(() => {
@@ -112,19 +148,36 @@ describe('validateBackupFile', () => {
 
     it('an older-version backup', () => {
       const path = join(dir, 'older.db')
-      makeDb(path, { migrationMillis: OLDER_MILLIS })
+      makeDb(path)
+      execOn(path, `DROP TABLE settings; ${FORGET_LAST_MIGRATION}`)
       expect(() => validate(path)).not.toThrow()
     })
 
-    it('a backup without any migrations table', () => {
-      const path = join(dir, 'legacy.db')
-      makeDb(path, { migrationMillis: null })
+    it('a partially migrated backup that can be migrated forward', () => {
+      const path = join(dir, 'partial.db')
+      makeDb(path, { migrationsFolder: makePartialMigrationsFolder(dir) })
       expect(() => validate(path)).not.toThrow()
+      const copy = join(dir, 'copy.db')
+      copyFileSync(path, copy)
+      const db = new Database(copy)
+      try {
+        expect(() => migrate(drizzle(db), { migrationsFolder: MIGRATIONS_FOLDER })).not.toThrow()
+      } finally {
+        db.close()
+      }
+    })
+
+    it('without modifying the backup while dry-running the migrations', () => {
+      const path = join(dir, 'partial-untouched.db')
+      makeDb(path, { migrationsFolder: makePartialMigrationsFolder(dir) })
+      const before = sha256(path)
+      validate(path)
+      expect(sha256(path)).toBe(before)
     })
 
     it('a backup at the equal schema level', () => {
       const path = join(dir, 'equal.db')
-      makeDb(path, { migrationMillis: LATEST_MILLIS })
+      makeDb(path)
       expect(() => validate(path)).not.toThrow()
     })
 
@@ -147,8 +200,7 @@ describe('validateBackupFile', () => {
       const source = new Database(join(dir, 'wal-source.db'))
       try {
         source.pragma('journal_mode = WAL')
-        source.exec('CREATE TABLE students (id INTEGER PRIMARY KEY, name TEXT)')
-        source.exec('CREATE TABLE frequentation (id INTEGER PRIMARY KEY, name TEXT)')
+        migrate(drizzle(source), { migrationsFolder: MIGRATIONS_FOLDER })
         await source.backup(path)
       } finally {
         source.close()
@@ -231,20 +283,47 @@ describe('validateBackupFile', () => {
   describe('rejects missing tables', () => {
     it('without the students table', () => {
       const path = join(dir, 'no-students.db')
-      makeDb(path, { tables: ['frequentation'] })
+      makeDb(path, { dropTables: ['frequentation', 'students'] })
+      execOn(path, 'CREATE TABLE frequentation (id INTEGER)')
       expectCode(() => validate(path), ErrorCode.RESTORE_MISSING_TABLES)
     })
 
     it('without the frequentation table', () => {
       const path = join(dir, 'no-frequentation.db')
-      makeDb(path, { tables: ['students'] })
+      makeDb(path, { dropTables: ['frequentation'] })
       expectCode(() => validate(path), ErrorCode.RESTORE_MISSING_TABLES)
+    })
+  })
+
+  describe('rejects an un-migratable backup', () => {
+    it('without the migrations table', () => {
+      const path = join(dir, 'no-migrations.db')
+      makeDb(path)
+      execOn(path, `DROP TABLE ${MIGRATIONS_TABLE}`)
+      expectCode(() => validate(path), ErrorCode.RESTORE_UNKNOWN_SCHEMA)
+    })
+
+    it('with an empty migrations table', () => {
+      const path = join(dir, 'empty-migrations.db')
+      makeDb(path)
+      execOn(path, `DELETE FROM ${MIGRATIONS_TABLE}`)
+      expectCode(() => validate(path), ErrorCode.RESTORE_UNKNOWN_SCHEMA)
+    })
+
+    it('with a schema that conflicts with the pending migrations', () => {
+      const path = join(dir, 'conflict.db')
+      makeDb(path)
+      execOn(
+        path,
+        `${FORGET_LAST_MIGRATION}; DROP TABLE settings; CREATE TABLE settings (other TEXT)`
+      )
+      expectCode(() => validate(path), ErrorCode.RESTORE_MIGRATION_FAILED)
     })
   })
 
   it('rejects a backup from a newer schema', () => {
     const path = join(dir, 'newer.db')
-    makeDb(path, { migrationMillis: LATEST_MILLIS + NEWER_OFFSET_MS })
+    makeDb(path, { extraMigrationMillis: LATEST_MILLIS + NEWER_OFFSET_MS })
     expectCode(() => validate(path), ErrorCode.RESTORE_NEWER_VERSION)
   })
 

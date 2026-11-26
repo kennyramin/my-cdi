@@ -11,6 +11,7 @@
 //     (which realigns) or `npm run rebuild:tests` afterwards before running vitest.
 import { spawnSync } from 'node:child_process'
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -303,6 +304,33 @@ try {
   )
   expect((await studentCount(page)) === 1, '4: count still 1 after rejected file')
 
+  // 4b. A valid-looking copy stripped of __drizzle_migrations would not boot: it must be refused
+  const noMigrations = join(exportsDir, 'no-migrations.db')
+  copyFileSync(goodBackup, noMigrations)
+  runInElectronNode(
+    `const D=require('better-sqlite3');const d=new D(${JSON.stringify(noMigrations)});d.exec('DROP TABLE __drizzle_migrations');d.close()`
+  )
+  await page.evaluate(() => document.querySelector('[role="alert"] button')?.click())
+  await stubDialogs(app, 'open', noMigrations)
+  await page.getByRole('button', { name: LABELS.restore }).click()
+  await page
+    .waitForFunction(
+      (s) =>
+        [...document.querySelectorAll('[role="alert"]')].some((e) => e.textContent.includes(s)),
+      "pas d'information de version",
+      { timeout: UI_TIMEOUT_MS }
+    )
+    .catch(() => {})
+  const noMigrationsToast = await alertText(page)
+  expect(
+    noMigrationsToast !== null && noMigrationsToast.includes("pas d'information de version"),
+    `4b: error toast for backup without migrations (got ${noMigrationsToast})`
+  )
+  expect((await page.getByRole('dialog').count()) === 0, '4b: no confirmation dialog opened')
+  expect((await studentCount(page)) === 1, '4b: live data unchanged after rejected backup')
+  expect((await relaunchCount(app)) === 0, '4b: no relaunch after rejected backup')
+  await page.evaluate(() => document.querySelector('[role="alert"] button')?.click())
+
   await stubDialogs(app, 'open', goodBackup)
   await page.getByRole('button', { name: LABELS.restore }).click()
   const dialog = page.getByRole('dialog')
@@ -337,6 +365,7 @@ try {
 
   // 6. Second instance on the same dir
   writeFileSync(join(backupsDir, 'notes.txt'), 'keep me')
+  writeFileSync(join(backupsDir, 'auto-20200101-000000-migration.db'), 'ordinary automatic copy')
   ;({ app, page } = await launch(userData))
   expect(
     (await studentCount(page)) === STUDENT_COUNT,
@@ -353,8 +382,8 @@ try {
   await confirm.waitFor({ state: 'hidden', timeout: UI_TIMEOUT_MS })
   await page.waitForTimeout(500)
   expect(
-    autoFiles(backupsDir).length === 0,
-    `6: no auto-*.db left (got ${autoFiles(backupsDir).join(',')})`
+    autoFiles(backupsDir).length === 1 && autoFiles(backupsDir)[0].endsWith('-restore.db'),
+    `6: only the restore safety copy is left (got ${autoFiles(backupsDir).join(',')})`
   )
   expect(existsSync(join(backupsDir, 'notes.txt')), '6: unrelated notes.txt survives')
   await closeQuietly(app)

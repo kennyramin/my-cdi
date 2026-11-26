@@ -7,7 +7,6 @@ import type { AppLifecycle, BackupDialogs } from './ports'
 import { getBackupRuntime } from './runtime'
 import { registerBackupController } from './controllers/backup'
 import { backupSettings } from './settings/backupSettings'
-import { getLatestMigrationMillis } from './helpers/migrationLevel'
 import { nodeFileOps } from './helpers/nodeFileOps'
 import { applyRestore } from './helpers/applyRestore'
 import { runManualBackup } from './use-cases/runManualBackup'
@@ -34,7 +33,7 @@ export function initializeBackupModule(
     dialogs,
     settings,
     liveDbPath,
-    getLatestMigrationMillis: () => getLatestMigrationMillis(MIGRATIONS_FOLDER),
+    migrationsFolder: MIGRATIONS_FOLDER,
     documentsPath,
     apply: (sourcePath) =>
       applyRestore({

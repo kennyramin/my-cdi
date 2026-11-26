@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -9,15 +11,12 @@ import { backupSettings } from '../../../settings/backupSettings'
 import type { BackupDialogs } from '../../../ports'
 import { createRestoreSession } from '../restoreBackup'
 
-const LATEST_MILLIS = 1_700_000_000_000
+const MIGRATIONS_FOLDER = join(process.cwd(), 'drizzle')
 
 function makeValidBackup(path: string): void {
   const db = new Database(path)
   try {
-    db.exec('CREATE TABLE students (id INTEGER PRIMARY KEY, name TEXT)')
-    db.exec('CREATE TABLE frequentation (id INTEGER PRIMARY KEY)')
-    db.exec('CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY, created_at NUMERIC)')
-    db.prepare('INSERT INTO __drizzle_migrations (created_at) VALUES (?)').run(LATEST_MILLIS)
+    migrate(drizzle(db), { migrationsFolder: MIGRATIONS_FOLDER })
   } finally {
     db.close()
   }
@@ -73,7 +72,7 @@ describe('createRestoreSession', () => {
       dialogs,
       settings: backupSettings(createFakeGateway()),
       liveDbPath,
-      getLatestMigrationMillis: () => LATEST_MILLIS,
+      migrationsFolder: MIGRATIONS_FOLDER,
       documentsPath: join(dir, 'docs'),
       apply
     })
@@ -234,7 +233,7 @@ describe('createRestoreSession', () => {
       },
       settings: backupSettings(createFakeGateway()),
       liveDbPath,
-      getLatestMigrationMillis: () => LATEST_MILLIS,
+      migrationsFolder: MIGRATIONS_FOLDER,
       documentsPath: join(dir, 'docs'),
       apply
     })
@@ -251,22 +250,18 @@ describe('createRestoreSession', () => {
     expect(apply).toHaveBeenCalledExactlyOnceWith(second)
   })
 
-  it('looks the migration level up lazily, not at construction', async () => {
-    const lookup = vi.fn<() => number>().mockImplementation(() => {
-      throw new Error('migrations folder missing')
-    })
+  it('reads the migration files lazily, not at construction', async () => {
     const lazy = createRestoreSession({
       dialogs,
       settings: backupSettings(createFakeGateway()),
       liveDbPath,
-      getLatestMigrationMillis: lookup,
+      migrationsFolder: join(dir, 'missing-migrations'),
       documentsPath: join(dir, 'docs'),
       apply
     })
-    expect(lookup).not.toHaveBeenCalled()
     picked = join(dir, 'a.db')
     makeValidBackup(picked)
 
-    await expect(lazy.select()).rejects.toThrow('migrations folder missing')
+    await expect(lazy.select()).rejects.toThrow()
   })
 })

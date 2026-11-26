@@ -8,7 +8,7 @@ export interface RestoreSessionDeps {
   dialogs: BackupDialogs
   settings: BackupSettings
   liveDbPath: string
-  getLatestMigrationMillis: () => number
+  migrationsFolder: string
   documentsPath: string
   apply: (sourcePath: string) => Promise<void>
 }
@@ -20,7 +20,7 @@ export interface RestoreSession {
 
 // The renderer never sends a path: the main process remembers the file it validated
 export function createRestoreSession(deps: RestoreSessionDeps): RestoreSession {
-  const { dialogs, settings, liveDbPath, getLatestMigrationMillis, documentsPath, apply } = deps
+  const { dialogs, settings, liveDbPath, migrationsFolder, documentsPath, apply } = deps
   let selectedPath: string | null = null
   let latestSelectRequest = 0
 
@@ -28,7 +28,7 @@ export function createRestoreSession(deps: RestoreSessionDeps): RestoreSession {
     validateBackupFile({
       filePath,
       liveDbPath,
-      latestMigrationMillis: getLatestMigrationMillis()
+      migrationsFolder
     })
   }
 

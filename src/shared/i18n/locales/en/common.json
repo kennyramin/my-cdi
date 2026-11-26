@@ -114,6 +114,8 @@
       "corrupted": "This backup is corrupted",
       "missingTables": "This backup does not contain all the expected data",
       "newerVersion": "This backup comes from a newer version of the application",
+      "unknownSchema": "This backup has no version information and cannot be used",
+      "migrationFailed": "This backup cannot be upgraded to the current version",
       "failed": "Restore failed; your original data was kept. The application is restarting."
     }
   },
