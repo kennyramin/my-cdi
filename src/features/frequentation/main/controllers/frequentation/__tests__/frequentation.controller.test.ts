@@ -4,7 +4,12 @@ import { ActivityType } from '@types'
 import { registerFrequentationController } from '../frequentation.controller'
 import { FREQUENTATION_CHANNELS } from '@shared/ipc/channels'
 import type { FrequentationGateway } from '@frequentation/gateways/frequentation'
-import type { FrequentationEntity } from '@frequentation/entities/frequentation'
+import type {
+  FrequentationEntity,
+  FrequentationWithStudentEntity
+} from '@frequentation/entities/frequentation'
+import type { StudentGateway } from '@student/gateways/student'
+import { ErrorCode } from '@lib/errors'
 
 const STUDENT_ID = 1
 const FREQUENTATION_ID = 1
@@ -63,14 +68,51 @@ function createFrequentationGatewayStub(): FrequentationGateway {
   }
 }
 
+function createStudentGatewayStub(): StudentGateway {
+  return {
+    create: vi.fn(),
+    getById: vi.fn(),
+    getAll: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    getByIds: vi.fn().mockResolvedValue([
+      {
+        id: STUDENT_ID,
+        nom: 'Dupont',
+        prenom: 'Marie',
+        classe: '6A',
+        ine: 'INE1',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z'
+      }
+    ]),
+    getAllWithVisitCount: vi.fn(),
+    countVisitsByStudentId: vi.fn(),
+    anonymizeByIds: vi.fn(),
+    checkpoint: vi.fn(),
+    withTransaction: vi.fn()
+  }
+}
+
+const UPDATED_WITH_STUDENT: FrequentationWithStudentEntity = {
+  ...SAMPLE_FREQUENTATION,
+  activity: ActivityType.READING,
+  studentNom: 'Dupont',
+  studentPrenom: 'Marie',
+  studentClasse: '6A',
+  studentIne: null
+}
+
 describe('registerFrequentationController', () => {
   let ipcMain: IpcMainStub
   let frequentationGateway: FrequentationGateway
+  let studentGateway: StudentGateway
 
   beforeEach(() => {
     ipcMain = createIpcMainStub()
     frequentationGateway = createFrequentationGatewayStub()
-    registerFrequentationController(ipcMain, frequentationGateway)
+    studentGateway = createStudentGatewayStub()
+    registerFrequentationController(ipcMain, frequentationGateway, studentGateway)
   })
 
   it('registers every channel from FREQUENTATION_CHANNELS', () => {
@@ -100,5 +142,65 @@ describe('registerFrequentationController', () => {
       studentId: 1
     })
     expect(result).toEqual(expect.objectContaining({ success: false }))
+  })
+
+  it('maps an updated entry to a response dto', async () => {
+    vi.mocked(frequentationGateway.updateChecked).mockResolvedValue({
+      written: SAMPLE_FREQUENTATION
+    })
+    vi.mocked(frequentationGateway.getWithStudentById).mockResolvedValue(UPDATED_WITH_STUDENT)
+    const result = await ipcMain.invoke(FREQUENTATION_CHANNELS.UPDATE, {
+      id: FREQUENTATION_ID,
+      activity: ActivityType.READING
+    })
+    expect(result).toEqual({
+      success: true,
+      data: expect.objectContaining({
+        id: FREQUENTATION_ID,
+        activity: 'reading',
+        studentName: 'Marie Dupont'
+      })
+    })
+  })
+
+  it('maps duplicates found by an update to a DuplicatesFoundDto', async () => {
+    vi.mocked(frequentationGateway.updateChecked).mockResolvedValue({
+      duplicates: [
+        {
+          studentId: STUDENT_ID,
+          existingId: 7,
+          existingStartsAt: '2026-01-15T09:10:00',
+          existingActivity: ActivityType.GAME
+        }
+      ]
+    })
+    const result = await ipcMain.invoke(FREQUENTATION_CHANNELS.UPDATE, {
+      id: FREQUENTATION_ID,
+      startsAt: '2026-01-15T09:05:00'
+    })
+    expect(result).toEqual({
+      success: true,
+      data: {
+        created: 0,
+        duplicates: [
+          {
+            studentId: STUDENT_ID,
+            studentName: 'Marie Dupont',
+            existingStartsAt: '2026-01-15T09:10:00',
+            existingActivity: ActivityType.GAME
+          }
+        ]
+      }
+    })
+  })
+
+  it('returns an error result for an invalid update payload', async () => {
+    const result = await ipcMain.invoke(FREQUENTATION_CHANNELS.UPDATE, {
+      id: FREQUENTATION_ID,
+      startsAt: '2026-01-15 09:00'
+    })
+    expect(result).toEqual(
+      expect.objectContaining({ success: false, code: ErrorCode.VALIDATION_ERROR })
+    )
   })
 })

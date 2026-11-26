@@ -8,6 +8,7 @@ import { ActivityType } from '@types'
 import { migrateTestDatabase } from '@shared/db/testing/migrateTestDatabase'
 import { ErrorCode } from '@lib/errors'
 import { updateFrequentation } from '@frequentation/use-cases/updateFrequentation'
+import { StudentGatewayDrizzle } from '@student/gateways/student'
 import { FrequentationGatewayDrizzle } from '../frequentation.gateway.drizzle'
 import type { FrequentationTx } from '../frequentation.gateway.drizzle'
 import type { ExistingVisit } from '../helpers/findDuplicateMatches'
@@ -41,12 +42,14 @@ function createTestDb(): { sqlite: Database.Database; db: ReturnType<typeof driz
 
 describe('FrequentationGatewayDrizzle', () => {
   let gateway: FrequentationGatewayDrizzle
+  let studentGateway: StudentGatewayDrizzle
   let sqlite: Database.Database
 
   beforeEach(() => {
     const testSetup = createTestDb()
     sqlite = testSetup.sqlite
     gateway = new FrequentationGatewayDrizzle(testSetup.db)
+    studentGateway = new StudentGatewayDrizzle(testSetup.db)
   })
 
   afterEach(() => {
@@ -337,7 +340,9 @@ describe('FrequentationGatewayDrizzle', () => {
     it('cannot be re-linked to a student and stays anonymous', async () => {
       const id = await createAnonymizedVisit()
 
-      const result = await updateFrequentation(gateway, id, { studentId: SECOND_STUDENT_ID })
+      const result = await updateFrequentation(gateway, studentGateway, id, {
+        studentId: SECOND_STUDENT_ID
+      })
 
       expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
       expect((await gateway.getById(id))?.studentId).toBeNull()
@@ -346,7 +351,9 @@ describe('FrequentationGatewayDrizzle', () => {
     it('accepts an activity change and keeps it anonymous', async () => {
       const id = await createAnonymizedVisit()
 
-      const result = await updateFrequentation(gateway, id, { activity: ActivityType.READING })
+      const result = await updateFrequentation(gateway, studentGateway, id, {
+        activity: ActivityType.READING
+      })
 
       expect(result.success).toBe(true)
       expect(await gateway.getById(id)).toMatchObject({

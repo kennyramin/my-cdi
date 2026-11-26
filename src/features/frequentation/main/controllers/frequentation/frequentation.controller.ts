@@ -2,11 +2,13 @@ import type { IpcMain } from 'electron'
 import { createMainRouter } from '@shared/ipc/router'
 import { FREQUENTATION_CHANNELS } from '@shared/ipc/channels'
 import type { FrequentationGateway } from '@frequentation/gateways/frequentation'
+import type { StudentGateway } from '@student/gateways/student'
 import type {
   CreateFrequentationDto,
   UpdateFrequentationDto,
   CreateFrequentationBatchDto,
   DateRangeDto,
+  DuplicatesFoundDto,
   FrequentationResponseDto,
   JournalEntryDto
 } from '@frequentation-shared'
@@ -43,7 +45,8 @@ export type IpcMainHandle = Pick<IpcMain, 'handle'>
 
 export function registerFrequentationController(
   ipcMain: IpcMainHandle,
-  frequentationGateway: FrequentationGateway
+  frequentationGateway: FrequentationGateway,
+  studentGateway: StudentGateway
 ): void {
   const router = createMainRouter(ipcMain)
 
@@ -69,11 +72,17 @@ export function registerFrequentationController(
     }
   )
 
-  router.procedure<UpdateFrequentationInput, FrequentationEntity>(
+  router.procedure<UpdateFrequentationInput, FrequentationResponseDto | DuplicatesFoundDto>(
     FREQUENTATION_CHANNELS.UPDATE,
     async (input) => {
       const { id, ...dto } = input
-      return unwrap(await updateFrequentation(frequentationGateway, id, dto))
+      const outcome = unwrap(
+        await updateFrequentation(frequentationGateway, studentGateway, id, dto)
+      )
+      if ('duplicates' in outcome) {
+        return { created: 0, duplicates: outcome.duplicates }
+      }
+      return formatFrequentationResponse(outcome.updated)
     }
   )
 
