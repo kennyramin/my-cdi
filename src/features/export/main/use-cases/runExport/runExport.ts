@@ -28,6 +28,7 @@ import { EXPORT_ISSUE_MESSAGES, exportRequestSchema } from '../../validations/ex
 export const EXPORT_CHUNK_ROWS = 5000
 
 const VALIDATION_FALLBACK_MESSAGE = 'Validation error'
+const LOCKED_MESSAGE = 'Export file is locked by another program'
 const WRITE_FAILED_MESSAGE = 'Export file could not be written'
 const DATA_FAILED_MESSAGE = 'Export data could not be read'
 const FRENCH_LOCALE = 'fr'
@@ -147,8 +148,8 @@ async function writeRows(
   let writer: ExportWriter
   try {
     writer = await deps.fileAdapter.openWriter(path)
-  } catch {
-    return failWrite()
+  } catch (error) {
+    return failWrite(error)
   }
   try {
     await writer.write(serializeCsvHeader(source.header))
@@ -156,18 +157,21 @@ async function writeRows(
       await writer.write(serializeCsvRows(source.slice(start, start + EXPORT_CHUNK_ROWS)))
     }
     await writer.commit()
-  } catch {
+  } catch (error) {
     try {
       await writer.abort()
     } catch {
       // the original failure is the one worth reporting
     }
-    return failWrite()
+    return failWrite(error)
   }
   return { success: true, data: { path, rows: source.count } }
 }
 
-function failWrite(): UseCaseResult<ExportResultDto> {
+function failWrite(cause?: unknown): UseCaseResult<ExportResultDto> {
+  if (cause instanceof AppError && cause.code === ErrorCode.EXPORT_FILE_LOCKED) {
+    return { success: false, error: LOCKED_MESSAGE, code: ErrorCode.EXPORT_FILE_LOCKED }
+  }
   return { success: false, error: WRITE_FAILED_MESSAGE, code: ErrorCode.EXPORT_WRITE_FAILED }
 }
 

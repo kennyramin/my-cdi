@@ -1,8 +1,7 @@
 import { EventEmitter } from 'node:events'
-import { createWriteStream } from 'node:fs'
-import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SaveDialogReturnValue } from 'electron'
 import { ErrorCode } from '@lib/errors'
@@ -10,6 +9,7 @@ import {
   createElectronExportFileAdapter,
   type ExportDialog,
   type ExportFs,
+  nodeExportFs,
   type ExportWriteStream
 } from '../electronExportFileAdapter'
 
@@ -17,6 +17,7 @@ class FakeStream extends EventEmitter implements ExportWriteStream {
   chunks: string[] = []
   ended = false
   destroyed = false
+  closed = false
   destroyCalls = 0
   backpressureOnce = false
   write(chunk: string): boolean {
@@ -31,15 +32,22 @@ class FakeStream extends EventEmitter implements ExportWriteStream {
     this.ended = true
     setImmediate(() => {
       this.emit('finish')
+      this.closed = true
       this.emit('close')
     })
   }
   destroy(): void {
     this.destroyed = true
     this.destroyCalls += 1
-    setImmediate(() => this.emit('close'))
+    setImmediate(() => {
+      this.closed = true
+      this.emit('close')
+    })
   }
 }
+
+const errorWithCode = (code: string): Error => Object.assign(new Error(code), { code })
+const tick = (): Promise<void> => new Promise((resolve) => setImmediate(resolve))
 
 interface Harness {
   stream: FakeStream
@@ -49,16 +57,25 @@ interface Harness {
   openedPaths: string[]
 }
 
-function createHarness(options: { openError?: boolean } = {}): Harness {
+function createHarness(options: { openError?: boolean | Error } = {}): Harness {
   const stream = new FakeStream()
   const openedPaths: string[] = []
-  const renameFn = vi.fn<ExportFs['rename']>().mockResolvedValue(undefined)
+  const renameFn = vi.fn<ExportFs['rename']>(async () => {
+    if (!stream.closed) {
+      throw new Error('rename called before the stream was closed')
+    }
+  })
   const rmFn = vi.fn<ExportFs['rm']>().mockResolvedValue(undefined)
   const fs: ExportFs = {
     createWriteStream: (path) => {
       openedPaths.push(path)
       setImmediate(() =>
-        options.openError ? stream.emit('error', new Error('EACCES')) : stream.emit('open')
+        options.openError
+          ? stream.emit(
+              'error',
+              options.openError instanceof Error ? options.openError : new Error('EACCES')
+            )
+          : stream.emit('open')
       )
       return stream
     },
@@ -69,6 +86,8 @@ function createHarness(options: { openError?: boolean } = {}): Harness {
 }
 
 const DEFAULT_DIR = '/docs'
+const PERMISSION_BITS = 0o777
+const PRIVATE_MODE = 0o600
 
 function createDialog(result: SaveDialogReturnValue) {
   const showSaveDialog = vi.fn<ExportDialog['showSaveDialog']>().mockResolvedValue(result)
@@ -80,13 +99,15 @@ function build(
   result: SaveDialogReturnValue = { canceled: false, filePath: '/docs/out.csv' }
 ) {
   const { dialog, showSaveDialog } = createDialog(result)
+  const logger = { warn: vi.fn<(message: string) => void>() }
   const adapter = createElectronExportFileAdapter({
     dialog,
     fs: harness.fs,
     getParentWindow: () => null,
-    getDefaultDirectory: () => DEFAULT_DIR
+    getDefaultDirectory: () => DEFAULT_DIR,
+    logger
   })
-  return { adapter, showSaveDialog }
+  return { adapter, showSaveDialog, logger }
 }
 
 describe('createElectronExportFileAdapter', () => {
@@ -125,7 +146,8 @@ describe('createElectronExportFileAdapter', () => {
 
     expect(harness.openedPaths).toHaveLength(1)
     const [tempPath] = harness.openedPaths
-    expect(tempPath).toMatch(/^\/docs\/out\.csv\.[0-9a-f]{16}\.tmp$/)
+    expect(dirname(tempPath ?? '')).toBe(dirname('/docs/out.csv'))
+    expect(basename(tempPath ?? '')).toMatch(/^out\.csv\.[0-9a-f]{16}\.tmp$/)
     expect(harness.stream.chunks).toEqual(['a', 'b'])
     expect(harness.stream.ended).toBe(true)
     expect(harness.rename).toHaveBeenCalledWith(tempPath, '/docs/out.csv')
@@ -234,6 +256,125 @@ describe('createElectronExportFileAdapter', () => {
   })
 })
 
+describe('createElectronExportFileAdapter failure handling', () => {
+  it('renames only after the stream emitted close', async () => {
+    const harness = createHarness()
+    const { adapter } = build(harness)
+    const writer = await adapter.openWriter('/docs/out.csv')
+    await writer.write('a')
+
+    await writer.commit()
+
+    expect(harness.rename).toHaveBeenCalledTimes(1)
+    expect(harness.stream.closed).toBe(true)
+  })
+
+  it('a stream error while awaiting drain rejects the pending write', async () => {
+    const harness = createHarness()
+    harness.stream.backpressureOnce = true
+    const { adapter } = build(harness)
+    const writer = await adapter.openWriter('/docs/out.csv')
+
+    const pending = writer.write('big')
+    await tick()
+    harness.stream.emit('error', errorWithCode('ENOSPC'))
+
+    await expect(pending).rejects.toMatchObject({ code: ErrorCode.EXPORT_WRITE_FAILED })
+  })
+
+  it('an error while flushing in commit rejects and never renames', async () => {
+    const harness = createHarness()
+    harness.stream.end = () => {
+      setImmediate(() => harness.stream.emit('error', errorWithCode('ENOSPC')))
+    }
+    const { adapter } = build(harness)
+    const writer = await adapter.openWriter('/docs/out.csv')
+
+    await expect(writer.commit()).rejects.toMatchObject({ code: ErrorCode.EXPORT_WRITE_FAILED })
+
+    expect(harness.rename).not.toHaveBeenCalled()
+  })
+
+  it('abort after a failed write destroys the stream and removes the temp file', async () => {
+    const harness = createHarness()
+    const { adapter } = build(harness)
+    const writer = await adapter.openWriter('/docs/out.csv')
+    harness.stream.emit('error', errorWithCode('ENOSPC'))
+    await expect(writer.write('x')).rejects.toBeDefined()
+
+    await writer.abort()
+
+    expect(harness.stream.destroyed).toBe(true)
+    expect(harness.rm).toHaveBeenCalledWith(harness.openedPaths[0], { force: true })
+  })
+
+  it('a second commit after success does not hang nor rename again', async () => {
+    const harness = createHarness()
+    const { adapter } = build(harness)
+    const writer = await adapter.openWriter('/docs/out.csv')
+    await writer.commit()
+
+    await writer.commit()
+
+    expect(harness.rename).toHaveBeenCalledTimes(1)
+  })
+
+  it('commit after abort rejects without hanging', async () => {
+    const harness = createHarness()
+    const { adapter } = build(harness)
+    const writer = await adapter.openWriter('/docs/out.csv')
+    await writer.abort()
+
+    await expect(writer.commit()).rejects.toMatchObject({ code: ErrorCode.EXPORT_WRITE_FAILED })
+    expect(harness.rename).not.toHaveBeenCalled()
+  })
+
+  it('commit retried after a failed rename does not hang', async () => {
+    const harness = createHarness()
+    harness.rename.mockRejectedValueOnce(errorWithCode('EBUSY'))
+    const { adapter } = build(harness)
+    const writer = await adapter.openWriter('/docs/out.csv')
+    await expect(writer.commit()).rejects.toBeDefined()
+
+    await expect(writer.commit()).resolves.toBeUndefined()
+  })
+
+  it.each(['EBUSY', 'EPERM'])(
+    'rename failing with %s maps to EXPORT_FILE_LOCKED and is logged',
+    async (code) => {
+      const harness = createHarness()
+      harness.rename.mockRejectedValue(errorWithCode(code))
+      const { adapter, logger } = build(harness)
+      const writer = await adapter.openWriter('/docs/out.csv')
+
+      await expect(writer.commit()).rejects.toMatchObject({ code: ErrorCode.EXPORT_FILE_LOCKED })
+
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(code))
+    }
+  )
+
+  it('other rename failures map to EXPORT_WRITE_FAILED and log the code only', async () => {
+    const harness = createHarness()
+    harness.rename.mockRejectedValue(errorWithCode('ENOENT'))
+    const { adapter, logger } = build(harness)
+    const writer = await adapter.openWriter('/docs/secret-name.csv')
+
+    await expect(writer.commit()).rejects.toMatchObject({ code: ErrorCode.EXPORT_WRITE_FAILED })
+
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('ENOENT'))
+    expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('secret-name'))
+  })
+
+  it('open failing with EBUSY maps to EXPORT_FILE_LOCKED', async () => {
+    const harness = createHarness({ openError: errorWithCode('EBUSY') })
+    const { adapter } = build(harness)
+
+    await expect(adapter.openWriter('/docs/out.csv')).rejects.toMatchObject({
+      code: ErrorCode.EXPORT_FILE_LOCKED
+    })
+  })
+})
+
 describe('createElectronExportFileAdapter with the real file system', () => {
   let dir: string
 
@@ -248,13 +389,10 @@ describe('createElectronExportFileAdapter with the real file system', () => {
   const realAdapter = () =>
     createElectronExportFileAdapter({
       dialog: { showSaveDialog: vi.fn<ExportDialog['showSaveDialog']>() },
-      fs: {
-        createWriteStream: (path) => createWriteStream(path, { flags: 'wx' }),
-        rename,
-        rm
-      },
+      fs: nodeExportFs,
       getParentWindow: () => null,
-      getDefaultDirectory: () => dir
+      getDefaultDirectory: () => dir,
+      logger: { warn: vi.fn() }
     })
 
   it('writing into a non-existent directory rejects and leaves no file', async () => {
@@ -320,5 +458,28 @@ describe('createElectronExportFileAdapter with the real file system', () => {
     await first.abort()
     await second.abort()
     expect(await readdir(dir)).toEqual([])
+  })
+
+  it('nodeExportFs refuses to open an existing temp name (wx) and keeps it intact', async () => {
+    const existing = join(dir, 'taken.tmp')
+    await writeFile(existing, 'mine')
+    const stream = nodeExportFs.createWriteStream(existing)
+
+    const error = await new Promise<unknown>((resolve) => stream.once('error', resolve))
+
+    expect(error).toMatchObject({ code: 'EEXIST' })
+    expect(await readFile(existing, 'utf8')).toBe('mine')
+  })
+
+  it('creates the temp file private (0o600) and the committed target keeps that mode', async () => {
+    if (process.platform === 'win32') {
+      return
+    }
+    const target = join(dir, 'out.csv')
+    const writer = await realAdapter().openWriter(target)
+    await writer.write('x')
+    await writer.commit()
+
+    expect((await stat(target)).mode & PERMISSION_BITS).toBe(PRIVATE_MODE)
   })
 })

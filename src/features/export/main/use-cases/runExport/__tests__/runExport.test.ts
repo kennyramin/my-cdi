@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import Papa from 'papaparse'
 import { ActivityType } from '@types'
-import { ErrorCode } from '@lib/errors'
+import { AppError, ErrorCode } from '@lib/errors'
 import { ANONYMIZED_STUDENT_LABEL } from '@frequentation-shared'
 import type { FrequentationGateway } from '@frequentation/gateways/frequentation'
 import type { FrequentationWithStudentEntity } from '@frequentation/entities/frequentation'
@@ -313,6 +313,26 @@ describe('runExport', () => {
     const result = await runExport(deps, journalRequest)
     expect(result).toMatchObject({ success: false, code: ErrorCode.EXPORT_WRITE_FAILED })
     expect(adapter.files.get(PATH)).toMatchObject({ aborted: true, committed: false })
+  })
+
+  it('a locked-file failure from the adapter keeps its EXPORT_FILE_LOCKED code', async () => {
+    const base = createFakeExportFileAdapter({ path: PATH })
+    const adapter = {
+      ...base,
+      openWriter: async (target: string) => {
+        const writer = await base.openWriter(target)
+        return {
+          ...writer,
+          commit: async () => {
+            throw new AppError(ErrorCode.EXPORT_FILE_LOCKED, 'locked')
+          }
+        }
+      }
+    }
+    const { deps } = setup()
+    const result = await runExport({ ...deps, fileAdapter: adapter }, journalRequest)
+    expect(result).toMatchObject({ success: false, code: ErrorCode.EXPORT_FILE_LOCKED })
+    expect(base.files.get(PATH)?.aborted).toBe(true)
   })
 
   it.each([

@@ -108,6 +108,7 @@
     "validation": "Les données envoyées sont invalides",
     "generic": "Une erreur est survenue",
     "exportWriteFailed": "Impossible d'écrire le fichier. Vérifiez que le dossier est accessible en écriture.",
+    "exportFileLocked": "Impossible d'écrire le fichier : est-il ouvert dans un autre programme ?",
     "backup": {
       "pathIsLiveDb": "Le chemin choisi correspond à la base de données active ; choisissez un autre emplacement",
       "writeFailed": "L'écriture de la sauvegarde a échoué"

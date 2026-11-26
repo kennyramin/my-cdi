@@ -5,6 +5,7 @@ import { ErrorCode } from '@lib/errors'
 import type { FrequentationGateway } from '@frequentation/gateways/frequentation'
 import type { StudentGateway } from '@student/gateways/student'
 import { createFakeExportFileAdapter } from '../../../test-helpers'
+import { EXPORT_ISSUE_MESSAGES } from '../../../validations/exportRequestSchema'
 import { registerExportController } from '../export.controller'
 
 type IpcHandler = Parameters<IpcMain['handle']>[1]
@@ -106,7 +107,8 @@ describe('registerExportController', () => {
 
     expect(result).toMatchObject({
       success: false,
-      code: ErrorCode.VALIDATION_ERROR
+      code: ErrorCode.VALIDATION_ERROR,
+      error: EXPORT_ISSUE_MESSAGES.ACKNOWLEDGEMENT_REQUIRED
     })
     expect(adapter.pickedDefaultNames).toEqual([])
   })

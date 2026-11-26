@@ -107,6 +107,7 @@
     "validation": "The submitted data is invalid",
     "generic": "An error occurred",
     "exportWriteFailed": "Could not write the file. Check that the folder is writable.",
+    "exportFileLocked": "Could not write the file: is it open in another program?",
     "backup": {
       "pathIsLiveDb": "The chosen path is the live database; pick another location",
       "writeFailed": "Writing the backup failed"

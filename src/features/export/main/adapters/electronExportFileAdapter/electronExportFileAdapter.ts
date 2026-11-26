@@ -1,4 +1,6 @@
 import { randomBytes } from 'node:crypto'
+import { createWriteStream } from 'node:fs'
+import { rename, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { BrowserWindow, SaveDialogOptions, SaveDialogReturnValue } from 'electron'
 import { AppError, ErrorCode } from '@lib/errors'
@@ -9,7 +11,10 @@ const FILTER_NAME = 'Fichier CSV'
 const CSV_EXTENSION = 'csv'
 const TEMP_SUFFIX = '.tmp'
 const TEMP_TOKEN_BYTES = 8
+const TEMP_FILE_MODE = 0o600
 const WRITE_FAILED_MESSAGE = 'Export file could not be written'
+const LOCKED_MESSAGE = 'Export file is locked by another program'
+const LOCKED_ERROR_CODES: readonly string[] = ['EBUSY', 'EPERM']
 
 type StreamListener = (error?: Error) => void
 
@@ -17,6 +22,7 @@ export interface ExportWriteStream {
   write(chunk: string): boolean
   end(): void
   destroy(): void
+  on(event: string, listener: StreamListener): unknown
   once(event: string, listener: StreamListener): unknown
 }
 
@@ -34,29 +40,64 @@ export interface ExportDialog {
   ): Promise<SaveDialogReturnValue>
 }
 
+export interface ExportLogger {
+  warn(message: string): void
+}
+
+/**
+ * Real file system. 'wx' refuses to open an existing temp name (never clobbers a foreign file),
+ * flush:true fsyncs before the handle closes so the rename never publishes unsynced data, and the
+ * 0o600 mode keeps the (possibly personal) data private: the renamed target keeps that mode.
+ */
+export const nodeExportFs: ExportFs = {
+  createWriteStream: (path) =>
+    createWriteStream(path, { flags: 'wx', mode: TEMP_FILE_MODE, flush: true }),
+  rename,
+  rm
+}
+
 export interface ElectronExportFileAdapterDeps {
   dialog: ExportDialog
   fs: ExportFs
   getParentWindow: () => BrowserWindow | null
   getDefaultDirectory: () => string
+  logger: ExportLogger
 }
 
-const writeFailed = (): AppError =>
-  new AppError(ErrorCode.EXPORT_WRITE_FAILED, WRITE_FAILED_MESSAGE)
+const errorCodeOf = (cause: unknown): string | undefined => {
+  if (typeof cause === 'object' && cause !== null && 'code' in cause) {
+    return typeof cause.code === 'string' ? cause.code : undefined
+  }
+  return undefined
+}
+
+/** Logs only the system error code (never paths or data) and maps it to an export error. */
+const toExportError = (cause: unknown, logger: ExportLogger): AppError => {
+  const systemCode = errorCodeOf(cause)
+  logger.warn(`Export write failed (${systemCode ?? 'unknown'})`)
+  if (systemCode !== undefined && LOCKED_ERROR_CODES.includes(systemCode)) {
+    return new AppError(ErrorCode.EXPORT_FILE_LOCKED, LOCKED_MESSAGE)
+  }
+  return new AppError(ErrorCode.EXPORT_WRITE_FAILED, WRITE_FAILED_MESSAGE)
+}
 
 const buildTempPath = (path: string): string =>
   `${path}.${randomBytes(TEMP_TOKEN_BYTES).toString('hex')}${TEMP_SUFFIX}`
 
-async function openStream(fs: ExportFs, tempPath: string): Promise<ExportWriteStream> {
+async function openStream(
+  fs: ExportFs,
+  tempPath: string,
+  logger: ExportLogger
+): Promise<ExportWriteStream> {
   let stream: ExportWriteStream | undefined
   try {
     return await new Promise<ExportWriteStream>((resolve, reject) => {
       const opened = fs.createWriteStream(tempPath)
       stream = opened
-      opened.once('error', () => reject(writeFailed()))
+      opened.on('error', reject)
       opened.once('open', () => resolve(opened))
     })
-  } catch {
+  } catch (cause) {
     // runExport never aborts a writer that failed to open: leave no handle nor temp file behind
     try {
       stream?.destroy()
@@ -64,29 +105,32 @@ async function openStream(fs: ExportFs, tempPath: string): Promise<ExportWriteSt
     } catch {
       // nothing more can be done
     }
-    throw writeFailed()
+    throw toExportError(cause, logger)
   }
 }
 
 function createWriter(
-  fs: ExportFs,
+  deps: { fs: ExportFs; logger: ExportLogger },
   stream: ExportWriteStream,
   path: string,
   tempPath: string
 ): ExportWriter {
+  const { fs, logger } = deps
   let aborted = false
-  let failed = false
+  let committed = false
   let closed = false
+  let failure: AppError | null = null
+  let rejectPending: ((error: AppError) => void) | null = null
   const closedSignal = new Promise<void>((resolve) => {
     stream.once('close', () => {
       closed = true
       resolve()
     })
   })
-  let rejectPending: ((error: AppError) => void) | null = null
-  stream.once('error', () => {
-    failed = true
-    rejectPending?.(writeFailed())
+  // permanent handler: a late error must never become an unhandled 'error' event
+  stream.on('error', (cause) => {
+    failure = toExportError(cause, logger)
+    rejectPending?.(failure)
   })
 
   const waitFor = (event: string): Promise<void> =>
@@ -98,28 +142,39 @@ function createWriter(
       })
     })
 
+  const assertUsable = (): void => {
+    if (aborted) {
+      throw new AppError(ErrorCode.EXPORT_WRITE_FAILED, WRITE_FAILED_MESSAGE)
+    }
+    if (failure !== null) {
+      throw failure
+    }
+  }
+
   return {
     async write(chunk) {
-      if (failed) {
-        throw writeFailed()
-      }
+      assertUsable()
       if (!stream.write(chunk)) {
         await waitFor('drain')
       }
     },
     async commit() {
-      if (failed) {
-        throw writeFailed()
+      if (committed) {
+        return
       }
-      // the handle must be flushed and closed before the rename (Windows refuses otherwise)
-      const closedAfterEnd = waitFor('close')
-      stream.end()
-      await closedAfterEnd
+      assertUsable()
+      if (!closed) {
+        // the handle must be flushed and closed before the rename (Windows refuses otherwise)
+        const closedAfterEnd = waitFor('close')
+        stream.end()
+        await closedAfterEnd
+      }
       try {
         await fs.rename(tempPath, path)
-      } catch {
-        throw writeFailed()
+      } catch (cause) {
+        throw toExportError(cause, logger)
       }
+      committed = true
     },
     async abort() {
       if (aborted) {
@@ -150,7 +205,7 @@ function createWriter(
 export function createElectronExportFileAdapter(
   deps: ElectronExportFileAdapterDeps
 ): ExportFileAdapter {
-  const { dialog, fs, getParentWindow, getDefaultDirectory } = deps
+  const { dialog, fs, getParentWindow, getDefaultDirectory, logger } = deps
   return {
     async pickSavePath(defaultFileName) {
       const result = await dialog.showSaveDialog(getParentWindow(), {
@@ -165,8 +220,8 @@ export function createElectronExportFileAdapter(
     },
     async openWriter(path) {
       const tempPath = buildTempPath(path)
-      const stream = await openStream(fs, tempPath)
-      return createWriter(fs, stream, path, tempPath)
+      const stream = await openStream(fs, tempPath, logger)
+      return createWriter({ fs, logger }, stream, path, tempPath)
     }
   }
 }

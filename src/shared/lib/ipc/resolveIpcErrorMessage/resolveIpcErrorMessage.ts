@@ -18,6 +18,7 @@ const ERROR_MESSAGE_KEYS: Record<string, string> = {
   [ErrorCode.RESTORE_MIGRATION_FAILED]: 'errors.restore.migrationFailed',
   [ErrorCode.RESTORE_FAILED]: 'errors.restore.failed',
   [ErrorCode.EXPORT_WRITE_FAILED]: 'errors.exportWriteFailed',
+  [ErrorCode.EXPORT_FILE_LOCKED]: 'errors.exportFileLocked',
   [ErrorCode.UNKNOWN_ERROR]: 'app.unknownError'
 }
 

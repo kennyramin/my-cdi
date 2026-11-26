@@ -70,4 +70,10 @@ describe('resolveIpcErrorMessage', () => {
       resolveIpcErrorMessage({ error: 'raw', code: ErrorCode.EXPORT_WRITE_FAILED }, (key) => key)
     ).toBe('errors.exportWriteFailed')
   })
+
+  it('maps EXPORT_FILE_LOCKED to errors.exportFileLocked', () => {
+    expect(
+      resolveIpcErrorMessage({ error: 'raw', code: ErrorCode.EXPORT_FILE_LOCKED }, (key) => key)
+    ).toBe('errors.exportFileLocked')
+  })
 })
