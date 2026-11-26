@@ -1,9 +1,11 @@
 {
   "button": {
-    "statistics": "Exporter"
+    "statistics": "Exporter",
+    "students": "Exporter la liste"
   },
   "title": {
-    "statistics": "Exporter les statistiques"
+    "statistics": "Exporter les statistiques",
+    "students": "Exporter la liste des élèves"
   },
   "kind": {
     "legend": "Données à exporter",
@@ -19,5 +21,9 @@
   "cancel": "Annuler",
   "success_one": "{{count}} ligne exportée",
   "success_other": "{{count}} lignes exportées",
-  "namesWarning": "Le fichier contiendra des données personnelles d'élèves. Conservez-le en lieu sûr."
+  "namesWarning": "Le fichier contiendra des données personnelles d'élèves. Conservez-le en lieu sûr.",
+  "students": {
+    "description": "Le fichier contiendra le nom, le prénom, la classe, l'INE et le nombre de visites de chaque élève.",
+    "acknowledge": "Je comprends que ce fichier contient des données personnelles et qu'il n'est pas chiffré."
+  }
 }

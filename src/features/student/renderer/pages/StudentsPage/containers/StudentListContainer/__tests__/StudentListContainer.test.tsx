@@ -84,6 +84,19 @@ describe('StudentListContainer', () => {
     })
   })
 
+  it('renders Exporter la liste next to the CSV import button', async () => {
+    render(<StudentListContainer onEditStudent={vi.fn()} onAddStudent={vi.fn()} />, {
+      wrapper: createWrapper()
+    })
+
+    const exportButton = await screen.findByRole('button', { name: 'Exporter la liste' })
+    const importButton = screen.getByRole('button', { name: /Importer/ })
+    expect(
+      exportButton.compareDocumentPosition(importButton) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    expect(exportButton.parentElement).toBe(importButton.parentElement)
+  })
+
   it('toggles aria-sort when the Nom header button is clicked', async () => {
     const user = userEvent.setup()
     render(<StudentListContainer onEditStudent={vi.fn()} onAddStudent={vi.fn()} />, {

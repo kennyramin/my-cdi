@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next'
 import { formatDate } from '@ui/helpers/formatDate'
 import { useExportDialog } from './hooks/useExportDialog'
 import { ExportDialogPresenter } from './presenters/ExportDialogPresenter'
+import { ExportStatisticsFieldsPresenter } from './presenters/ExportStatisticsFieldsPresenter'
+import { ExportStudentsFieldsPresenter } from './presenters/ExportStudentsFieldsPresenter'
 import { ExportKindOptionPresenter } from './presenters/ExportKindOptionPresenter'
 import { STATISTICS_EXPORT_KINDS } from './types/StatisticsExportKind'
 import type { StatisticsExportKind } from './types/StatisticsExportKind'
@@ -23,7 +25,25 @@ export function ExportDialogContainer(props: ExportDialogContainerProps) {
   })
 
   if (props.scope === 'students') {
-    return null
+    return (
+      <ExportDialogPresenter
+        open={props.open}
+        title={t('title.students')}
+        fieldsNode={
+          <ExportStudentsFieldsPresenter
+            acknowledged={dialog.acknowledged}
+            onAcknowledgeChange={dialog.onAcknowledgeChange}
+            isPending={dialog.isPending}
+          />
+        }
+        canConfirm={dialog.canSubmit}
+        isPending={dialog.isPending}
+        errorMessage={dialog.errorMessage}
+        onConfirm={dialog.submit}
+        onCancel={dialog.requestClose}
+        onClose={dialog.requestClose}
+      />
+    )
   }
 
   const kindOptionNodes = STATISTICS_EXPORT_KINDS.map((kind) => (
@@ -38,13 +58,19 @@ export function ExportDialogContainer(props: ExportDialogContainerProps) {
     <ExportDialogPresenter
       open={props.open}
       title={t('title.statistics')}
-      periodLabel={periodLabel}
-      kind={dialog.kind}
-      kindOptionNodes={kindOptionNodes}
-      onKindChange={dialog.onKindChange}
-      includeNames={dialog.includeNames}
-      canIncludeNames={dialog.canIncludeNames}
-      onIncludeNamesChange={dialog.onIncludeNamesChange}
+      fieldsNode={
+        <ExportStatisticsFieldsPresenter
+          periodLabel={periodLabel}
+          kind={dialog.kind}
+          kindOptionNodes={kindOptionNodes}
+          onKindChange={dialog.onKindChange}
+          includeNames={dialog.includeNames}
+          canIncludeNames={dialog.canIncludeNames}
+          onIncludeNamesChange={dialog.onIncludeNamesChange}
+          isPending={dialog.isPending}
+        />
+      }
+      canConfirm={dialog.canSubmit}
       isPending={dialog.isPending}
       errorMessage={dialog.errorMessage}
       onConfirm={dialog.submit}

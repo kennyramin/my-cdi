@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import InputAdornment from '@mui/material/InputAdornment'
 import { Button } from '@ui/components/Button'
 import { Icon } from '@ui/components/Icon'
+import { ExportButtonContainer } from '@export/containers/ExportButtonContainer'
 import { StudentCsvImportButtonContainer } from '../../containers/StudentCsvImportButton'
 import {
   SMALL_ICON_STYLE,
@@ -51,6 +52,7 @@ export function StudentListToolbarPresenter({
       />
       <CountLabel variant="body2">{t('count', { count: totalCount })}</CountLabel>
       <ToolbarSpacer />
+      <ExportButtonContainer scope="students" />
       <StudentCsvImportButtonContainer />
       <Button
         variant="primary"

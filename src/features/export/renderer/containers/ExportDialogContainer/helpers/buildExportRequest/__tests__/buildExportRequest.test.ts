@@ -27,7 +27,8 @@ describe('buildExportRequest', () => {
   it('builds a period-less students request', () => {
     expect(buildExportRequest({ scope: 'students' }, 'journal', true)).toEqual({
       kind: 'students',
-      includeNames: false
+      includeNames: true,
+      acknowledgedPersonalData: true
     })
   })
 })

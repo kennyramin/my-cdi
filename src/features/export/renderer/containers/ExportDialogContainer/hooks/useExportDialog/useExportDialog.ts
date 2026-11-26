@@ -24,11 +24,13 @@ export function useExportDialog({ scope, onClose, onResult }: UseExportDialogOpt
   const { t } = useTranslation('export')
   const [kind, setKind] = useState<StatisticsExportKind>(DEFAULT_STATISTICS_EXPORT_KIND)
   const [namesChecked, setNamesChecked] = useState(false)
+  const [acknowledged, setAcknowledged] = useState(false)
   const { mutate, isPending, error } = useExportMutation()
   const inFlightRef = useRef(false)
 
   const canIncludeNames = kind === JOURNAL_KIND
   const includeNames = canIncludeNames && namesChecked
+  const canSubmit = scope.scope !== 'students' || acknowledged
 
   function onKindChange(_event: unknown, value: string) {
     if (isStatisticsExportKind(value)) {
@@ -39,6 +41,10 @@ export function useExportDialog({ scope, onClose, onResult }: UseExportDialogOpt
 
   function onIncludeNamesChange(_event: unknown, checked: boolean) {
     setNamesChecked(checked)
+  }
+
+  function onAcknowledgeChange(_event: unknown, checked: boolean) {
+    setAcknowledged(checked)
   }
 
   function handleSuccess(result: ExportResultDto) {
@@ -57,7 +63,7 @@ export function useExportDialog({ scope, onClose, onResult }: UseExportDialogOpt
   }
 
   function submit() {
-    if (inFlightRef.current) {
+    if (inFlightRef.current || !canSubmit) {
       return
     }
     inFlightRef.current = true
@@ -79,10 +85,13 @@ export function useExportDialog({ scope, onClose, onResult }: UseExportDialogOpt
     kind,
     includeNames,
     canIncludeNames,
+    acknowledged,
+    canSubmit,
     isPending,
     errorMessage: error?.message ?? null,
     onKindChange,
     onIncludeNamesChange,
+    onAcknowledgeChange,
     submit,
     requestClose
   } as const

@@ -10,7 +10,7 @@ export function buildExportRequest(
   includeNames: boolean
 ): ExportRequestDto {
   if (scope.scope === 'students') {
-    return { kind: 'students', includeNames: false }
+    return { kind: 'students', includeNames: true, acknowledgedPersonalData: true }
   }
   return { kind, period: scope.period, includeNames: kind === JOURNAL_KIND && includeNames }
 }

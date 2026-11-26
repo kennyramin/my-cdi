@@ -12,9 +12,26 @@ export function ExportButtonContainer(props: ExportButtonContainerProps) {
   const { toast, show, dismiss } = useToast()
   const { hasBeenOpened, session, isOpen, triggerRef, openDialog, closeDialog } = useExportButton()
 
-  if (props.scope === 'students') {
-    return null
-  }
+  const isStatistics = props.scope === 'statistics'
+  const dialogNode =
+    props.scope === 'statistics' ? (
+      <ExportDialogContainer
+        key={session}
+        open={isOpen}
+        scope="statistics"
+        period={props.period}
+        onClose={closeDialog}
+        onResult={show}
+      />
+    ) : (
+      <ExportDialogContainer
+        key={session}
+        open={isOpen}
+        scope="students"
+        onClose={closeDialog}
+        onResult={show}
+      />
+    )
 
   return (
     <>
@@ -23,21 +40,12 @@ export function ExportButtonContainer(props: ExportButtonContainerProps) {
         variant="secondary"
         iconLeft={<Icon name="file_download" />}
         onClick={openDialog}
-        disabled={props.disabled}
-        aria-describedby={props.disabled ? props.disabledDescriptionId : undefined}
+        disabled={isStatistics && props.disabled}
+        aria-describedby={isStatistics && props.disabled ? props.disabledDescriptionId : undefined}
       >
-        {t('button.statistics')}
+        {t(isStatistics ? 'button.statistics' : 'button.students')}
       </Button>
-      {hasBeenOpened ? (
-        <ExportDialogContainer
-          key={session}
-          open={isOpen}
-          scope="statistics"
-          period={props.period}
-          onClose={closeDialog}
-          onResult={show}
-        />
-      ) : null}
+      {hasBeenOpened ? dialogNode : null}
       <Toast toast={toast} onClose={dismiss} />
     </>
   )
