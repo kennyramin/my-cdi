@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ActivityType } from '@types'
+import { DUPLICATE_WINDOW_SECONDS, isDuplicatesFound } from '../types'
 import type {
   CreateFrequentationDto,
   CreateFrequentationBatchDto,
@@ -12,6 +13,7 @@ const STUDENT_ID_1 = 1
 const STUDENT_ID_2 = 2
 const FREQUENTATION_ID_1 = 1
 const EXPECTED_BATCH_LENGTH = 2
+const DUPLICATE_WINDOW_EXPECTED = 1800
 
 describe('Frequentation shared types', () => {
   it('CreateFrequentationDto has required fields', () => {
@@ -91,5 +93,20 @@ describe('Frequentation shared types', () => {
     }
     expect(range.startDate).toBe('2026-01-15')
     expect(range.endDate).toBe('2026-01-16')
+  })
+
+  it('exposes a thirty minute duplicate window', () => {
+    expect(DUPLICATE_WINDOW_SECONDS).toBe(DUPLICATE_WINDOW_EXPECTED)
+  })
+
+  it('isDuplicatesFound accepts a duplicates payload', () => {
+    expect(isDuplicatesFound({ created: 0, duplicates: [] })).toBe(true)
+  })
+
+  it('isDuplicatesFound rejects other payloads', () => {
+    expect(isDuplicatesFound({ created: 2, errors: [] })).toBe(false)
+    expect(isDuplicatesFound({ created: 0 })).toBe(false)
+    expect(isDuplicatesFound(null)).toBe(false)
+    expect(isDuplicatesFound(undefined)).toBe(false)
   })
 })
