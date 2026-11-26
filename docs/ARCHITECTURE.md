@@ -577,7 +577,7 @@ A leaver is removed with `anonymizeStudents` (IPC `student.anonymize`, also reus
 **Main side:**
 
 - `importStudentsCsv` use-case receives the raw CSV string
-- `parseStudentCsv` (PapaParse) parses with `header: true`, validates required columns, caps rows at `MAX_CSV_IMPORT_ROWS`
+- `parseStudentCsv` (PapaParse) parses with `header: true`, validates required columns (the number of rows is not capped)
 - `csvRowSchema` (Zod) validates each row
 - Deduplicates against existing DB rows (`ine` match) and within-file duplicates
 - Gateway creates or updates each student; the whole import runs in a single transaction
@@ -585,8 +585,9 @@ A leaver is removed with `anonymizeStudents` (IPC `student.anonymize`, also reus
 
 **Removal of absent students (optional, "Retirer les élèves absents")**
 
-- the `previewCsvRemoval` use-case returns the students that would be removed, split into anonymized (with visits) and deleted (without), without writing anything
-- Removal is blocked when the file has any malformed row (quote errors, column-count mismatch), a missing column, a duplicate INE or no data rows; students present in the file are never removed
+- the `previewCsvRemoval` use-case writes nothing and returns `{ toRemove, total, sample, fingerprint, blockedReason? }`: the number of students that would be removed, the number of students, up to 20 names, a hash of the sorted INEs to remove, and the reason when removal is blocked
+- Removal is blocked (`blockedReason`: `missingColumns` for a wrong header, `rowErrors` for any malformed row such as quote errors or column-count mismatch, `emptyFile` for no data rows); students whose INE is in the file are never removed. A duplicate INE row does not block removal: the student is kept and the duplicate row is reported as `DUPLICATE_INE` after the import
+- Freshness: the import payload carries `removalExpectation` `{ count, fingerprint }` from the preview; the main process recomputes the plan from the file it receives and the current database and refuses (`VALIDATION_ERROR`) when it differs or is missing, and the renderer then re-runs the preview ("removalStale" message)
 - Confirmation: when 10 or more students, or more than half of them, would be removed, the user must type `RETIRER n`; the main process re-checks it (a missing or wrong confirmation is a `VALIDATION_ERROR`)
 - Apply: automatic `anonymization` backup first, then removal and import in the single transaction; duplicates with existing INE are updated (`replace` policy)
 
