@@ -46,4 +46,20 @@ describe('resolveIpcErrorMessage', () => {
   it('falls back to the raw error when there is no code', () => {
     expect(resolveIpcErrorMessage({ error: 'raw failure' }, translate)).toBe('raw failure')
   })
+
+  it('maps every new backup/restore error code to a non-generic translation key', () => {
+    const codes = [
+      ErrorCode.BACKUP_PATH_IS_LIVE_DB,
+      ErrorCode.BACKUP_WRITE_FAILED,
+      ErrorCode.RESTORE_NOT_A_DATABASE,
+      ErrorCode.RESTORE_CORRUPTED,
+      ErrorCode.RESTORE_MISSING_TABLES,
+      ErrorCode.RESTORE_NEWER_VERSION,
+      ErrorCode.RESTORE_FAILED
+    ]
+    for (const code of codes) {
+      const result = { error: `raw ${code}`, code }
+      expect(resolveIpcErrorMessage(result, (key) => `t:${key}`)).not.toBe(result.error)
+    }
+  })
 })

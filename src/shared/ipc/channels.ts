@@ -30,9 +30,17 @@ export const SETTINGS_CHANNELS = {
   SET_THEME: 'settings.setTheme'
 } as const
 
+export const BACKUP_CHANNELS = {
+  CREATE: 'backup.create',
+  RESTORE: 'backup.restore',
+  GET_STATUS: 'backup.getStatus',
+  DELETE_AUTOMATIC: 'backup.deleteAutomatic'
+} as const
+
 export type AppChannel = (typeof APP_CHANNELS)[keyof typeof APP_CHANNELS]
 export type StudentChannel = (typeof STUDENT_CHANNELS)[keyof typeof STUDENT_CHANNELS]
 export type FrequentationChannel =
   (typeof FREQUENTATION_CHANNELS)[keyof typeof FREQUENTATION_CHANNELS]
 export type StatisticsChannel = (typeof STATISTICS_CHANNELS)[keyof typeof STATISTICS_CHANNELS]
 export type SettingsChannel = (typeof SETTINGS_CHANNELS)[keyof typeof SETTINGS_CHANNELS]
+export type BackupChannel = (typeof BACKUP_CHANNELS)[keyof typeof BACKUP_CHANNELS]

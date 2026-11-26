@@ -76,7 +76,18 @@
     "duplicateIne": "A student with this INE already exists",
     "frequentationNotFound": "Attendance entry not found",
     "validation": "The submitted data is invalid",
-    "generic": "An error occurred"
+    "generic": "An error occurred",
+    "backup": {
+      "pathIsLiveDb": "The chosen path is the live database; pick another location",
+      "writeFailed": "Writing the backup failed"
+    },
+    "restore": {
+      "notADatabase": "This file is not a valid database",
+      "corrupted": "This backup is corrupted",
+      "missingTables": "This backup does not contain all the expected data",
+      "newerVersion": "This backup comes from a newer version of the application",
+      "failed": "Restore failed; your original data was kept. The application is restarting."
+    }
   },
   "updater": {
     "available": "A new version ({{version}}) is available.",

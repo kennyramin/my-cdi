@@ -15,6 +15,7 @@ export default defineConfig({
       { find: '@frequentation-shared', replacement: resolve('src/features/frequentation/shared') },
       { find: '@statistics-shared', replacement: resolve('src/features/statistics/shared') },
       { find: '@settings-shared', replacement: resolve('src/features/settings/shared') },
+      { find: '@backup-shared', replacement: resolve('src/features/backup/shared') },
       {
         find: /^@student\/(types|helpers|api|validations|pages|components|presenters|hooks|containers|routes)(.*)$/,
         replacement: resolve('src/features/student/renderer') + '/$1$2'
@@ -31,6 +32,10 @@ export default defineConfig({
         find: /^@settings\/(types|helpers|api|validations|pages|components|presenters|hooks|containers|routes)(.*)$/,
         replacement: resolve('src/features/settings/renderer') + '/$1$2'
       },
+      {
+        find: /^@backup\/(types|helpers|api|validations|pages|components|presenters|hooks|containers|routes)(.*)$/,
+        replacement: resolve('src/features/backup/renderer') + '/$1$2'
+      },
       { find: /^@student(\/.*)?$/, replacement: resolve('src/features/student/main') + '$1' },
       {
         find: /^@frequentation(\/.*)?$/,
@@ -43,6 +48,10 @@ export default defineConfig({
       {
         find: /^@settings(\/.*)?$/,
         replacement: resolve('src/features/settings/main') + '$1'
+      },
+      {
+        find: /^@backup(\/.*)?$/,
+        replacement: resolve('src/features/backup/main') + '$1'
       },
       { find: '@ui', replacement: resolve('src/shared/ui') },
       { find: '@lib', replacement: resolve('src/shared/lib') },

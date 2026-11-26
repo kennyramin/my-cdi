@@ -76,7 +76,18 @@
     "duplicateIne": "Un élève avec cet INE existe déjà",
     "frequentationNotFound": "Fréquentation introuvable",
     "validation": "Les données envoyées sont invalides",
-    "generic": "Une erreur est survenue"
+    "generic": "Une erreur est survenue",
+    "backup": {
+      "pathIsLiveDb": "Le chemin choisi correspond à la base de données active ; choisissez un autre emplacement",
+      "writeFailed": "L'écriture de la sauvegarde a échoué"
+    },
+    "restore": {
+      "notADatabase": "Ce fichier n'est pas une base de données valide",
+      "corrupted": "Cette sauvegarde est corrompue",
+      "missingTables": "Cette sauvegarde ne contient pas toutes les données attendues",
+      "newerVersion": "Cette sauvegarde provient d'une version plus récente de l'application",
+      "failed": "La restauration a échoué ; vos données d'origine ont été conservées. L'application redémarre."
+    }
   },
   "updater": {
     "available": "Une nouvelle version ({{version}}) est disponible.",
