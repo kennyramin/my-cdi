@@ -59,7 +59,10 @@
     "date": "Date",
     "time": "Time",
     "student": "Student",
-    "anonymizedStudentLocked": "An anonymized student cannot be linked to a person again."
+    "anonymizedStudentLocked": "An anonymized student cannot be linked to a person again.",
+    "studentRequired": "Select a student from the list",
+    "dateTimeRequired": "Enter a date and time",
+    "original": "Original entry"
   },
   "duplicate": {
     "title": "Visit already recorded",

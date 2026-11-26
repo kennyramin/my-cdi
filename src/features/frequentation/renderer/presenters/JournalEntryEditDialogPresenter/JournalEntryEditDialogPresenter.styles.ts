@@ -9,6 +9,7 @@ export const EntrySummary = styled('div', {
   display: 'flex',
   alignItems: 'center',
   gap: theme.spacing(1.25),
+  flexWrap: 'wrap',
   marginBottom: theme.spacing(2),
   padding: theme.spacing(1.25),
   backgroundColor: theme.palette.surface,
@@ -28,9 +29,16 @@ export const StudentClasse = styled(Typography, {
   color: theme.palette.text.disabled
 }))
 
+export const OriginalCaption = styled(Typography, {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  flexBasis: '100%',
+  color: theme.palette.text.disabled
+}))
+
 export const ErrorText = styled(Typography, {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
-  marginTop: theme.spacing(2),
+  marginBottom: theme.spacing(2),
   color: theme.palette.error.main
 }))

@@ -7,7 +7,9 @@ export function AutocompleteInput({
   placeholder,
   params,
   inputRef,
-  ariaLabel
+  ariaLabel,
+  ariaDescribedBy,
+  invalid
 }: AutocompleteInputProps) {
   // MUI's Autocomplete installs its own ref on the native input via
   // slotProps.htmlInput (focus management); fork-merge it with the caller's
@@ -20,6 +22,7 @@ export function AutocompleteInput({
       placeholder={placeholder}
       size="small"
       variant="outlined"
+      error={invalid}
       slotProps={{
         input: {
           ...params.slotProps.input,
@@ -30,7 +33,12 @@ export function AutocompleteInput({
             </InputAdornment>
           )
         },
-        htmlInput: { ...htmlInput, ref: handleInputRef, 'aria-label': ariaLabel }
+        htmlInput: {
+          ...htmlInput,
+          ref: handleInputRef,
+          'aria-label': ariaLabel,
+          'aria-describedby': ariaDescribedBy
+        }
       }}
     />
   )

@@ -59,7 +59,10 @@
     "date": "Date",
     "time": "Heure",
     "student": "Élève",
-    "anonymizedStudentLocked": "Un élève anonymisé ne peut pas être réassocié à une personne."
+    "anonymizedStudentLocked": "Un élève anonymisé ne peut pas être réassocié à une personne.",
+    "studentRequired": "Sélectionnez un élève dans la liste",
+    "dateTimeRequired": "Renseignez la date et l'heure",
+    "original": "Entrée d'origine"
   },
   "duplicate": {
     "title": "Présence déjà enregistrée",

@@ -332,6 +332,98 @@ describe('useJournalPage', () => {
       })
     })
 
+    it('refuses to save while the student text does not match the selection', async () => {
+      stubStudents()
+      const { result } = renderHook(() => useJournalPage(), { wrapper })
+      await waitFor(() => expect(result.current.studentOptions).toHaveLength(1))
+      act(() => result.current.startEditing(sampleEntry))
+      expect(result.current.editStudentMessage).toBeNull()
+
+      act(() => result.current.setEditStudentInputValue(''))
+      expect(result.current.canSubmitEdit).toBe(false)
+      expect(result.current.editStudentMessage).toBe('Sélectionnez un élève dans la liste')
+
+      act(() => result.current.setEditStudentInputValue('Zo'))
+      expect(result.current.canSubmitEdit).toBe(false)
+      act(() => result.current.submitEdit())
+      expect(window.electronAPI.frequentation.update).not.toHaveBeenCalled()
+    })
+
+    it('re-selecting the same student sends nothing for the student', async () => {
+      stubStudents()
+      const { result } = renderHook(() => useJournalPage(), { wrapper })
+      await waitFor(() => expect(result.current.studentOptions).toHaveLength(1))
+      act(() => result.current.startEditing(sampleEntry))
+      act(() => result.current.setEditStudentInputValue(''))
+      act(() =>
+        result.current.setEditStudent({ value: SAMPLE_STUDENT_ID, label: 'B A', badge: 'C' })
+      )
+      expect(result.current.canSubmitEdit).toBe(true)
+      act(() => result.current.submitEdit())
+      await waitFor(() => expect(result.current.editingEntry).toBeNull())
+      expect(window.electronAPI.frequentation.update).toHaveBeenCalledWith({
+        id: SAMPLE_ID,
+        activity: ActivityType.WORK
+      })
+    })
+
+    it('does not require a student selection for an anonymized entry', () => {
+      const { result } = renderHook(() => useJournalPage(), { wrapper })
+      act(() =>
+        result.current.startEditing({
+          ...sampleEntry,
+          isAnonymized: true,
+          student: { ...sampleEntry.student, id: null, displayName: 'Élève anonymisé' }
+        })
+      )
+      expect(result.current.editStudentMessage).toBeNull()
+      expect(result.current.canSubmitEdit).toBe(true)
+    })
+
+    it('explains an empty time with a required message', () => {
+      const { result } = renderHook(() => useJournalPage(), { wrapper })
+      act(() => result.current.startEditing(sampleEntry))
+      expect(result.current.editDateTimeMessage).toBeNull()
+      act(() => result.current.setEditTime(''))
+      expect(result.current.editDateTimeMessage).toBe("Renseignez la date et l'heure")
+    })
+
+    it('flags a later time today as future and accepts midnight', () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-04-01T12:00:00'))
+      try {
+        const { result } = renderHook(() => useJournalPage(), { wrapper })
+        act(() => result.current.startEditing(sampleEntry))
+        act(() => result.current.setEditDate('2026-04-01'))
+        act(() => result.current.setEditTime('12:30'))
+        expect(result.current.isEditFuture).toBe(true)
+        expect(result.current.editDateTimeMessage).toBe(
+          "Impossible d'enregistrer une présence dans le futur"
+        )
+        act(() => result.current.setEditTime('00:00'))
+        expect(result.current.isEditFuture).toBe(false)
+        expect(result.current.editMaxDate).toBe('2026-04-01')
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('re-checks the future rule at submit time (clock moved since last render)', () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-04-01T12:00:00'))
+      try {
+        const { result } = renderHook(() => useJournalPage(), { wrapper })
+        act(() => result.current.startEditing(sampleEntry))
+        act(() => result.current.setEditDate('2026-04-01'))
+        act(() => result.current.setEditTime('11:59'))
+        vi.setSystemTime(new Date('2026-04-01T11:00:00'))
+        act(() => result.current.submitEdit())
+        expect(window.electronAPI.frequentation.update).not.toHaveBeenCalled()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     it('never sends a studentId for an anonymized entry', async () => {
       const anonymized = {
         ...sampleEntry,

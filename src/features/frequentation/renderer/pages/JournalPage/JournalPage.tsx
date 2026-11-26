@@ -8,7 +8,6 @@ import { buildActivityTileNodes } from '@frequentation/presenters/ActivityGridPr
 import { EditEntryFieldsPresenter } from '@frequentation/presenters/EditEntryFieldsPresenter'
 import { DuplicateWarningDialogPresenter } from '@frequentation/presenters/DuplicateWarningDialogPresenter'
 import { getEntryAvatar } from '@frequentation/helpers/getEntryAvatar'
-import { formatLocalDate } from '@lib/localDateTime'
 import { useJournalPage } from './hooks/useJournalPage'
 import { useSubmitBarHeight } from './hooks/useSubmitBarHeight'
 import { FormColumn, ListColumn, PageGrid } from './JournalPage.styles'
@@ -21,14 +20,17 @@ export function JournalPage() {
     editDraft,
     editingActivity,
     setEditingActivity,
-    setEditDate,
-    setEditTime,
+    handleEditDateChange,
+    handleEditTimeChange,
     setEditStudent,
     studentOptions,
     editStudentInputValue,
     setEditStudentInputValue,
     isEditAnonymized,
-    isEditFuture,
+    editDateTimeMessage,
+    editStudentMessage,
+    editMaxDate,
+    editFieldIds,
     canSubmitEdit,
     editError,
     startEditing,
@@ -77,15 +79,19 @@ export function JournalPage() {
             <EditEntryFieldsPresenter
               date={editDraft.date}
               time={editDraft.time}
-              maxDate={formatLocalDate(new Date())}
-              isFuture={isEditFuture}
-              onDateChange={setEditDate}
-              onTimeChange={setEditTime}
+              maxDate={editMaxDate}
+              dateTimeMessage={editDateTimeMessage}
+              dateTimeHelperId={editFieldIds.dateTimeHelper}
+              onDateChange={handleEditDateChange}
+              onTimeChange={handleEditTimeChange}
               studentOptions={studentOptions}
               studentInputValue={editStudentInputValue}
               onStudentInputChange={setEditStudentInputValue}
               onStudentSelect={setEditStudent}
               studentLocked={isEditAnonymized}
+              studentMessage={editStudentMessage}
+              studentInputId={editFieldIds.studentInput}
+              studentHelperId={editFieldIds.studentHelper}
             />
           }
           entry={{

@@ -30,7 +30,7 @@ export const StudentField = styled('div', {
   gap: theme.spacing(0.5)
 }))
 
-export const StudentLabel = styled('span', {
+export const StudentLabel = styled('label', {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
   ...theme.typography.caption,

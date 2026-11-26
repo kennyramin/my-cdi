@@ -1,5 +1,7 @@
-import { useRef, useState } from 'react'
-import { formatLocalDate, isFutureLocalDateTime } from '@lib/localDateTime'
+import { useId, useRef, useState } from 'react'
+import type { ChangeEvent } from 'react'
+import { useTranslation } from 'react-i18next'
+import { formatLocalDate } from '@lib/localDateTime'
 import { useStudentList } from '@student/api/useStudentQueries'
 import type { AutocompleteOption } from '@ui/components/Autocomplete'
 import { useUpdateFrequentation } from '@frequentation/api/useFrequentationMutations'
@@ -9,30 +11,13 @@ import type { JournalEntryViewModel } from '@frequentation/types'
 import { isDuplicatesFound } from '@frequentation-shared'
 import type { DuplicateWarningDto } from '@frequentation-shared'
 import type { ActivityType } from '@types'
-
-const SECONDS_SUFFIX = ':00'
-const DATE_END = 10
-const TIME_START = 11
-const TIME_END = 16
-
-interface EditDraft {
-  date: string
-  time: string
-  studentId: number | null
-  activity: ActivityType
-}
+import { buildEditDraft } from '../../helpers/buildEditDraft'
+import { buildEditPayload } from '../../helpers/buildEditPayload'
+import { getEditDateTimeIssue } from '../../helpers/getEditDateTimeIssue'
+import type { EditDraft } from '../../types/EditDraft'
 
 function todayIso(): string {
   return formatLocalDate(new Date())
-}
-
-function buildDraft(entry: JournalEntryViewModel): EditDraft {
-  return {
-    date: entry.startsAt.slice(0, DATE_END),
-    time: entry.startsAt.slice(TIME_START, TIME_END),
-    studentId: entry.student.id,
-    activity: entry.activity
-  }
 }
 
 export function useJournalPage() {
@@ -40,10 +25,13 @@ export function useJournalPage() {
   const [editingEntry, setEditingEntryState] = useState<JournalEntryViewModel | null>(null)
   const [editDraft, setEditDraft] = useState<EditDraft | null>(null)
   const [editStudentInputValue, setEditStudentInputValue] = useState('')
+  const [editStudentLabel, setEditStudentLabel] = useState('')
   const [editError, setEditError] = useState<string | null>(null)
 
   const [pendingEditDuplicates, setPendingEditDuplicates] = useState<DuplicateWarningDto[]>([])
 
+  const { t } = useTranslation('frequentation')
+  const idBase = useId()
   const { allActivities, getLabel } = useActivityLabels()
   const { mutate: updateMutate, isPending } = useUpdateFrequentation()
   const { data: students } = useStudentList()
@@ -60,19 +48,35 @@ export function useJournalPage() {
   }))
 
   const isEditAnonymized = editingEntry?.isAnonymized ?? false
-  const hasDateAndTime = Boolean(editDraft?.date) && Boolean(editDraft?.time)
-  const isEditFuture =
-    editDraft !== null &&
-    hasDateAndTime &&
-    isFutureLocalDateTime(`${editDraft.date}T${editDraft.time}${SECONDS_SUFFIX}`, new Date())
-  const hasStudent = isEditAnonymized || editDraft?.studentId != null
-  const canSubmitEdit = editDraft !== null && hasDateAndTime && !isEditFuture && hasStudent
+  // Evaluated from the clock at each render; submit re-checks it (see sendEdit).
+  const now = new Date()
+  const editDateTimeIssue = editDraft
+    ? getEditDateTimeIssue(editDraft.date, editDraft.time, now)
+    : null
+  const isEditFuture = editDateTimeIssue === 'future'
+  const isEditStudentUnselected = !isEditAnonymized && editStudentInputValue !== editStudentLabel
+  const canSubmitEdit = editDraft !== null && editDateTimeIssue === null && !isEditStudentUnselected
+  const editDateTimeMessage = resolveDateTimeMessage(editDateTimeIssue)
+  const editStudentMessage = isEditStudentUnselected ? t('edit.studentRequired') : null
+  const editFieldIds = {
+    dateTimeHelper: `${idBase}-datetime-helper`,
+    studentInput: `${idBase}-student`,
+    studentHelper: `${idBase}-student-helper`
+  }
+
+  function resolveDateTimeMessage(issue: ReturnType<typeof getEditDateTimeIssue>): string | null {
+    if (issue === 'future') {
+      return t('form.futureNotAllowed')
+    }
+    return issue === 'required' ? t('edit.dateTimeRequired') : null
+  }
 
   function startEditing(entry: JournalEntryViewModel) {
     editingIdRef.current = entry.id
     setEditingEntryState(entry)
-    setEditDraft(buildDraft(entry))
+    setEditDraft(buildEditDraft(entry))
     setEditStudentInputValue(entry.student.displayName)
+    setEditStudentLabel(entry.student.displayName)
     setEditError(null)
   }
 
@@ -81,6 +85,7 @@ export function useJournalPage() {
     setEditingEntryState(null)
     setEditDraft(null)
     setEditStudentInputValue('')
+    setEditStudentLabel('')
     setEditError(null)
     setPendingEditDuplicates([])
   }
@@ -105,33 +110,29 @@ export function useJournalPage() {
   function setEditStudent(option: AutocompleteOption<number>) {
     updateDraft({ studentId: option.value })
     setEditStudentInputValue(option.label)
+    setEditStudentLabel(option.label)
   }
 
-  function buildPayload(entry: JournalEntryViewModel, draft: EditDraft, allowDuplicates: boolean) {
-    const startsAt = `${draft.date}T${draft.time}${SECONDS_SUFFIX}`
-    const startsAtChanged = `${draft.date}T${draft.time}` !== entry.startsAt.slice(0, TIME_END)
-    const { studentId } = draft
-    const studentChange =
-      !entry.isAnonymized && studentId !== null && studentId !== entry.student.id
-        ? { studentId }
-        : {}
-    return {
-      id: entry.id,
-      activity: draft.activity,
-      ...(startsAtChanged && { startsAt }),
-      ...studentChange,
-      ...(allowDuplicates && { allowDuplicates })
-    }
+  function handleEditDateChange(event: ChangeEvent<HTMLInputElement>) {
+    setEditDate(event.target.value)
+  }
+
+  function handleEditTimeChange(event: ChangeEvent<HTMLInputElement>) {
+    setEditTime(event.target.value)
   }
 
   function sendEdit(allowDuplicates: boolean) {
     if (!editingEntry || !editDraft || !canSubmitEdit || inFlightRef.current) {
       return
     }
+    // The clock may have moved since the last render (dialog left open across midnight).
+    if (getEditDateTimeIssue(editDraft.date, editDraft.time, new Date()) !== null) {
+      return
+    }
     const entryId = editingEntry.id
     inFlightRef.current = true
     setEditError(null)
-    updateMutate(buildPayload(editingEntry, editDraft, allowDuplicates), {
+    updateMutate(buildEditPayload(editingEntry, editDraft, allowDuplicates), {
       onSettled: () => {
         inFlightRef.current = false
       },
@@ -175,12 +176,18 @@ export function useJournalPage() {
     setEditingActivity,
     setEditDate,
     setEditTime,
+    handleEditDateChange,
+    handleEditTimeChange,
     setEditStudent,
     studentOptions,
     editStudentInputValue,
     setEditStudentInputValue,
     isEditAnonymized,
     isEditFuture,
+    editDateTimeMessage,
+    editStudentMessage,
+    editMaxDate: formatLocalDate(now),
+    editFieldIds,
     canSubmitEdit,
     editError,
     startEditing,

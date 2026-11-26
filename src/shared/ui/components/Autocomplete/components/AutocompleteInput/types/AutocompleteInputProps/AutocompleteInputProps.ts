@@ -6,4 +6,6 @@ export interface AutocompleteInputProps {
   params: AutocompleteRenderInputParams
   inputRef?: RefObject<HTMLInputElement | null>
   ariaLabel?: string
+  ariaDescribedBy?: string
+  invalid?: boolean
 }

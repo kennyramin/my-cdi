@@ -7,6 +7,7 @@ import { ActivityGridPresenter } from '@frequentation/presenters/ActivityGridPre
 import {
   EntrySummary,
   ErrorText,
+  OriginalCaption,
   StudentClasse,
   StudentName
 } from './JournalEntryEditDialogPresenter.styles'
@@ -69,7 +70,8 @@ export function JournalEntryEditDialogPresenter({
       }
     >
       {entry ? (
-        <EntrySummary>
+        <EntrySummary aria-label={t('edit.original')}>
+          <OriginalCaption variant="caption">{t('edit.original')}</OriginalCaption>
           <Avatar initials={entry.initials} colorSeed={entry.colorSeed} neutral={entry.neutral} />
           <div>
             <StudentName variant="body1">{entry.displayName}</StudentName>
@@ -77,9 +79,9 @@ export function JournalEntryEditDialogPresenter({
           </div>
         </EntrySummary>
       ) : null}
+      {errorMessage ? <ErrorText role="alert">{errorMessage}</ErrorText> : null}
       {fields}
       <ActivityGridPresenter tileNodes={tileNodes} />
-      {errorMessage ? <ErrorText role="alert">{errorMessage}</ErrorText> : null}
     </Modal>
   )
 }

@@ -250,6 +250,30 @@ describe('JournalPage', () => {
       expect(within(dialog).getByText(/dans le futur/)).toBeInTheDocument()
     })
 
+    it('disables saving with an explanation when the student text is erased', async () => {
+      const user = userEvent.setup()
+      stub(vi.fn())
+      render(withQuery(<JournalPage />))
+      await user.click(await screen.findByText('Alice Martin'))
+      const dialog = await screen.findByRole('dialog')
+      await user.clear(within(dialog).getByRole('combobox', { name: 'Élève' }))
+      expect(within(dialog).getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
+      expect(within(dialog).getByRole('alert')).toHaveTextContent(
+        'Sélectionnez un élève dans la liste'
+      )
+    })
+
+    it('explains a missing time', async () => {
+      const user = userEvent.setup()
+      stub(vi.fn())
+      render(withQuery(<JournalPage />))
+      await user.click(await screen.findByText('Alice Martin'))
+      const dialog = await screen.findByRole('dialog')
+      fireEvent.change(within(dialog).getByLabelText('Heure'), { target: { value: '' } })
+      expect(within(dialog).getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
+      expect(within(dialog).getByRole('alert')).toHaveTextContent("Renseignez la date et l'heure")
+    })
+
     it('shows the server error in the dialog and keeps it open', async () => {
       const user = userEvent.setup()
       const update = vi.fn().mockResolvedValue({ success: false, error: 'STUDENT_NOT_FOUND' })

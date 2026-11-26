@@ -37,6 +37,9 @@ export function useAutocomplete<T>(props: UiAutocompleteProps<T>): MuiProps<T> {
     inputRef,
     disabled = false,
     ariaLabel,
+    ariaDescribedBy,
+    inputId,
+    invalid = false,
     clearInputOnSelect = true
   } = props
 
@@ -49,6 +52,7 @@ export function useAutocomplete<T>(props: UiAutocompleteProps<T>): MuiProps<T> {
     filterOptions: (candidates, state) => filterAutocompleteOptions(candidates, state, maxResults),
     inputValue,
     disabled,
+    id: inputId,
     onInputChange: (_event, value, reason) => {
       if (!clearInputOnSelect && reason === MUI_INPUT_RESET_REASON) {
         return
@@ -78,6 +82,8 @@ export function useAutocomplete<T>(props: UiAutocompleteProps<T>): MuiProps<T> {
         params={params}
         inputRef={inputRef}
         ariaLabel={ariaLabel}
+        ariaDescribedBy={ariaDescribedBy}
+        invalid={invalid}
       />
     )
   }

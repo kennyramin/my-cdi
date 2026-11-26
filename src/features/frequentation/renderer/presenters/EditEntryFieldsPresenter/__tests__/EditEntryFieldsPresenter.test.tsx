@@ -14,7 +14,8 @@ function renderFields(overrides: Partial<Parameters<typeof EditEntryFieldsPresen
     date: TODAY,
     time: '09:30',
     maxDate: TODAY,
-    isFuture: false,
+    dateTimeMessage: null as string | null,
+    dateTimeHelperId: 'dt-helper',
     onDateChange: vi.fn(),
     onTimeChange: vi.fn(),
     studentOptions: [{ value: STUDENT_ID, label: 'Alice Martin', badge: '6e A' }],
@@ -22,6 +23,9 @@ function renderFields(overrides: Partial<Parameters<typeof EditEntryFieldsPresen
     onStudentInputChange: vi.fn(),
     onStudentSelect: vi.fn(),
     studentLocked: false,
+    studentMessage: null as string | null,
+    studentInputId: 'student-input',
+    studentHelperId: 'student-helper',
     ...overrides
   }
   render(
@@ -51,15 +55,37 @@ describe('EditEntryFieldsPresenter', () => {
     const props = renderFields()
     fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-03-31' } })
     fireEvent.change(screen.getByLabelText('Heure'), { target: { value: '10:15' } })
-    expect(props.onDateChange).toHaveBeenCalledWith('2026-03-31')
-    expect(props.onTimeChange).toHaveBeenCalledWith('10:15')
+    expect(props.onDateChange).toHaveBeenCalledTimes(1)
+    expect(props.onTimeChange).toHaveBeenCalledTimes(1)
   })
 
-  it('shows the future helper text and flags both inputs invalid', () => {
-    renderFields({ isFuture: true })
-    expect(screen.getByText("Impossible d'enregistrer une présence dans le futur")).toBeVisible()
+  it('shows the date/time message as an alert linked to both inputs', () => {
+    renderFields({ dateTimeMessage: 'Impossible, futur' })
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent('Impossible, futur')
+    expect(alert).toHaveAttribute('id', 'dt-helper')
     expect(screen.getByLabelText('Date')).toBeInvalid()
-    expect(screen.getByLabelText('Heure')).toBeInvalid()
+    expect(screen.getByLabelText('Date')).toHaveAttribute('aria-describedby', 'dt-helper')
+    expect(screen.getByLabelText('Heure')).toHaveAttribute('aria-describedby', 'dt-helper')
+  })
+
+  it('has no alert and no description when date and time are valid', () => {
+    renderFields()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Date')).not.toHaveAttribute('aria-describedby')
+  })
+
+  it('shows the student message as an alert linked to the student input', () => {
+    renderFields({ studentMessage: 'Sélectionnez un élève dans la liste' })
+    const input = screen.getByRole('combobox', { name: 'Élève' })
+    expect(screen.getByRole('alert')).toHaveTextContent('Sélectionnez un élève dans la liste')
+    expect(input).toHaveAttribute('aria-describedby', 'student-helper')
+    expect(input).toBeInvalid()
+  })
+
+  it('names the student input through a real label association', () => {
+    renderFields()
+    expect(screen.getByLabelText('Élève')).toBe(screen.getByRole('combobox'))
   })
 
   it('disables the student field with the locked helper text when anonymized', () => {
@@ -67,7 +93,11 @@ describe('EditEntryFieldsPresenter', () => {
     expect(screen.getByRole('combobox', { name: 'Élève' })).toBeDisabled()
     expect(
       screen.getByText('Un élève anonymisé ne peut pas être réassocié à une personne.')
-    ).toBeInTheDocument()
+    ).toHaveAttribute('id', 'student-helper')
+    expect(screen.getByRole('combobox', { name: 'Élève' })).toHaveAttribute(
+      'aria-describedby',
+      'student-helper'
+    )
   })
 
   it('does not show the locked helper text for a regular student', () => {
