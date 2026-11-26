@@ -1,1 +1,5 @@
-export { buildAutomaticBackupName, parseAutomaticBackupName } from './backupFileName'
+export {
+  buildAutomaticBackupName,
+  parseAutomaticBackupName,
+  RESTORE_REASON
+} from './backupFileName'

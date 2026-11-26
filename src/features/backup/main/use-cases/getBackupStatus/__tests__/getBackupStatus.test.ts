@@ -72,10 +72,18 @@ describe('getBackupStatus', () => {
     await settings.setLastBackupAt('2026-11-20T08:00:00')
     const before = await getBackupStatus({ settings, backupsDir })
 
-    await createAutomaticBackup('restore')
+    await createAutomaticBackup('migration')
     const after = await getBackupStatus({ settings, backupsDir })
 
     expect(after.lastBackupAt).toBe(before.lastBackupAt)
     expect(after.automaticCount).toBe(before.automaticCount + 1)
+  })
+
+  it('does not count restore safety copies, which are never deleted in bulk', async () => {
+    await createAutomaticBackup('restore')
+
+    const status = await getBackupStatus({ settings, backupsDir })
+
+    expect(status.automaticCount).toBe(0)
   })
 })

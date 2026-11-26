@@ -2,13 +2,14 @@ import { existsSync } from 'node:fs'
 import { mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { AutomaticBackupReason } from '@backup-shared'
-import { buildAutomaticBackupName } from '../../helpers/backupFileName'
+import { buildAutomaticBackupName, RESTORE_REASON } from '../../helpers/backupFileName'
 import { getBackupRuntime, runExclusive } from '../../runtime'
 import { createBackup } from '../createBackup'
 import { listAutomaticBackups, type AutomaticBackupFile } from '../listAutomaticBackups'
 
 export const AUTOMATIC_BACKUP_MAX_AGE_DAYS = 30
 export const AUTOMATIC_BACKUP_MAX_COUNT = 10
+export const RESTORE_BACKUP_MAX_COUNT = 3
 
 const MS_PER_SECOND = 1000
 
@@ -39,7 +40,16 @@ async function pruneAutomaticBackups(
   const cutoff = new Date(now)
   cutoff.setDate(cutoff.getDate() - AUTOMATIC_BACKUP_MAX_AGE_DAYS)
 
-  const backups = await listAutomaticBackups(backupsDir)
+  const all = await listAutomaticBackups(backupsDir)
+  // Restore safety copies follow their own rule: no age limit, only the most recent are kept
+  const restoreCopies = all.filter((backup) => backup.reason === RESTORE_REASON)
+  for (const backup of restoreCopies.slice(RESTORE_BACKUP_MAX_COUNT)) {
+    if (backup.path !== keepPath) {
+      await removeQuietly(backup.path)
+    }
+  }
+
+  const backups = all.filter((backup) => backup.reason !== RESTORE_REASON)
   const kept: AutomaticBackupFile[] = []
   for (const backup of backups) {
     if (backup.date < cutoff && backup.path !== keepPath) {

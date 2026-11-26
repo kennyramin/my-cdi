@@ -1,6 +1,8 @@
 import { formatLocalDateTime } from '@lib/localDateTime'
 import { AUTOMATIC_BACKUP_REASONS, type AutomaticBackupReason } from '@backup-shared'
 
+export const RESTORE_REASON: AutomaticBackupReason = 'restore'
+
 const NAME_PREFIX = 'auto-'
 const NAME_EXTENSION = '.db'
 const NAME_PATTERN = new RegExp(

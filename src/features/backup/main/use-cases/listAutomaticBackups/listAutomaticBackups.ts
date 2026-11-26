@@ -1,11 +1,13 @@
 import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
+import type { AutomaticBackupReason } from '@backup-shared'
 import { parseAutomaticBackupName } from '../../helpers/backupFileName'
 
 export interface AutomaticBackupFile {
   name: string
   path: string
   date: Date
+  reason: AutomaticBackupReason
 }
 
 const MISSING_FOLDER_CODE = 'ENOENT'
@@ -26,7 +28,12 @@ export async function listAutomaticBackups(backupsDir: string): Promise<Automati
   for (const entry of entries) {
     const parsed = entry.isFile() ? parseAutomaticBackupName(entry.name) : null
     if (parsed) {
-      files.push({ name: entry.name, path: join(backupsDir, entry.name), date: parsed.date })
+      files.push({
+        name: entry.name,
+        path: join(backupsDir, entry.name),
+        date: parsed.date,
+        reason: parsed.reason
+      })
     }
   }
   return files.sort((a, b) => b.date.getTime() - a.date.getTime())

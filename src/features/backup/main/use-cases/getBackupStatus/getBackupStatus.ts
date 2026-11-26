@@ -1,5 +1,6 @@
 import type { BackupStatusDto } from '@backup-shared'
 import type { BackupSettings } from '../../settings/backupSettings'
+import { RESTORE_REASON } from '../../helpers/backupFileName'
 import { listAutomaticBackups } from '../listAutomaticBackups'
 
 export interface GetBackupStatusDeps {
@@ -13,5 +14,8 @@ export async function getBackupStatus(deps: GetBackupStatusDeps): Promise<Backup
     settings.getLastBackupAt(),
     listAutomaticBackups(backupsDir)
   ])
-  return { lastBackupAt, automaticCount: automatic.length }
+  return {
+    lastBackupAt,
+    automaticCount: automatic.filter((backup) => backup.reason !== RESTORE_REASON).length
+  }
 }

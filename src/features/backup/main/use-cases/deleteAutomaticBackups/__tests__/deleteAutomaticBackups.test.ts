@@ -27,8 +27,9 @@ describe('deleteAutomaticBackups', () => {
     writeFileSync(join(dir, 'auto-20261124-143007-restore.db'), '')
     writeFileSync(join(dir, 'manual.db'), '')
 
-    expect(await deleteAutomaticBackups(dir)).toEqual({ deleted: 2 })
+    expect(await deleteAutomaticBackups(dir)).toEqual({ deleted: 1 })
     expect(existsSync(join(dir, 'auto-20261125-143007-migration.db'))).toBe(false)
+    expect(existsSync(join(dir, 'auto-20261124-143007-restore.db'))).toBe(true)
     expect(existsSync(join(dir, 'manual.db'))).toBe(true)
   })
 
@@ -50,12 +51,12 @@ describe('deleteAutomaticBackups', () => {
   it('continues past an entry that cannot be removed and counts only removed ones', async () => {
     // rm without `recursive` rejects on a directory, standing in for EPERM/EBUSY
     const stuck = join(dir, 'auto-20261125-143007-migration.db')
-    const removable = join(dir, 'auto-20261124-143007-restore.db')
+    const removable = join(dir, 'auto-20261124-143007-normalization.db')
     mkdirSync(join(stuck, 'child'), { recursive: true })
     writeFileSync(removable, '')
     vi.mocked(listAutomaticBackups).mockResolvedValueOnce([
-      { name: 'stuck', path: stuck, date: new Date(2) },
-      { name: 'removable', path: removable, date: new Date(1) }
+      { name: 'stuck', path: stuck, date: new Date(2), reason: 'migration' },
+      { name: 'removable', path: removable, date: new Date(1), reason: 'normalization' }
     ])
 
     const result = await deleteAutomaticBackups(dir)

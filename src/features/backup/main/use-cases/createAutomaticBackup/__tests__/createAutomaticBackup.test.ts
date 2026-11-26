@@ -3,6 +3,7 @@ import Database from 'better-sqlite3'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
+import type { AutomaticBackupReason } from '@backup-shared'
 import { buildAutomaticBackupName } from '../../../helpers/backupFileName'
 import { configureBackupRuntime } from '../../../runtime'
 import { listAutomaticBackups } from '../../listAutomaticBackups'
@@ -34,8 +35,8 @@ function daysBefore(date: Date, days: number): Date {
   return result
 }
 
-function seed(dir: string, date: Date): string {
-  const path = join(dir, buildAutomaticBackupName(date, 'restore'))
+function seed(dir: string, date: Date, reason: AutomaticBackupReason = 'migration'): string {
+  const path = join(dir, buildAutomaticBackupName(date, reason))
   writeFileSync(path, 'seed')
   return path
 }
@@ -121,6 +122,41 @@ describe('createAutomaticBackup', () => {
     expect(existsSync(seeded[0] ?? '')).toBe(true)
   })
 
+  describe('restore safety copies', () => {
+    const RESTORE_COPIES_KEPT = 3
+    const RESTORE_COPIES_SEEDED = 5
+
+    it('are not pruned by age nor counted in the automatic cap', async () => {
+      mkdirSync(backupsDir)
+      const ancient = seed(
+        backupsDir,
+        daysBefore(NOW, AUTOMATIC_BACKUP_MAX_AGE_DAYS + 5),
+        'restore'
+      )
+      const recent = Array.from({ length: AUTOMATIC_BACKUP_MAX_COUNT + 2 }, (_, index) =>
+        seed(backupsDir, new Date(NOW.getTime() - (index + 1) * MS_PER_MINUTE))
+      )
+
+      await createAutomaticBackup('migration')
+
+      expect(existsSync(ancient)).toBe(true)
+      expect(recent.filter((path) => existsSync(path))).toHaveLength(AUTOMATIC_BACKUP_MAX_COUNT - 1)
+    })
+
+    it('are limited to the 3 most recent', async () => {
+      mkdirSync(backupsDir)
+      const seeded = Array.from({ length: RESTORE_COPIES_SEEDED }, (_, index) =>
+        seed(backupsDir, daysBefore(NOW, index + 1), 'restore')
+      )
+
+      await createAutomaticBackup('migration')
+
+      expect(seeded.filter((path) => existsSync(path))).toEqual(
+        seeded.slice(0, RESTORE_COPIES_KEPT)
+      )
+    })
+  })
+
   it('never deletes the file it just wrote', async () => {
     mkdirSync(backupsDir)
     for (let i = 1; i <= AUTOMATIC_BACKUP_MAX_COUNT; i += 1) {
@@ -153,13 +189,13 @@ describe('createAutomaticBackup', () => {
     // rm without `recursive` rejects on a directory, standing in for EPERM/EBUSY
     const stuck = join(
       backupsDir,
-      buildAutomaticBackupName(daysBefore(NOW, STUCK_AGE_DAYS), 'restore')
+      buildAutomaticBackupName(daysBefore(NOW, STUCK_AGE_DAYS), 'migration')
     )
     mkdirSync(join(stuck, 'child'), { recursive: true })
     const removable = seed(backupsDir, daysBefore(NOW, STUCK_AGE_DAYS + 1))
     vi.mocked(listAutomaticBackups).mockImplementationOnce(async (dir) => [
       ...(await realList(dir)),
-      { name: 'stuck', path: stuck, date: daysBefore(NOW, STUCK_AGE_DAYS) }
+      { name: 'stuck', path: stuck, date: daysBefore(NOW, STUCK_AGE_DAYS), reason: 'migration' }
     ])
 
     const path = await createAutomaticBackup('migration')
