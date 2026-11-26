@@ -55,6 +55,14 @@
     "title": "Edit entry",
     "save": "Save"
   },
+  "duplicate": {
+    "title": "Visit already recorded",
+    "intro_one": "{{count}} student already has a visit within 30 minutes:",
+    "intro_other": "{{count}} students already have a visit within 30 minutes:",
+    "line": "{{name}} — already recorded at {{time}} ({{activity}})",
+    "confirm": "Save anyway",
+    "cancel": "Cancel"
+  },
   "calendar": {
     "previousMonth": "Previous month",
     "nextMonth": "Next month",

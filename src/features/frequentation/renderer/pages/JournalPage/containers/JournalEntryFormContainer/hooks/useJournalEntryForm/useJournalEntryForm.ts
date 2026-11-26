@@ -8,6 +8,7 @@ import { useCreateFrequentationBatch } from '@frequentation/api/useFrequentation
 import { useActivityLabels } from '@frequentation/hooks/useActivityLabels'
 import { useStudentList } from '@student/api/useStudentQueries'
 import { buildActivityOptions } from '@frequentation/helpers/buildActivityOptions'
+import { isDuplicatesFound } from '@frequentation-shared'
 import { ActivityType } from '@types'
 import { isFutureLocalDate, isFutureLocalDateTime } from '@lib/localDateTime'
 import { journalEntryFormSchema } from '../../validations/journalEntryFormSchema'
@@ -64,7 +65,10 @@ export function useJournalEntryForm({ selectedDate, onSubmitted }: UseJournalEnt
       return
     }
     mutate(mapFormToBatchDto(values, selectedDate), {
-      onSuccess: () => {
+      onSuccess: (data) => {
+        if (isDuplicatesFound(data)) {
+          return
+        }
         form.reset(buildDefaultValues())
         show(t('form.successMessage'))
         if (onSubmitted) {

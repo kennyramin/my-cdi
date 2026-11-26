@@ -4,6 +4,7 @@ import { JournalEntryListContainer } from './containers/JournalEntryListContaine
 import { JournalEntryEditDialogPresenter } from '@frequentation/presenters/JournalEntryEditDialogPresenter'
 import { buildActivityTiles } from '@frequentation/presenters/ActivityGridPresenter/helpers/buildActivityTiles'
 import { buildActivityTileNodes } from '@frequentation/presenters/ActivityGridPresenter/helpers/buildActivityTileNodes'
+import { DuplicateWarningDialogPresenter } from '@frequentation/presenters/DuplicateWarningDialogPresenter'
 import { getEntryAvatar } from '@frequentation/helpers/getEntryAvatar'
 import { useJournalPage } from './hooks/useJournalPage'
 import { useSubmitBarHeight } from './hooks/useSubmitBarHeight'
@@ -19,7 +20,11 @@ export function JournalPage() {
     startEditing,
     closeEditDialog,
     activityOptions,
-    submitEdit
+    submitEdit,
+    getLabel,
+    pendingDuplicates,
+    confirmDuplicates,
+    cancelDuplicates
   } = useJournalPage()
 
   const formColumnRef = useSubmitBarHeight<HTMLDivElement>()
@@ -48,6 +53,12 @@ export function JournalPage() {
           }}
         />
       ) : null}
+      <DuplicateWarningDialogPresenter
+        duplicates={pendingDuplicates}
+        onConfirm={confirmDuplicates}
+        onCancel={cancelDuplicates}
+        getActivityLabel={getLabel}
+      />
     </PageGrid>
   )
 }

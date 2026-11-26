@@ -102,4 +102,63 @@ describe('useJournalPage', () => {
     })
     expect(window.electronAPI.frequentation.update).not.toHaveBeenCalled()
   })
+
+  describe('duplicates response', () => {
+    const duplicates = [
+      {
+        studentId: SAMPLE_STUDENT_ID,
+        studentName: 'B A',
+        existingStartsAt: '2026-04-01T09:05:00',
+        existingActivity: ActivityType.WORK
+      }
+    ]
+
+    function stubDuplicates() {
+      vi.stubGlobal('electronAPI', {
+        frequentation: {
+          getJournalEntries: vi.fn().mockResolvedValue({ success: true, data: [] }),
+          update: vi
+            .fn()
+            .mockResolvedValueOnce({ success: true, data: { created: 0, duplicates } })
+            .mockResolvedValue({ success: true, data: { id: SAMPLE_ID } })
+        }
+      })
+    }
+
+    it('keeps the edit dialog open and exposes the duplicates', async () => {
+      stubDuplicates()
+      const { result } = renderHook(() => useJournalPage(), { wrapper })
+      act(() => result.current.startEditing(sampleEntry))
+      act(() => result.current.submitEdit())
+      await waitFor(() => expect(result.current.pendingDuplicates).toEqual(duplicates))
+      expect(result.current.editingEntry).not.toBeNull()
+    })
+
+    it('cancel only clears the warning', async () => {
+      stubDuplicates()
+      const { result } = renderHook(() => useJournalPage(), { wrapper })
+      act(() => result.current.startEditing(sampleEntry))
+      act(() => result.current.submitEdit())
+      await waitFor(() => expect(result.current.pendingDuplicates).toHaveLength(1))
+      act(() => result.current.cancelDuplicates())
+      expect(result.current.pendingDuplicates).toEqual([])
+      expect(result.current.editingEntry).not.toBeNull()
+      expect(window.electronAPI.frequentation.update).toHaveBeenCalledTimes(1)
+    })
+
+    it('confirm resends with allowDuplicates and closes on success', async () => {
+      stubDuplicates()
+      const { result } = renderHook(() => useJournalPage(), { wrapper })
+      act(() => result.current.startEditing(sampleEntry))
+      act(() => result.current.submitEdit())
+      await waitFor(() => expect(result.current.pendingDuplicates).toHaveLength(1))
+      act(() => result.current.confirmDuplicates())
+      await waitFor(() => expect(result.current.editingEntry).toBeNull())
+      expect(window.electronAPI.frequentation.update).toHaveBeenLastCalledWith({
+        id: SAMPLE_ID,
+        activity: ActivityType.WORK,
+        allowDuplicates: true
+      })
+    })
+  })
 })
