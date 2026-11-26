@@ -149,7 +149,7 @@ describe('validateBackupFile', () => {
     it('an older-version backup', () => {
       const path = join(dir, 'older.db')
       makeDb(path)
-      execOn(path, `DROP TABLE settings; ${FORGET_LAST_MIGRATION}`)
+      execOn(path, FORGET_LAST_MIGRATION)
       expect(() => validate(path)).not.toThrow()
     })
 
@@ -313,10 +313,7 @@ describe('validateBackupFile', () => {
     it('with a schema that conflicts with the pending migrations', () => {
       const path = join(dir, 'conflict.db')
       makeDb(path)
-      execOn(
-        path,
-        `${FORGET_LAST_MIGRATION}; DROP TABLE settings; CREATE TABLE settings (other TEXT)`
-      )
+      execOn(path, `${FORGET_LAST_MIGRATION}; CREATE TABLE __new_frequentation (other TEXT)`)
       expectCode(() => validate(path), ErrorCode.RESTORE_MIGRATION_FAILED)
     })
   })

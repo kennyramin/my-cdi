@@ -25,9 +25,10 @@ function createTestDb(): { sqlite: Database.Database; db: ReturnType<typeof driz
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       starts_at TEXT NOT NULL,
       activity TEXT NOT NULL,
-      student_id INTEGER NOT NULL,
+      student_id INTEGER,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
+      student_classe TEXT,
       FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
     );
     CREATE INDEX idx_freq_starts_at ON frequentation(starts_at);

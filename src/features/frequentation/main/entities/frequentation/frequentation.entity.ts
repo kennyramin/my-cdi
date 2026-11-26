@@ -18,15 +18,14 @@ export const frequentationTable = sqliteTable(
         ActivityType.OTHER
       ]
     }).notNull(),
-    studentId: integer('student_id')
-      .notNull()
-      .references(() => studentTable.id, { onDelete: 'cascade' }),
+    studentId: integer('student_id').references(() => studentTable.id, { onDelete: 'cascade' }),
     createdAt: text('created_at')
       .notNull()
       .$defaultFn(() => new Date().toISOString()),
     updatedAt: text('updated_at')
       .notNull()
-      .$defaultFn(() => new Date().toISOString())
+      .$defaultFn(() => new Date().toISOString()),
+    studentClasse: text('student_classe')
   },
   (table) => [
     index('idx_freq_student').on(table.studentId),
