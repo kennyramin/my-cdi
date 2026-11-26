@@ -344,21 +344,6 @@ describe('StudentGatewayDrizzle', () => {
       expect(rows.find((r) => r.student_id === b.id)?.student_classe).toBeNull()
     })
 
-    it('no name, first name or INE remains anywhere in the database file', async () => {
-      const surname = 'Zzyzxsurname'
-      const firstName = 'Qwertyfirstname'
-      const ine = 'INEZZ99887766'
-      const s = await gateway.create({ nom: surname, prenom: firstName, classe: '3B', ine })
-      insertVisit(sqlite, s.id)
-      await gateway.anonymizeByIds([s.id])
-      sqlite.exec('VACUUM')
-      sqlite.pragma('wal_checkpoint(TRUNCATE)')
-      const dump = sqlite.serialize()
-      for (const secret of [surname, firstName, ine]) {
-        expect(dump.includes(Buffer.from(secret))).toBe(false)
-      }
-    })
-
     describe('atomicity', () => {
       function failDeletes(): void {
         sqlite.exec(
@@ -385,6 +370,15 @@ describe('StudentGatewayDrizzle', () => {
           })
         ).rejects.toThrow('boom')
         expect(studentCount()).toBe(EXPECTED_ONE_STUDENT)
+      })
+
+      it('withTransaction rethrows the original error even when ROLLBACK itself fails', async () => {
+        await expect(
+          gateway.withTransaction(async () => {
+            sqlite.exec('ROLLBACK')
+            throw new Error('original')
+          })
+        ).rejects.toThrow('original')
       })
 
       it('withTransaction commits and returns the work result', async () => {

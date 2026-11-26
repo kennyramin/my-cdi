@@ -31,6 +31,7 @@ function gatewayWith(students: StudentEntity[]): StudentGateway {
     getAllWithVisitCount: vi.fn(),
     countVisitsByStudentId: vi.fn(),
     anonymizeByIds: vi.fn(),
+    checkpoint: vi.fn().mockResolvedValue(undefined),
     withTransaction: vi.fn()
   }
 }

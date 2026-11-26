@@ -1,7 +1,14 @@
+import { z } from 'zod'
 import { ErrorCode } from '@lib/errors'
 import type { UseCaseResult } from '@lib/use-case'
 import type { StudentGateway } from '@student/gateways/student'
-import type { AnonymizeStudentsPayload, AnonymizeStudentsResult } from '@student-shared'
+import type { AnonymizeStudentsResult } from '@student-shared'
+
+export const MAX_ANONYMIZE_IDS = 5000
+
+const anonymizeStudentsSchema = z.object({
+  ids: z.array(z.number().int().positive().safe()).min(1).max(MAX_ANONYMIZE_IDS)
+})
 
 const ANONYMIZATION_BACKUP_REASON = 'anonymization'
 
@@ -10,19 +17,17 @@ interface AnonymizeStudentsDeps {
   createAutomaticBackup: (reason: typeof ANONYMIZATION_BACKUP_REASON) => Promise<string>
 }
 
-function isValidId(id: number): boolean {
-  return Number.isInteger(id) && id > 0
-}
-
 export async function anonymizeStudents(
   deps: AnonymizeStudentsDeps,
-  input: AnonymizeStudentsPayload
+  // Untrusted IPC payload: validated at runtime below
+  input: unknown
 ): Promise<UseCaseResult<AnonymizeStudentsResult>> {
-  if (input.ids.length === 0 || !input.ids.every(isValidId)) {
+  const parsed = anonymizeStudentsSchema.safeParse(input)
+  if (!parsed.success) {
     return { success: false, error: 'Invalid student ids', code: ErrorCode.VALIDATION_ERROR }
   }
 
-  const uniqueIds = [...new Set(input.ids)]
+  const uniqueIds = [...new Set(parsed.data.ids)]
 
   let knownIds: number[]
   try {
@@ -49,6 +54,7 @@ export async function anonymizeStudents(
 
   try {
     const { anonymized, deletedWithoutVisits } = await deps.gateway.anonymizeByIds(knownIds)
+    await deps.gateway.checkpoint()
     return { success: true, data: { anonymized, deletedWithoutVisits, ignored } }
   } catch {
     return { success: false, error: 'Failed to anonymize students', code: ErrorCode.DATABASE_ERROR }

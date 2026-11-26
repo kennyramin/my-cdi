@@ -550,6 +550,7 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 - **UI**: MUI X Date Pickers wrapped in `LocalizationProvider` with `AdapterDayjs` and `adapterLocale="fr"`.
 - **Legacy rows**: legacy `Z`/offset values are normalised once at startup (settings key `migrations.startsAtLocal.done`, automatic backup first).
 - **Retention**: identified visits live as long as the student record; anonymized visits are kept forever (see §17 Anonymization).
+- **Secure deletion**: the connection sets `PRAGMA secure_delete = ON` and anonymization checkpoints the WAL (`TRUNCATE`) after commit, so a removed name, first name or INE is zeroed in the live database file. Limitation: the automatic `anonymization` safety backup taken just before is a full copy of the database and still contains that personal data until it is pruned (30 days / 10 copies); manual backups made earlier are likewise untouched.
 
 ---
 

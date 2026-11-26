@@ -27,6 +27,15 @@ function chunkIds(ids: number[]): number[][] {
   return chunks
 }
 
+// A failed ROLLBACK must never mask the original error
+function rollbackQuietly(sqlite: Database.Database): void {
+  try {
+    sqlite.exec('ROLLBACK')
+  } catch {
+    // nothing left to roll back (e.g. SQLite already rolled the transaction back)
+  }
+}
+
 function placeholders(ids: number[]): string {
   return ids.map(() => '?').join(', ')
 }
@@ -103,8 +112,12 @@ export class StudentGatewayDrizzle implements StudentGateway {
     if (ids.length === 0) {
       return []
     }
-    const rows = await this.db.select().from(studentTable).where(inArray(studentTable.id, ids))
-    return rows.map(mapStudentRow)
+    const students: StudentEntity[] = []
+    for (const chunk of chunkIds(ids)) {
+      const rows = await this.db.select().from(studentTable).where(inArray(studentTable.id, chunk))
+      students.push(...rows.map(mapStudentRow))
+    }
+    return students
   }
 
   async getAllWithVisitCount(classe?: string): Promise<StudentWithVisitCountEntity[]> {
@@ -169,8 +182,19 @@ export class StudentGatewayDrizzle implements StudentGateway {
       sqlite.exec('COMMIT')
       return result
     } catch (error) {
-      sqlite.exec('ROLLBACK')
+      rollbackQuietly(sqlite)
       throw error
+    }
+  }
+
+  // Flushes the WAL into the main file so zeroed (secure_delete) pages replace the old images.
+  // Must run outside any transaction, after the commit. Best effort: the data change is
+  // already committed, so a busy checkpoint must not turn it into a reported failure.
+  async checkpoint(): Promise<void> {
+    try {
+      this.db.$client.pragma('wal_checkpoint(TRUNCATE)')
+    } catch {
+      // the next checkpoint (or app close) flushes it
     }
   }
 }

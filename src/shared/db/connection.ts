@@ -11,6 +11,8 @@ export function createDbConnection(databasePath: string = DB_PATH) {
   sqliteInstance = new Database(databasePath)
   sqliteInstance.pragma('journal_mode = WAL')
   sqliteInstance.pragma('foreign_keys = ON')
+  // Deleted personal data (anonymization) must be zeroed, not left in free pages or the WAL
+  sqliteInstance.pragma('secure_delete = ON')
   databaseInstance = drizzle(sqliteInstance, { schema })
   return databaseInstance
 }

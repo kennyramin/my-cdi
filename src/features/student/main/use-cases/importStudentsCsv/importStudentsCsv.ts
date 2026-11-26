@@ -168,6 +168,11 @@ export async function importStudentsCsv(
     return failure('Failed to import students', ErrorCode.DATABASE_ERROR)
   }
 
+  if (removeIds.length > NO_REMOVAL_COUNT) {
+    // Outside the transaction: flush zeroed pages so no personal data stays in the WAL
+    await deps.gateway.checkpoint()
+  }
+
   return {
     success: true,
     data: {

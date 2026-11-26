@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { IpcMain } from 'electron'
 import { registerStudentController } from '../student.controller'
+import { ErrorCode } from '@lib/errors'
 import { STUDENT_CHANNELS } from '@shared/ipc/channels'
 import type { StudentGateway } from '@student/gateways/student'
 import type { StudentEntity } from '@student/entities/student'
@@ -55,6 +56,7 @@ function createGatewayStub(): StudentGateway {
     getAllWithVisitCount: vi.fn().mockResolvedValue([]),
     countVisitsByStudentId: vi.fn().mockResolvedValue(0),
     anonymizeByIds: vi.fn().mockResolvedValue({ anonymized: 0, deletedWithoutVisits: 0 }),
+    checkpoint: vi.fn().mockResolvedValue(undefined),
     withTransaction: vi.fn().mockImplementation((work: () => Promise<unknown>) => work())
   }
 }
@@ -111,6 +113,13 @@ describe('registerStudentController', () => {
       success: true,
       data: { toRemove: 1, total: 1, sample: ['Jean Dupont'] }
     })
+    expect(createAutomaticBackup).not.toHaveBeenCalled()
+  })
+
+  it('student.anonymize rejects an invalid payload with VALIDATION_ERROR', async () => {
+    registerStudentController(ipcMain, gateway, createAutomaticBackup)
+    const result = await ipcMain.invoke(STUDENT_CHANNELS.ANONYMIZE, {})
+    expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
     expect(createAutomaticBackup).not.toHaveBeenCalled()
   })
 })

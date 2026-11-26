@@ -16,5 +16,6 @@ export interface StudentGateway {
   getAllWithVisitCount(classe?: string): Promise<StudentWithVisitCountEntity[]>
   countVisitsByStudentId(studentId: number): Promise<number>
   anonymizeByIds(ids: number[]): Promise<AnonymizeByIdsResult>
+  checkpoint(): Promise<void>
   withTransaction<T>(work: () => Promise<T>): Promise<T>
 }

@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { anonymizeStudents } from '../anonymizeStudents'
+import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { migrateTestDatabase } from '@shared/db/testing/migrateTestDatabase'
+import { StudentGatewayDrizzle } from '@student/gateways/student'
+import { anonymizeStudents, MAX_ANONYMIZE_IDS } from '../anonymizeStudents'
 import type { StudentGateway } from '@student/gateways/student'
 import type { StudentEntity } from '@student/entities/student'
 import { ErrorCode } from '@lib/errors'
@@ -37,6 +41,7 @@ function createMockGateway(overrides: Partial<StudentGateway> = {}): StudentGate
     getAllWithVisitCount: vi.fn().mockResolvedValue([]),
     countVisitsByStudentId: vi.fn().mockResolvedValue(0),
     anonymizeByIds: vi.fn().mockResolvedValue({ anonymized: 1, deletedWithoutVisits: 1 }),
+    checkpoint: vi.fn().mockResolvedValue(undefined),
     withTransaction: vi.fn().mockImplementation((work: () => Promise<unknown>) => work()),
     ...overrides
   }
@@ -149,5 +154,63 @@ describe('anonymizeStudents', () => {
       success: true,
       data: { anonymized: 3, deletedWithoutVisits: 2, ignored: 0 }
     })
+  })
+
+  it('rejects a missing, non-array, unsafe or oversized ids payload', async () => {
+    const gateway = createMockGateway()
+    const createAutomaticBackup = vi.fn()
+    const oversized = Array.from({ length: MAX_ANONYMIZE_IDS + 1 }, (_, index) => index + 1)
+    const payloads: unknown[] = [
+      {},
+      { ids: 'abc' },
+      { ids: null },
+      { ids: [Number.MAX_SAFE_INTEGER + 2] },
+      { ids: oversized }
+    ]
+    for (const payload of payloads) {
+      const result = await anonymizeStudents({ gateway, createAutomaticBackup }, payload)
+      expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+    }
+    expect(createAutomaticBackup).not.toHaveBeenCalled()
+  })
+
+  it('accepts exactly the maximum number of ids', async () => {
+    const gateway = createMockGateway()
+    const createAutomaticBackup = vi.fn().mockResolvedValue('/b.db')
+    const ids = Array.from({ length: MAX_ANONYMIZE_IDS }, (_, index) => index + 1)
+    const result = await anonymizeStudents({ gateway, createAutomaticBackup }, { ids })
+    expect(result.success).toBe(true)
+  })
+
+  it('flushes the WAL after the anonymization', async () => {
+    const gateway = createMockGateway()
+    const createAutomaticBackup = vi.fn().mockResolvedValue('/b.db')
+    await anonymizeStudents({ gateway, createAutomaticBackup }, { ids: [FIRST_ID] })
+    expect(gateway.checkpoint).toHaveBeenCalledOnce()
+  })
+
+  it('a backup failure leaves the real database untouched', async () => {
+    const sqlite = new Database(':memory:')
+    sqlite.pragma('foreign_keys = ON')
+    migrateTestDatabase(sqlite)
+    const gateway = new StudentGatewayDrizzle(drizzle(sqlite))
+    const student = await gateway.create({ nom: 'A', prenom: 'B', classe: '3B', ine: 'INE1' })
+    const now = new Date().toISOString()
+    sqlite
+      .prepare(
+        `INSERT INTO frequentation (starts_at, activity, student_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+      )
+      .run('2026-03-02T10:15:00', 'reading', student.id, now, now)
+    const createAutomaticBackup = vi.fn().mockRejectedValue(new Error('disk full'))
+
+    const result = await anonymizeStudents(
+      { gateway, createAutomaticBackup },
+      { ids: [student.id] }
+    )
+
+    expect(result).toMatchObject({ success: false, code: ErrorCode.BACKUP_WRITE_FAILED })
+    expect(await gateway.getById(student.id)).not.toBeNull()
+    expect(await gateway.countVisitsByStudentId(student.id)).toBe(1)
+    sqlite.close()
   })
 })
