@@ -605,6 +605,21 @@ A leaver is removed with `anonymizeStudents` (IPC `student.anonymize`, also reus
 
 ---
 
+## 18b. CSV Export
+
+The Statistics page ("Exporter") and the Students toolbar ("Exporter la liste") write a CSV file through the `export` feature (`src/features/export`: `shared` contracts, `main` use case/adapter, `renderer` button + dialog; aliases `@export/*` and `@export-shared`).
+
+- **Contract**: IPC `export.run` takes `ExportRequestDto` `{ kind, period?, includeNames, acknowledgedPersonalData? }` (`kind`: `journal | visitsByDay | visitsByActivity | visitsByClass | students`) and answers `ExportResultDto` `{ path, rows } | { cancelled: true }` (`isCancelledExport`). `isPeriodExportKind` is the single table of kinds that take a period (used by the request schema and the file name); everything is validated by `exportRequestSchema` in the main process (a failure is a `VALIDATION_ERROR` carrying the first issue message).
+- **No data over IPC**: the renderer sends only the request; the main process reads the rows (gateways / `getStatsForPeriod`), asks the user for the path with the native save dialog and writes the file itself. The renderer receives a path and a row count, never the content.
+- **Privacy rules (enforced server-side)**: the aggregated kinds (`visitsByDay`, `visitsByActivity`, `visitsByClass`) never contain a name or INE, whatever `includeNames` says (the schema forces it to `false`, and the row builders take `StatsForPeriodDto`, which has no personal field). Names in the journal are an explicit opt-in (checkbox + in-dialog warning, no acknowledgement). The students list always contains names/INE and is refused unless `acknowledgedPersonalData === true`. Anonymized visits export as "Élève anonymisé" with empty first name/INE (the class snapshot is kept) and the students list, which no longer holds those students, never counts them. Nothing personal is logged (the adapter logs only the system error code).
+- **Adapter contract** (`ExportFileAdapter`, implemented by `createElectronExportFileAdapter`): `pickSavePath(defaultFileName)` resolves to `null` when cancelled; `openWriter(path)` stages into an unpredictable `.tmp` file next to the target (`wx`, mode `0o600`), `write` applies back-pressure, `commit()` flushes and closes the handle **before** the rename (an existing target stays untouched until then), `abort()` works after a failed write/commit, deletes the temp file, never throws and is idempotent. `runExport` writes in chunks of `EXPORT_CHUNK_ROWS`, aborts on any failure and never leaves a partial target. `EBUSY`/`EPERM` map to `EXPORT_FILE_LOCKED` ("est-il ouvert dans un autre programme ?"), every other failure to `EXPORT_WRITE_FAILED`. The save dialog opens in the user's Documents folder; the last used folder is not remembered.
+- **CSV conventions** (`helpers/csv`): UTF-8 with BOM, `;` separator, CRLF records, a cell is quoted when it contains `;`, `"`, CR or LF (quotes doubled). **Formula guard**: a cell whose first character is TAB/CR, or whose first non-whitespace character (space, NBSP, zero-width and other Unicode spaces included) is `=`, `+`, `-` or `@`, is prefixed with `'` (negative numbers too, by design). Callers stringify values before escaping. Dates are `AAAA-MM-JJ`, times `HH:MM`, counts plain digits; headers and activity labels are French. Rows are sorted deterministically.
+- **File name**: `mon-cdi-<slug>-<start>_<end>.csv` for period kinds (`mon-cdi-eleves-<today>.csv` for the list), always run through `sanitizeFileName` (Windows-forbidden characters, control characters, DEL, reserved device names such as `CON`, `nul .txt`, `COM¹`, `CONIN$`, trailing dots/spaces, 200 UTF-8 bytes cap that never splits a surrogate pair).
+- **Renderer**: one `ExportButtonContainer` per scope owns the toast and the dialog session; `ExportDialogContainer` is locked while pending (a ref guards double submit, Escape/backdrop/close are ignored). Success shows a toast ("N lignes exportées"), a cancelled save dialog closes silently, and a failure stays **in the dialog as `role="alert"` only** (a toast is not announced while the app root is `aria-hidden`). Focus returns to the trigger on close.
+- **Verification**: `npm run check:export` (Electron + Playwright, same prerequisites as `check:duplicates`; `AXE_SOURCE` optional) seeds hostile data (`=cmd|x`, `O"Brien;Jr`, a newline in a name, INE `+123`, class `3-B`), stubs the save dialog from the main process and checks the files with an independent RFC 4180 parser: BOM bytes, exact headers, formula guard, aggregated files without names even after ticking names then switching kind, file name pattern, cancel (no file/`.tmp`/toast), unwritable target, overwrite, school-year and custom periods, empty period (BOM + header, "0 ligne exportée"), students acknowledgement and counts, toolbar at 800x600 in light and dark, dialog accessibility, Escape/focus return and double click writing once. The locked-file mapping is covered by unit tests only.
+
+---
+
 ## 19. Statistics & Custom SVG Visualization
 
 **No charting library** (no Recharts, no Chart.js). All charts are custom SVG rendered by pure geometry helpers.
@@ -821,6 +836,8 @@ Every artifact lives as close as possible to its consumer. Only hoist when share
 | `@statistics-shared`    | `src/features/statistics/shared`        | `src/features/statistics/shared`    |
 | `@settings-shared`      | `src/features/settings/shared`          | `src/features/settings/shared`      |
 | `@backup-shared`        | `src/features/backup/shared`            | `src/features/backup/shared`        |
+| `@export/*`             | `src/features/export/renderer/*`        | `src/features/export/main/*`        |
+| `@export-shared`        | `src/features/export/shared`            | `src/features/export/shared`        |
 | `@shared/*`             | `src/shared/*`                          | `src/shared/*`                      |
 | `@ui/*`                 | `src/shared/ui/*`                       | N/A                                 |
 | `@lib`                  | `src/shared/lib`                        | `src/shared/lib`                    |
@@ -851,7 +868,7 @@ Every artifact lives as close as possible to its consumer. Only hoist when share
 
 `vitest.config.ts` sets `process.env.TZ = 'Europe/Paris'` so the suite runs in the users' timezone.
 
-`npm run check:duplicates`, `check:anonymize` and `check:backup` are the same kind of real-app checks for the duplicate warning, anonymization and backups.
+`npm run check:duplicates`, `check:anonymize`, `check:backup` and `check:export` are the same kind of real-app checks for the duplicate warning, anonymization, backups and the CSV export.
 
 `npm run check:layout` (Electron + Playwright, not part of vitest; needs `PLAYWRIGHT_MODULE` pointing at a Playwright install) checks overflow, the sticky journal submit bar and keyboard-focus visibility on the built app. It leaves `better-sqlite3` on the Electron ABI, so run `npm test` (which realigns) or `npm run rebuild:tests` before using vitest again.
 
@@ -989,3 +1006,4 @@ When adding or modifying code, verify:
 - [ ] `__tests__/` co-located with every logic folder
 - [ ] Build passes (`npm run typecheck`)
 - [ ] All tests pass (`npx vitest run`)
+- [ ] CSV written by the app goes through `serializeCsvRows` (formula guard); aggregated exports carry no name/INE; export data never travels over IPC (§18b)
