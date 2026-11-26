@@ -275,6 +275,58 @@ describe('useStatisticsPage', () => {
       expect(result.current.isLoading).toBe(true)
     })
 
+    it('keeps a pending retry when switching A to B to A before it settles', async () => {
+      const getStats = vi.mocked(window.electronAPI.statistics.getStats)
+      getStats.mockResolvedValueOnce(failure)
+      const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
+      await waitFor(() => expect(result.current.errorMessage).toBe('boom'))
+      getStats.mockReturnValueOnce(new Promise(() => undefined))
+      act(() => {
+        result.current.retry()
+      })
+      expect(result.current.isRetrying).toBe(true)
+      getStats.mockReturnValueOnce(new Promise(() => undefined))
+      act(() => {
+        result.current.selectPeriod('week')
+      })
+      expect(result.current.isRetrying).toBe(false)
+      act(() => {
+        result.current.selectPeriod('month')
+      })
+      expect(result.current.isRetrying).toBe(true)
+      expect(result.current.errorMessage).toBe('boom')
+    })
+
+    it('does not clear a newer retry when an older retry on another period settles', async () => {
+      const getStats = vi.mocked(window.electronAPI.statistics.getStats)
+      getStats.mockResolvedValueOnce(failure)
+      const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
+      await waitFor(() => expect(result.current.errorMessage).toBe('boom'))
+      let resolveMonthRetry: (value: unknown) => void = () => undefined
+      getStats.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveMonthRetry = resolve
+        })
+      )
+      act(() => {
+        result.current.retry()
+      })
+      getStats.mockResolvedValueOnce(failure)
+      act(() => {
+        result.current.selectPeriod('week')
+      })
+      await waitFor(() => expect(result.current.errorMessage).toBe('boom'))
+      getStats.mockReturnValueOnce(new Promise(() => undefined))
+      act(() => {
+        result.current.retry()
+      })
+      expect(result.current.isRetrying).toBe(true)
+      await act(async () => {
+        resolveMonthRetry(failure)
+      })
+      expect(result.current.isRetrying).toBe(true)
+    })
+
     it('shows the normal state when switching back after a retry settled elsewhere', async () => {
       const getStats = vi.mocked(window.electronAPI.statistics.getStats)
       getStats.mockResolvedValueOnce(failure)

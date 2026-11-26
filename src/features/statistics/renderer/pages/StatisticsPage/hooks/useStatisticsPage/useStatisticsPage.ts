@@ -38,7 +38,12 @@ export function useStatisticsPage() {
     if (query.data === undefined && errorMessage !== null) {
       setRetried({ range, message: errorMessage })
     }
-    void query.refetch().finally(() => setRetried(null))
+    const rangeAtRetry = range
+    void query
+      .refetch()
+      .finally(() =>
+        setRetried((cur) => (cur && isSameRange(cur.range, rangeAtRetry) ? null : cur))
+      )
   }
 
   function selectPeriod(next: PeriodKey) {

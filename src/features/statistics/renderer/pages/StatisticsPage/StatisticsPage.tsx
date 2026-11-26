@@ -17,6 +17,10 @@ import { ClassBarChartContainer } from './containers/ClassBarChartContainer'
 import { StatisticsErrorPresenter } from '../../presenters/StatisticsErrorPresenter'
 import { StatisticsRefreshErrorPresenter } from '../../presenters/StatisticsRefreshErrorPresenter'
 
+// Same key in every branch so React keeps the filter (and its focus) mounted
+// when the page moves between loading, error and data layouts.
+const PERIOD_FILTER_KEY = 'period-filter'
+
 export function StatisticsPage() {
   const {
     period,
@@ -35,6 +39,7 @@ export function StatisticsPage() {
   const { t } = useTranslation('statistics')
   const periodFilter = (
     <PeriodFilterContainer
+      key={PERIOD_FILTER_KEY}
       value={period}
       onChange={selectPeriod}
       customRange={customRange}
