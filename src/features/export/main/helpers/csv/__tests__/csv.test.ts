@@ -107,12 +107,40 @@ describe('formula guard', () => {
     }
   })
 
-  it('leaves a leading-space cell unchanged (documented limitation)', () => {
-    expect(escapeCsvCell(' =1')).toBe(' =1')
+  it.each([
+    [' =1', "' =1"],
+    ['  +1', "'  +1"],
+    ['\u00A0=1', "'\u00A0=1"],
+    [' -1', "' -1"],
+    [' @x', "' @x"],
+    ['\u3000=1', "'\u3000=1"],
+    ['\u200B=1', "'\u200B=1"],
+    ['\uFEFF+1', "'\uFEFF+1"],
+    ['\u2060@x', "'\u2060@x"]
+  ])('guards after leading whitespace %j', (input, expected) => {
+    expect(escapeCsvCell(input)).toBe(expected)
+  })
+
+  it.each([' abc', '  3-B', 'a =1', ' ', '\u00A0'])('leaves %j unchanged', (input) => {
+    expect(escapeCsvCell(input)).toBe(input)
+  })
+
+  it('guards and quotes a whitespace-led cell needing quotes', () => {
+    expect(escapeCsvCell(' =a;b')).toBe('"\' =a;b"')
+  })
+
+  it("prefixes negative numbers by design (-12 becomes '-12)", () => {
+    expect(escapeCsvCell('-12')).toBe("'-12")
   })
 
   it('guarded cell that also needs quoting', () => {
     expect(escapeCsvCell('=a;b')).toBe('"\'=a;b"')
+  })
+})
+
+describe('serializeCsvRow edge cases', () => {
+  it('an empty cell list yields a bare CRLF line', () => {
+    expect(serializeCsvRow([])).toBe(CSV_EOL)
   })
 })
 
