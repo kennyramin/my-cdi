@@ -6,15 +6,18 @@ import { ThemeProvider } from '@mui/material/styles'
 import i18n from '@shared/i18n/config'
 import { theme } from '@ui/theme'
 import { JournalEntryRowPresenter } from '../JournalEntryRowPresenter'
+import type { JournalEntryRowPresenterProps } from '../JournalEntryRowPresenter'
 
 const STUDENT_ID = 7
 const ENTRY_TIME = '09:00'
 const PERIOD_LABEL = 'Matin'
 
-const baseProps = {
+const baseProps: JournalEntryRowPresenterProps = {
   initials: 'JD',
   avatarColorSeed: STUDENT_ID,
+  avatarNeutral: false,
   displayName: 'Jean Dupont',
+  selectName: 'Jean Dupont',
   classe: '3ème A',
   time: ENTRY_TIME,
   periodLabel: PERIOD_LABEL,
@@ -39,6 +42,47 @@ function renderRow(props: Partial<Parameters<typeof JournalEntryRowPresenter>[0]
 }
 
 describe('JournalEntryRowPresenter', () => {
+  describe('anonymized entry', () => {
+    const anonymizedProps = {
+      initials: '?',
+      avatarColorSeed: null,
+      avatarNeutral: true,
+      displayName: 'Élève anonymisé',
+      selectName: 'un élève anonymisé (5C, 09:00)',
+      classe: '5C'
+    }
+
+    it('renders the anonymized label, class, initials "?" and a neutral avatar', () => {
+      const { container } = renderRow(anonymizedProps)
+      expect(screen.getByText('Élève anonymisé')).toBeInTheDocument()
+      expect(screen.getByText('5C')).toBeInTheDocument()
+      expect(screen.getByText('?')).toBeInTheDocument()
+      expect(container.textContent).not.toMatch(/undefined|null/)
+      const avatar = screen.getByText('?')
+      const reference = renderRow({ initials: 'AB', avatarColorSeed: 1 })
+      const referenceAvatar = reference.container.querySelector('.MuiAvatar-root')
+      expect(referenceAvatar).not.toBeNull()
+      if (referenceAvatar) {
+        expect(getComputedStyle(avatar).backgroundColor).not.toBe(
+          getComputedStyle(referenceAvatar).backgroundColor
+        )
+      }
+    })
+
+    it('edit and delete buttons stay enabled', () => {
+      renderRow(anonymizedProps)
+      expect(screen.getByRole('button', { name: /modifier/i })).toBeEnabled()
+      expect(screen.getByRole('button', { name: /supprimer/i })).toBeEnabled()
+    })
+
+    it('gives the checkbox a non-empty label with class and time', () => {
+      renderRow(anonymizedProps)
+      expect(
+        screen.getByRole('checkbox', { name: 'Sélectionner un élève anonymisé (5C, 09:00)' })
+      ).toBeInTheDocument()
+    })
+  })
+
   it('does not use the invalid row role', () => {
     renderRow()
     expect(document.querySelector('[role="row"]')).toBeNull()

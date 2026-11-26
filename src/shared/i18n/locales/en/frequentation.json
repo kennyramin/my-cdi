@@ -21,6 +21,7 @@
     "cancel": "Cancel",
     "successMessage": "Attendance(s) saved"
   },
+  "anonymizedStudent": "Anonymized student",
   "loading": "Loading…",
   "present": "Present",
   "searchPlaceholder": "Search…",
@@ -28,6 +29,7 @@
   "row": {
     "edit": "Edit",
     "select": "Select {{name}}",
+    "anonymizedName": "an anonymized student ({{classe}}, {{time}})",
     "delete": "Delete",
     "confirmDelete": "Are you sure you want to delete this attendance?"
   },

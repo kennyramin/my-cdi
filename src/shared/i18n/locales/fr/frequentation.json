@@ -21,6 +21,7 @@
     "cancel": "Annuler",
     "successMessage": "Fréquentation(s) enregistrée(s)"
   },
+  "anonymizedStudent": "Élève anonymisé",
   "loading": "Chargement…",
   "present": "Présents",
   "searchPlaceholder": "Rechercher…",
@@ -28,6 +29,7 @@
   "row": {
     "edit": "Modifier",
     "select": "Sélectionner {{name}}",
+    "anonymizedName": "un élève anonymisé ({{classe}}, {{time}})",
     "delete": "Supprimer",
     "confirmDelete": "Voulez-vous vraiment supprimer cette fréquentation ?"
   },

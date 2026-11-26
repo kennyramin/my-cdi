@@ -18,8 +18,10 @@ import {
 
 export interface JournalEntryRowPresenterProps {
   initials: string
-  avatarColorSeed: number
+  avatarColorSeed: number | null
+  avatarNeutral: boolean
   displayName: string
+  selectName: string
   classe: string
   time: string
   periodLabel: string
@@ -36,7 +38,9 @@ export interface JournalEntryRowPresenterProps {
 export function JournalEntryRowPresenter({
   initials,
   avatarColorSeed,
+  avatarNeutral,
   displayName,
+  selectName,
   classe,
   time,
   periodLabel,
@@ -58,9 +62,9 @@ export function JournalEntryRowPresenter({
         checked={selected}
         onChange={onSelectChange}
         onClick={(event) => event.stopPropagation()}
-        slotProps={{ input: { 'aria-label': t('row.select', { name: displayName }) } }}
+        slotProps={{ input: { 'aria-label': t('row.select', { name: selectName }) } }}
       />
-      <Avatar initials={initials} colorSeed={avatarColorSeed} />
+      <Avatar initials={initials} colorSeed={avatarColorSeed} neutral={avatarNeutral} />
       <RowMain>
         <StudentName>
           {displayName}

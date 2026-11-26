@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { I18nextProvider } from 'react-i18next'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -8,6 +9,8 @@ import { ThemeProvider } from '@mui/material/styles'
 import type { ReactNode } from 'react'
 import i18n from '@shared/i18n/config'
 import { theme } from '@ui/theme'
+import dayjs from 'dayjs'
+import { ActivityType } from '@types'
 import { JournalPage } from '../JournalPage'
 
 function withQuery(ui: ReactNode) {
@@ -52,5 +55,47 @@ describe('JournalPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Présents')).toBeInTheDocument()
     })
+  })
+
+  it('opens the edit dialog for an anonymized entry showing label and class', async () => {
+    const user = userEvent.setup()
+    const day = dayjs().format('YYYY-MM-DD')
+    const startsAt = `${day}T10:00:00`
+    vi.stubGlobal('electronAPI', {
+      student: {
+        list: vi.fn().mockResolvedValue({ success: true, data: { students: [] } })
+      },
+      frequentation: {
+        getJournalEntries: vi.fn().mockResolvedValue({
+          success: true,
+          data: [
+            {
+              frequentation: {
+                id: 9,
+                startsAt,
+                activity: ActivityType.WORK,
+                studentId: null,
+                studentName: '',
+                studentClass: '5C',
+                studentIne: '',
+                createdAt: startsAt,
+                updatedAt: startsAt
+              },
+              student: null
+            }
+          ]
+        }),
+        createBatch: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn()
+      }
+    })
+    render(withQuery(<JournalPage />))
+    await user.click(await screen.findByText('Élève anonymisé'))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Élève anonymisé')).toBeInTheDocument()
+    expect(within(dialog).getByText('5C')).toBeInTheDocument()
+    expect(within(dialog).getByText('?')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Enregistrer' })).toBeEnabled()
   })
 })

@@ -12,7 +12,7 @@ import { useJournalEntries } from '@frequentation/api/useFrequentationQueries'
 import { useActivityLabels } from '@frequentation/hooks/useActivityLabels'
 import { toJournalEntryViewModel } from '@frequentation/helpers/journalEntryTransformers'
 import { getActivityTone } from '@frequentation/helpers/activityFormatters'
-import { buildInitials } from '@frequentation/helpers/buildInitials'
+import { buildInitials, ANONYMOUS_INITIALS } from '@frequentation/helpers/buildInitials'
 import { useDeleteFrequentation } from '@frequentation/api/useFrequentationMutations'
 import { useJournalEntrySelection } from './hooks/useJournalEntrySelection'
 import { useEntryPeriodFilter } from './hooks/useEntryPeriodFilter'
@@ -56,7 +56,9 @@ export function JournalEntryListContainer({
   const theme = useTheme()
 
   const dtos = data ?? []
-  const entries = dtos.map((dto) => toJournalEntryViewModel(dto, getLabel, theme.palette.activity))
+  const entries = dtos.map((dto) =>
+    toJournalEntryViewModel(dto, getLabel, theme.palette.activity, t('anonymizedStudent'))
+  )
   const filteredByPeriod = filterEntriesByPeriod(entries, period)
   const filtered = filterJournalEntriesBySearchTerm(filteredByPeriod, searchTerm)
 
@@ -117,12 +119,19 @@ export function JournalEntryListContainer({
 
   function buildRowProps(entry: JournalEntryViewModel): JournalEntryRowPresenterProps {
     const period = getEntryPeriod(entry.startsAt)
+    const time = dayjs(entry.startsAt).format(TIME_FORMAT)
     return {
-      initials: buildInitials(entry.student.prenom, entry.student.nom),
+      initials: entry.isAnonymized
+        ? ANONYMOUS_INITIALS
+        : buildInitials(entry.student.prenom, entry.student.nom),
       avatarColorSeed: entry.student.id,
+      avatarNeutral: entry.isAnonymized,
       displayName: entry.student.displayName,
+      selectName: entry.isAnonymized
+        ? t('row.anonymizedName', { classe: entry.student.classe, time })
+        : entry.student.displayName,
       classe: entry.student.classe,
-      time: dayjs(entry.startsAt).format(TIME_FORMAT),
+      time,
       periodLabel: period === 'morning' ? t('period.morning') : t('period.afternoon'),
       period,
       activityTone: getActivityTone(entry.activity),

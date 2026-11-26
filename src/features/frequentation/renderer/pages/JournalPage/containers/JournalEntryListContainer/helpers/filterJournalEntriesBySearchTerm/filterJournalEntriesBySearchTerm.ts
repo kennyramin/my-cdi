@@ -14,7 +14,7 @@ export function filterJournalEntriesBySearchTerm(
   return entries.filter((entry) => {
     const time = dayjs(entry.startsAt).format('HH:mm')
     return (
-      entry.student.displayName.toLowerCase().includes(term) ||
+      (!entry.isAnonymized && entry.student.displayName.toLowerCase().includes(term)) ||
       entry.student.classe.toLowerCase().includes(term) ||
       entry.activityLabel.toLowerCase().includes(term) ||
       time.includes(term)

@@ -4,7 +4,7 @@ import { JournalEntryListContainer } from './containers/JournalEntryListContaine
 import { JournalEntryEditDialogPresenter } from '@frequentation/presenters/JournalEntryEditDialogPresenter'
 import { buildActivityTiles } from '@frequentation/presenters/ActivityGridPresenter/helpers/buildActivityTiles'
 import { buildActivityTileNodes } from '@frequentation/presenters/ActivityGridPresenter/helpers/buildActivityTileNodes'
-import { buildInitials } from '@frequentation/helpers/buildInitials'
+import { buildInitials, ANONYMOUS_INITIALS } from '@frequentation/helpers/buildInitials'
 import { useJournalPage } from './hooks/useJournalPage'
 import { useSubmitBarHeight } from './hooks/useSubmitBarHeight'
 import { FormColumn, ListColumn, PageGrid } from './JournalPage.styles'
@@ -42,8 +42,11 @@ export function JournalPage() {
           onSubmit={submitEdit}
           onClose={closeEditDialog}
           entry={{
-            initials: buildInitials(editingEntry.student.prenom, editingEntry.student.nom),
+            initials: editingEntry.isAnonymized
+              ? ANONYMOUS_INITIALS
+              : buildInitials(editingEntry.student.prenom, editingEntry.student.nom),
             colorSeed: editingEntry.student.id,
+            neutral: editingEntry.isAnonymized,
             displayName: editingEntry.student.displayName,
             classe: editingEntry.student.classe
           }}

@@ -6,6 +6,11 @@ import type { ReactNode } from 'react'
 import { Avatar } from '../Avatar'
 import { avatarColor } from '../helpers/avatarColor'
 
+function bg(container: HTMLElement): string {
+  const root = container.firstElementChild
+  return root ? getComputedStyle(root).backgroundColor : ''
+}
+
 function withTheme(ui: ReactNode) {
   return <ThemeProvider theme={theme}>{ui}</ThemeProvider>
 }
@@ -26,6 +31,20 @@ describe('Avatar', () => {
     const seed = 3
     const { bg } = avatarColor(seed, theme.palette)
     expect(bg).toBeTruthy()
+  })
+
+  it('neutral ignores colorSeed and uses the disabled background', () => {
+    const colored = render(withTheme(<Avatar initials="A" colorSeed={1} />)).container
+    const neutralA = render(withTheme(<Avatar initials="?" colorSeed={1} neutral />)).container
+    const neutralB = render(withTheme(<Avatar initials="?" colorSeed={2} neutral />)).container
+    expect(bg(neutralA)).toBe(bg(neutralB))
+    expect(bg(neutralA)).not.toBe(bg(colored))
+  })
+
+  it('falls back to the neutral style when colorSeed is null', () => {
+    const a = render(withTheme(<Avatar initials="?" colorSeed={null} />)).container
+    const b = render(withTheme(<Avatar initials="?" colorSeed={5} neutral />)).container
+    expect(bg(a)).toBe(bg(b))
   })
 
   it('appends custom className', () => {

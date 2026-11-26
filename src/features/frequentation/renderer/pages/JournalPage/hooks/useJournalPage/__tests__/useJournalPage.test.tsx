@@ -27,6 +27,7 @@ const sampleEntry = {
   id: SAMPLE_ID,
   startsAt: '2026-04-01T09:00:00.000Z',
   activity: ActivityType.WORK,
+  isAnonymized: false,
   student: {
     id: SAMPLE_STUDENT_ID,
     nom: 'A',

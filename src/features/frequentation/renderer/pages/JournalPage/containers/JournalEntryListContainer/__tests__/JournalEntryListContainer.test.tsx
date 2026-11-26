@@ -33,6 +33,23 @@ function buildDto(id: number, prenom: string, nom: string, startsAt: string) {
   }
 }
 
+function buildAnonymizedDto(id: number, startsAt: string) {
+  return {
+    frequentation: {
+      id,
+      startsAt,
+      activity: ActivityType.WORK,
+      studentId: null,
+      studentName: '',
+      studentClass: '5C',
+      studentIne: '',
+      createdAt: startsAt,
+      updatedAt: startsAt
+    },
+    student: null
+  }
+}
+
 function withProviders(ui: ReactNode) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
@@ -70,6 +87,53 @@ describe('JournalEntryListContainer', () => {
       withProviders(<JournalEntryListContainer selectedDate="2026-04-01" onEditEntry={vi.fn()} />)
     )
     await waitFor(() => expect(screen.getByText('Jean Dupont')).toBeInTheDocument())
+  })
+
+  it('renders a mixed list with an anonymized entry', async () => {
+    vi.stubGlobal('electronAPI', {
+      frequentation: {
+        getJournalEntries: vi.fn().mockResolvedValue({
+          success: true,
+          data: [
+            buildDto(1, 'Jean', 'Dupont', '2026-04-01T09:00:00'),
+            buildAnonymizedDto(2, '2026-04-01T10:00:00')
+          ]
+        }),
+        delete: deleteMock,
+        update: updateMock
+      }
+    })
+    const { container } = render(
+      withProviders(<JournalEntryListContainer selectedDate="2026-04-01" onEditEntry={vi.fn()} />)
+    )
+    expect(await screen.findByText('Élève anonymisé')).toBeInTheDocument()
+    expect(screen.getByText('5C')).toBeInTheDocument()
+    expect(screen.getByText('Jean Dupont')).toBeInTheDocument()
+    expect(container.textContent).not.toMatch(/undefined|null/)
+    expect(
+      screen.getByRole('checkbox', { name: 'Sélectionner un élève anonymisé (5C, 10:00)' })
+    ).toBeInTheDocument()
+  })
+
+  it('deleting an anonymized entry works', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('electronAPI', {
+      frequentation: {
+        getJournalEntries: vi.fn().mockResolvedValue({
+          success: true,
+          data: [buildAnonymizedDto(2, '2026-04-01T10:00:00')]
+        }),
+        delete: deleteMock,
+        update: updateMock
+      }
+    })
+    render(
+      withProviders(<JournalEntryListContainer selectedDate="2026-04-01" onEditEntry={vi.fn()} />)
+    )
+    await screen.findByText('Élève anonymisé')
+    await user.click(screen.getByRole('button', { name: 'Supprimer' }))
+    await user.click(await screen.findByRole('button', { name: 'Confirmer' }))
+    await waitFor(() => expect(deleteMock).toHaveBeenCalledWith({ id: 2 }))
   })
 
   it('renders entries as items of a labelled list', async () => {
