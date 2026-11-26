@@ -23,6 +23,18 @@
   "row.confirmDelete": "Deleting this student also deletes their entire visit history. This action cannot be undone.",
   "row.selectStudent": "Select {{name}}",
   "deleteSuccess": "Student deleted",
+  "anonymize": {
+    "rowAction": "Remove student",
+    "batchAction": "Remove selection",
+    "title_one": "Remove {{count}} student?",
+    "title_other": "Remove {{count}} students?",
+    "message": "The last name, first name and INE will be permanently deleted. Visits and class are kept, with no link to any person. This action cannot be undone.",
+    "noVisitsNote_one": "{{count}} student with no visits will simply be deleted.",
+    "noVisitsNote_other": "{{count}} students with no visits will simply be deleted.",
+    "backupNote": "A safety backup copy is made just before. It, like earlier backups (manual or automatic), still contains the real identities. Automatic backups are deleted after 30 days.",
+    "confirm": "Remove",
+    "success": "Done: {{anonymized}} anonymized, {{deletedWithoutVisits}} deleted without visits."
+  },
   "createSuccess": "Student added successfully",
   "updateSuccess": "Student information updated",
   "replaceSuccess": "Student information replaced",

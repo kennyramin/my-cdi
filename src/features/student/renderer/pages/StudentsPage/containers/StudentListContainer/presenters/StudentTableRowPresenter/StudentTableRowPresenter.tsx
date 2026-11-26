@@ -20,6 +20,7 @@ export interface StudentTableRowPresenterProps {
   onCheckboxChange: () => void
   onCheckboxClick: (event: MouseEvent<HTMLButtonElement>) => void
   onEditClick: (event: MouseEvent<HTMLButtonElement>) => void
+  onAnonymizeClick: (event: MouseEvent<HTMLButtonElement>) => void
   onDeleteClick: (event: MouseEvent<HTMLButtonElement>) => void
 }
 
@@ -30,6 +31,7 @@ export function StudentTableRowPresenter({
   onCheckboxChange,
   onCheckboxClick,
   onEditClick,
+  onAnonymizeClick,
   onDeleteClick
 }: StudentTableRowPresenterProps) {
   const { t } = useTranslation('common')
@@ -63,6 +65,11 @@ export function StudentTableRowPresenter({
       <td>
         <RowActions>
           <IconButton iconName="edit" aria-label={t('app.edit')} onClick={onEditClick} />
+          <IconButton
+            iconName="person_remove"
+            aria-label={tStudent('anonymize.rowAction')}
+            onClick={onAnonymizeClick}
+          />
           <IconButton
             iconName="delete"
             tone="danger"

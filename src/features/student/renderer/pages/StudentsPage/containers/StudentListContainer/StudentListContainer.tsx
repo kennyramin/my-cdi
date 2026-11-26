@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@ui/components/ConfirmDialog'
 import { useToast } from '@ui/hooks/useToast'
 import { useStudentListData } from './hooks/useStudentListData'
 import { useStudentSelection } from './hooks/useStudentSelection'
+import { useAnonymizeDialog } from './hooks/useAnonymizeDialog'
 import { useDeleteStudent } from '@student/api/useStudentMutations'
 import { buildStudentInitials } from '@student/helpers/studentFormatters'
 import { StudentTablePresenter } from './presenters/StudentTablePresenter'
@@ -15,6 +16,7 @@ import { buildNextSortConfig } from './helpers/buildNextSortConfig'
 import { intersectVisibleSelection } from './helpers/intersectVisibleSelection'
 import { getHeaderSortState } from './helpers/getHeaderSortState'
 import { SortableHeaderCellPresenter } from './presenters/SortableHeaderCellPresenter'
+import { AnonymizeStudentsDialogPresenter } from './presenters/AnonymizeStudentsDialogPresenter'
 import { StudentListToolbarPresenter } from './presenters/StudentListToolbarPresenter'
 import { StudentBatchActionsContainer } from './containers/StudentBatchActionsContainer'
 import {
@@ -24,6 +26,7 @@ import {
   StudentListLayout
 } from './StudentListContainer.styles'
 import type { StudentListContainerProps } from './types/StudentListContainerProps'
+import type { AnonymizeStudentsResult } from '@student-shared'
 import type { StudentSortField, StudentViewModel } from '@student/types'
 
 const SORTABLE_FIELDS: readonly StudentSortField[] = [
@@ -35,6 +38,12 @@ const SORTABLE_FIELDS: readonly StudentSortField[] = [
 ]
 
 const VISITS_FIELD: StudentSortField = 'visitCount'
+const NO_VISITS = 0
+
+function countWithoutVisits(students: StudentViewModel[], ids: number[]): number {
+  return students.filter((student) => ids.includes(student.id) && student.visitCount === NO_VISITS)
+    .length
+}
 
 export function StudentListContainer({ onEditStudent, onAddStudent }: StudentListContainerProps) {
   const { t: tCommon } = useTranslation('common')
@@ -51,10 +60,21 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
     }
   })
 
+  function showAnonymizeSuccess({ anonymized, deletedWithoutVisits }: AnonymizeStudentsResult) {
+    show(tStudent('anonymize.success', { anonymized, deletedWithoutVisits }))
+  }
+
+  const rowAnonymize = useAnonymizeDialog({
+    onSuccess: showAnonymizeSuccess
+  })
+
   const visibleSelectedIds = intersectVisibleSelection(
     selectedIds,
     filteredStudents.map((student) => student.id)
   )
+
+  const selectedWithoutVisitsCount = countWithoutVisits(filteredStudents, visibleSelectedIds)
+  const rowWithoutVisitsCount = countWithoutVisits(filteredStudents, rowAnonymize.pendingIds)
 
   function handleSelectAll() {
     selectAll(filteredStudents.map((student) => student.id))
@@ -62,6 +82,11 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
 
   function handleSearchChange(event: ChangeEvent<HTMLInputElement>) {
     setSearchTerm(event.target.value)
+  }
+
+  function handleAnonymizeSuccess(result: AnonymizeStudentsResult) {
+    clearSelection()
+    showAnonymizeSuccess(result)
   }
 
   function handleDeleteClick(id: number) {
@@ -95,6 +120,10 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
         onEditClick={(event) => {
           event.stopPropagation()
           onEditStudent(student)
+        }}
+        onAnonymizeClick={(event) => {
+          event.stopPropagation()
+          rowAnonymize.openFor([student.id])
         }}
         onDeleteClick={(event) => {
           event.stopPropagation()
@@ -149,6 +178,8 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
         onSelectAll={handleSelectAll}
         onClearSelection={clearSelection}
         onAfterDelete={clearSelection}
+        withoutVisitsCount={selectedWithoutVisitsCount}
+        onAfterAnonymize={handleAnonymizeSuccess}
       />
 
       <StudentTablePresenter
@@ -167,6 +198,15 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
         destructive
         onConfirm={handleConfirmDelete}
         onClose={closeConfirmDelete}
+      />
+      <AnonymizeStudentsDialogPresenter
+        open={rowAnonymize.isOpen}
+        count={rowAnonymize.pendingIds.length}
+        withoutVisitsCount={rowWithoutVisitsCount}
+        onConfirm={rowAnonymize.confirm}
+        onClose={rowAnonymize.close}
+        isPending={rowAnonymize.isPending}
+        errorMessage={rowAnonymize.errorMessage}
       />
       <Toast toast={toast} onClose={dismiss} />
     </StudentListLayout>

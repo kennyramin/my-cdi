@@ -23,7 +23,8 @@ describe('useStudentBatchActions', () => {
     totalCount: 10,
     onSelectAll: vi.fn(),
     onClearSelection: vi.fn(),
-    onAfterDelete: vi.fn()
+    onAfterDelete: vi.fn(),
+    onAfterAnonymize: vi.fn()
   }
 
   it('returns hasSelection true when selectedCount > 0', () => {

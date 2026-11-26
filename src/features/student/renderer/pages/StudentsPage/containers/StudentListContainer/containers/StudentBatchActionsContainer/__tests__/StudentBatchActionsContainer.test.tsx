@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@mui/material/styles'
@@ -49,6 +49,8 @@ describe('StudentBatchActionsContainer', () => {
         onSelectAll={vi.fn()}
         onClearSelection={vi.fn()}
         onAfterDelete={vi.fn()}
+        withoutVisitsCount={0}
+        onAfterAnonymize={vi.fn()}
       />
     )
 
@@ -66,6 +68,8 @@ describe('StudentBatchActionsContainer', () => {
         onSelectAll={vi.fn()}
         onClearSelection={vi.fn()}
         onAfterDelete={vi.fn()}
+        withoutVisitsCount={0}
+        onAfterAnonymize={vi.fn()}
       />
     )
 
@@ -81,6 +85,8 @@ describe('StudentBatchActionsContainer', () => {
         onSelectAll={vi.fn()}
         onClearSelection={vi.fn()}
         onAfterDelete={vi.fn()}
+        withoutVisitsCount={0}
+        onAfterAnonymize={vi.fn()}
       />
     )
 
@@ -97,6 +103,8 @@ describe('StudentBatchActionsContainer', () => {
         onSelectAll={vi.fn()}
         onClearSelection={vi.fn()}
         onAfterDelete={vi.fn()}
+        withoutVisitsCount={0}
+        onAfterAnonymize={vi.fn()}
       />
     )
 
@@ -104,5 +112,78 @@ describe('StudentBatchActionsContainer', () => {
     fireEvent.click(deleteButton)
 
     expect(screen.getByText('Confirmer la suppression')).toBeInTheDocument()
+  })
+
+  it('disables Retirer la sélection without selection', () => {
+    renderWithClient(
+      <StudentBatchActionsContainer
+        selectedIds={[]}
+        selectedCount={ZERO_SELECTED}
+        totalCount={TOTAL_COUNT}
+        onSelectAll={vi.fn()}
+        onClearSelection={vi.fn()}
+        onAfterDelete={vi.fn()}
+        withoutVisitsCount={0}
+        onAfterAnonymize={vi.fn()}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: 'Retirer la sélection' })).toBeDisabled()
+  })
+
+  it('sends only the selected ids in ONE IPC call and reports the result', async () => {
+    const result = { anonymized: 2, deletedWithoutVisits: 0, ignored: 0 }
+    const anonymize = vi.fn().mockResolvedValue({ success: true, data: result })
+    vi.stubGlobal('electronAPI', { student: { anonymize, delete: vi.fn() } })
+    const onAfterAnonymize = vi.fn()
+    renderWithClient(
+      <StudentBatchActionsContainer
+        selectedIds={SELECTED_IDS_PAIR}
+        selectedCount={SELECTED_COUNT}
+        totalCount={TOTAL_COUNT}
+        onSelectAll={vi.fn()}
+        onClearSelection={vi.fn()}
+        onAfterDelete={vi.fn()}
+        withoutVisitsCount={0}
+        onAfterAnonymize={onAfterAnonymize}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer la sélection' }))
+    expect(screen.getByText('Retirer 2 élèves ?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer' }))
+
+    await waitFor(() => expect(onAfterAnonymize).toHaveBeenCalledWith(result))
+    expect(anonymize).toHaveBeenCalledTimes(1)
+    expect(anonymize).toHaveBeenCalledWith({ ids: SELECTED_IDS_PAIR })
+  })
+
+  it('keeps the dialog open and shows the translated error when the backup fails', async () => {
+    const anonymize = vi
+      .fn()
+      .mockResolvedValue({ success: false, error: 'boom', code: 'BACKUP_WRITE_FAILED' })
+    vi.stubGlobal('electronAPI', { student: { anonymize, delete: vi.fn() } })
+    const onAfterAnonymize = vi.fn()
+    renderWithClient(
+      <StudentBatchActionsContainer
+        selectedIds={SELECTED_IDS_PAIR}
+        selectedCount={SELECTED_COUNT}
+        totalCount={TOTAL_COUNT}
+        onSelectAll={vi.fn()}
+        onClearSelection={vi.fn()}
+        onAfterDelete={vi.fn()}
+        withoutVisitsCount={0}
+        onAfterAnonymize={onAfterAnonymize}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer la sélection' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "L'écriture de la sauvegarde a échoué"
+    )
+    expect(screen.getByText('Retirer 2 élèves ?')).toBeInTheDocument()
+    expect(onAfterAnonymize).not.toHaveBeenCalled()
   })
 })

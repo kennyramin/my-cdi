@@ -6,10 +6,13 @@ import {
   useCreateStudent,
   useUpdateStudent,
   useDeleteStudent,
-  useImportStudentsCsv
+  useImportStudentsCsv,
+  useAnonymizeStudents
 } from '../useStudentMutations'
 import type { CreateStudentDto, UpdateStudentDto } from '@student-shared'
 import { statisticsKeys } from '@statistics/api/statisticsKeys'
+import { frequentationKeys } from '@frequentation/api/frequentationKeys'
+import { studentKeys } from '../../studentKeys'
 
 const STUDENT_ID = 1
 
@@ -202,5 +205,48 @@ describe('useImportStudentsCsv', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: statisticsKeys.all })
+  })
+})
+
+describe('useAnonymizeStudents', () => {
+  const IDS = [1, 2]
+  const RESULT = { anonymized: 1, deletedWithoutVisits: 1, ignored: 0 }
+
+  it('sends the ids in one call, invalidates the dependent queries and reports the result', async () => {
+    const anonymize = vi.fn().mockResolvedValue({ success: true, data: RESULT })
+    vi.stubGlobal('electronAPI', { student: { anonymize } })
+    const onSuccess = vi.fn()
+    const { wrapper, invalidateSpy } = createInvalidationSpiedWrapper()
+    const { result } = renderHook(() => useAnonymizeStudents({ onSuccess }), { wrapper })
+
+    act(() => {
+      result.current.mutate(IDS)
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(anonymize).toHaveBeenCalledTimes(1)
+    expect(anonymize).toHaveBeenCalledWith({ ids: IDS })
+    expect(onSuccess).toHaveBeenCalledWith(RESULT)
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: studentKeys.all })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: statisticsKeys.all })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: frequentationKeys.all })
+  })
+
+  it('translates a backup failure into an error', async () => {
+    vi.stubGlobal('electronAPI', {
+      student: {
+        anonymize: vi
+          .fn()
+          .mockResolvedValue({ success: false, error: 'x', code: 'BACKUP_WRITE_FAILED' })
+      }
+    })
+    const { result } = renderHook(() => useAnonymizeStudents(), { wrapper: createWrapper() })
+
+    act(() => {
+      result.current.mutate(IDS)
+    })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.error?.message).toBe('errors.backup.writeFailed')
   })
 })

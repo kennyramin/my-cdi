@@ -23,6 +23,18 @@
   "row.confirmDelete": "Supprimer cet élève supprimera aussi tout son historique de fréquentation. Cette action est irréversible.",
   "row.selectStudent": "Sélectionner {{name}}",
   "deleteSuccess": "Élève supprimé",
+  "anonymize": {
+    "rowAction": "Retirer l'élève",
+    "batchAction": "Retirer la sélection",
+    "title_one": "Retirer {{count}} élève ?",
+    "title_other": "Retirer {{count}} élèves ?",
+    "message": "Le nom, le prénom et l'INE seront supprimés définitivement. Les visites et la classe sont conservées, sans aucun lien avec une personne. Cette action est irréversible.",
+    "noVisitsNote_one": "{{count}} élève sans visite sera simplement supprimé.",
+    "noVisitsNote_other": "{{count}} élèves sans visite seront simplement supprimés.",
+    "backupNote": "Une copie de sécurité est faite juste avant. Elle, comme les sauvegardes (manuelles ou automatiques) précédentes, contient encore les identités réelles. Les sauvegardes automatiques sont supprimées après 30 jours.",
+    "confirm": "Retirer",
+    "success": "Retrait terminé : {{anonymized}} anonymisé(s), {{deletedWithoutVisits}} supprimé(s) sans visite."
+  },
   "createSuccess": "Un élève a bien été ajouté",
   "updateSuccess": "Les informations de l'élève ont été mises à jour",
   "replaceSuccess": "Les informations de l'élève ont été remplacées",

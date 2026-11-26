@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'
 import '@shared/i18n/config'
 import { theme } from '@ui/theme'
@@ -26,7 +26,10 @@ function buildStudent(visitCount: number): StudentViewModel {
   }
 }
 
-function renderRow(student: StudentViewModel) {
+function renderRow(
+  student: StudentViewModel,
+  handlers: { onAnonymizeClick?: () => void; onDeleteClick?: () => void } = {}
+) {
   return render(
     <ThemeProvider theme={theme}>
       <table>
@@ -38,7 +41,8 @@ function renderRow(student: StudentViewModel) {
             onCheckboxChange={() => {}}
             onCheckboxClick={() => {}}
             onEditClick={() => {}}
-            onDeleteClick={() => {}}
+            onAnonymizeClick={handlers.onAnonymizeClick ?? (() => {})}
+            onDeleteClick={handlers.onDeleteClick ?? (() => {})}
           />
         </tbody>
       </table>
@@ -66,5 +70,20 @@ describe('StudentTableRowPresenter', () => {
       displayName: 'Léa Martin'
     })
     expect(screen.getByRole('checkbox', { name: 'Sélectionner Léa Martin' })).toBeInTheDocument()
+  })
+
+  it('has both Retirer and Supprimer buttons with distinct aria-labels', () => {
+    renderRow(buildStudent(VISIT_COUNT))
+    expect(screen.getByRole('button', { name: "Retirer l'élève" })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Supprimer' })).toBeInTheDocument()
+  })
+
+  it('wires each button to its own handler', () => {
+    const onAnonymizeClick = vi.fn()
+    const onDeleteClick = vi.fn()
+    renderRow(buildStudent(VISIT_COUNT), { onAnonymizeClick, onDeleteClick })
+    fireEvent.click(screen.getByRole('button', { name: "Retirer l'élève" }))
+    expect(onAnonymizeClick).toHaveBeenCalledTimes(1)
+    expect(onDeleteClick).not.toHaveBeenCalled()
   })
 })

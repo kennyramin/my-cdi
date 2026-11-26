@@ -55,14 +55,21 @@ function createWrapper() {
 
 describe('StudentListContainer', () => {
   const deleteMock = vi.fn()
+  const anonymizeMock = vi.fn()
 
   beforeEach(() => {
     deleteMock.mockReset()
+    anonymizeMock.mockReset()
+    anonymizeMock.mockResolvedValue({
+      success: true,
+      data: { anonymized: 0, deletedWithoutVisits: 1, ignored: 0 }
+    })
     deleteMock.mockResolvedValue({ success: true })
     vi.stubGlobal('electronAPI', {
       student: {
         list: vi.fn().mockResolvedValue({ success: true, data: { students: MOCK_DTOS } }),
-        delete: deleteMock
+        delete: deleteMock,
+        anonymize: anonymizeMock
       }
     })
   })
@@ -170,5 +177,79 @@ describe('StudentListContainer', () => {
         'Supprimer cet élève supprimera aussi tout son historique de fréquentation. Cette action est irréversible.'
       )
     ).toBeInTheDocument()
+  })
+
+  it('clicking Retirer opens the anonymize dialog, not the delete dialog', async () => {
+    const user = userEvent.setup()
+    render(<StudentListContainer onEditStudent={vi.fn()} onAddStudent={vi.fn()} />, {
+      wrapper: createWrapper()
+    })
+
+    const row = await screen.findByRole('row', { name: /Léa/ })
+    await user.click(within(row).getByRole('button', { name: "Retirer l'élève" }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Retirer 1 élève ?')).toBeInTheDocument()
+    expect(
+      within(dialog).getByText('1 élève sans visite sera simplement supprimé.')
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Confirmer la suppression')).toBeNull()
+  })
+
+  it('row anonymize shows the toast with counts', async () => {
+    const user = userEvent.setup()
+    render(<StudentListContainer onEditStudent={vi.fn()} onAddStudent={vi.fn()} />, {
+      wrapper: createWrapper()
+    })
+
+    const row = await screen.findByRole('row', { name: /Léa/ })
+    await user.click(within(row).getByRole('button', { name: "Retirer l'élève" }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Retirer' }))
+
+    await waitFor(() => {
+      expect(anonymizeMock).toHaveBeenCalledWith({ ids: [LEA_ID] })
+    })
+    expect(
+      await screen.findByText('Retrait terminé : 0 anonymisé(s), 1 supprimé(s) sans visite.')
+    ).toBeInTheDocument()
+    expect(deleteMock).not.toHaveBeenCalled()
+  })
+
+  it('batch anonymize sends only visible selected ids, shows the toast and clears the selection', async () => {
+    const user = userEvent.setup()
+    render(<StudentListContainer onEditStudent={vi.fn()} onAddStudent={vi.fn()} />, {
+      wrapper: createWrapper()
+    })
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Sélectionner Léa Martin' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Sélectionner Jean Dupont' }))
+    await user.type(screen.getByPlaceholderText(/Rechercher/), 'Martin')
+
+    await user.click(screen.getByRole('button', { name: 'Retirer la sélection' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Retirer' }))
+
+    await waitFor(() => {
+      expect(anonymizeMock).toHaveBeenCalledTimes(1)
+    })
+    expect(anonymizeMock).toHaveBeenCalledWith({ ids: [LEA_ID] })
+    expect(
+      await screen.findByText('Retrait terminé : 0 anonymisé(s), 1 supprimé(s) sans visite.')
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/élève sélectionné/)).toBeNull()
+  })
+
+  it('Supprimer keeps its existing confirmation text', async () => {
+    const user = userEvent.setup()
+    render(<StudentListContainer onEditStudent={vi.fn()} onAddStudent={vi.fn()} />, {
+      wrapper: createWrapper()
+    })
+
+    const row = await screen.findByRole('row', { name: /Léa/ })
+    await user.click(within(row).getByRole('button', { name: 'Supprimer' }))
+
+    expect(await screen.findByText('Confirmer la suppression')).toBeInTheDocument()
+    expect(anonymizeMock).not.toHaveBeenCalled()
   })
 })

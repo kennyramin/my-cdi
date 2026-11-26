@@ -3,7 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { resolveIpcErrorMessage } from '@lib/ipc/resolveIpcErrorMessage'
 import { studentKeys } from '../studentKeys'
 import { statisticsKeys } from '@statistics/api/statisticsKeys'
-import type { CreateStudentDto, UpdateStudentDto, ImportStudentsCsvPayload } from '@student-shared'
+import { frequentationKeys } from '@frequentation/api/frequentationKeys'
+import type {
+  AnonymizeStudentsResult,
+  CreateStudentDto,
+  UpdateStudentDto,
+  ImportStudentsCsvPayload
+} from '@student-shared'
 
 interface DeleteStudentInput {
   id: number
@@ -87,6 +93,30 @@ export function useImportStudentsCsv() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.all })
       queryClient.invalidateQueries({ queryKey: statisticsKeys.all })
+    }
+  })
+}
+
+interface UseAnonymizeStudentsOptions {
+  onSuccess?: (result: AnonymizeStudentsResult) => void
+}
+
+export function useAnonymizeStudents(options: UseAnonymizeStudentsOptions = {}) {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation('common')
+  return useMutation({
+    mutationFn: async (ids: number[]) => {
+      const result = await window.electronAPI.student.anonymize({ ids })
+      if (!result.success) {
+        throw new Error(resolveIpcErrorMessage(result, t))
+      }
+      return result.data
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: studentKeys.all })
+      queryClient.invalidateQueries({ queryKey: statisticsKeys.all })
+      queryClient.invalidateQueries({ queryKey: frequentationKeys.all })
+      options.onSuccess?.(result)
     }
   })
 }

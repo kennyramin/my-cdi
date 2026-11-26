@@ -48,6 +48,7 @@ function buildRowProps(student: StudentViewModel, selected = false): StudentTabl
     onCheckboxChange: () => {},
     onCheckboxClick: () => {},
     onEditClick: () => {},
+    onAnonymizeClick: () => {},
     onDeleteClick: () => {}
   }
 }

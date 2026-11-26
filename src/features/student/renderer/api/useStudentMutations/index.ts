@@ -2,5 +2,6 @@ export {
   useCreateStudent,
   useUpdateStudent,
   useDeleteStudent,
-  useImportStudentsCsv
+  useImportStudentsCsv,
+  useAnonymizeStudents
 } from './useStudentMutations'
