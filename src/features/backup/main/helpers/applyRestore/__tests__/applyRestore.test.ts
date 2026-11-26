@@ -6,7 +6,8 @@ import { join } from 'node:path'
 import { AppError, ErrorCode } from '@lib/errors'
 import { createBackup } from '../../../use-cases/createBackup'
 import type { FileOps } from '../../../ports'
-import { applyRestore, nodeFileOps } from '../applyRestore'
+import { nodeFileOps } from '../../nodeFileOps'
+import { applyRestore } from '../applyRestore'
 
 const LIVE_MARKER = 'live-marker'
 const SOURCE_MARKER = 'source-marker'
@@ -85,6 +86,10 @@ describe('applyRestore', () => {
     rmSync(dir, { recursive: true, force: true })
   })
 
+  function leftoverTemps(): string[] {
+    return readdirSync(dir).filter((n) => n.endsWith('-tmp'))
+  }
+
   function run(files: FileOps = nodeFileOps, source = sourcePath): Promise<void> {
     return applyRestore({
       sourcePath: source,
@@ -153,26 +158,43 @@ describe('applyRestore', () => {
     expect(relaunch).not.toHaveBeenCalled()
   })
 
-  it('rolls back to the safety copy when the replace fails', async () => {
-    const error = await expectRestoreFailed(
-      run({ ...nodeFileOps, rename: failingRename(new Error('rename denied')) })
-    )
+  it('rolls back to the safety copy when the replace fails after damaging live', async () => {
+    const copySpy = vi.fn(nodeFileOps.copyFile)
+    const files: FileOps = {
+      ...nodeFileOps,
+      copyFile: copySpy,
+      rename: async (from, to) => {
+        if (to === livePath && from.endsWith('.restore-tmp')) {
+          writeFileSync(livePath, JUNK)
+          throw new Error('rename denied')
+        }
+        return nodeFileOps.rename(from, to)
+      }
+    }
+    writeFileSync(`${livePath}-wal`, JUNK)
+
+    const error = await expectRestoreFailed(run(files))
 
     expect(error.message).toContain('rename denied')
     expect(readMarker(livePath)).toBe(LIVE_MARKER)
+    expect(copySpy).toHaveBeenCalledWith(safetyPath, `${livePath}.rollback-tmp`)
+    expect(existsSync(`${livePath}-wal`)).toBe(false)
+    expect(existsSync(`${livePath}-shm`)).toBe(false)
     expect(relaunch).toHaveBeenCalledTimes(1)
-    expect(readdirSync(dir).filter((name) => name.endsWith('.restore-tmp'))).toEqual([])
+    expect(leftoverTemps()).toEqual([])
   })
 
-  it('rolls back when copying the source fails midway', async () => {
+  it('rolls back when removing a sidecar fails', async () => {
+    let failed = false
     const files: FileOps = {
       ...nodeFileOps,
-      copyFile: async (src, dest) => {
-        if (dest.endsWith('.restore-tmp')) {
-          writeFileSync(dest, PARTIAL_BYTES)
-          throw new Error('copy interrupted')
+      rm: async (path, options) => {
+        if (path.endsWith('-shm') && !failed) {
+          failed = true
+          writeFileSync(livePath, JUNK)
+          throw new Error('rm denied')
         }
-        return nodeFileOps.copyFile(src, dest)
+        return nodeFileOps.rm(path, options)
       }
     }
 
@@ -180,15 +202,48 @@ describe('applyRestore', () => {
 
     expect(readMarker(livePath)).toBe(LIVE_MARKER)
     expect(relaunch).toHaveBeenCalledTimes(1)
-    expect(readdirSync(dir).filter((name) => name.endsWith('.restore-tmp'))).toEqual([])
+    expect(leftoverTemps()).toEqual([])
   })
 
-  it('reports the safety backup path when the rollback also fails', async () => {
+  it('skips the rollback copy when copying the source fails midway', async () => {
+    const copySpy = vi.fn<FileOps['copyFile']>(async (src, dest) => {
+      if (dest.endsWith('.restore-tmp')) {
+        writeFileSync(dest, PARTIAL_BYTES)
+        throw new Error('copy interrupted')
+      }
+      return nodeFileOps.copyFile(src, dest)
+    })
+    writeFileSync(`${livePath}-wal`, JUNK)
+
+    await expectRestoreFailed(run({ ...nodeFileOps, copyFile: copySpy }))
+
+    expect(readMarker(livePath)).toBe(LIVE_MARKER)
+    expect(copySpy).toHaveBeenCalledTimes(1)
+    expect(existsSync(`${livePath}-wal`)).toBe(true)
+    expect(relaunch).toHaveBeenCalledTimes(1)
+    expect(leftoverTemps()).toEqual([])
+  })
+
+  it('leaves live intact and relaunches when closing the database fails', async () => {
+    closeDatabase.mockImplementation(() => {
+      throw new Error('close failed')
+    })
+    const copySpy = vi.fn(nodeFileOps.copyFile)
+
+    await expectRestoreFailed(run({ ...nodeFileOps, copyFile: copySpy }))
+
+    expect(readMarker(livePath)).toBe(LIVE_MARKER)
+    expect(copySpy).not.toHaveBeenCalled()
+    expect(relaunch).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not truncate live when the rollback copy fails', async () => {
     const files: FileOps = {
       ...nodeFileOps,
       rename: failingRename(new Error('rename denied')),
       copyFile: async (src, dest) => {
         if (src === safetyPath) {
+          writeFileSync(dest, PARTIAL_BYTES)
           throw new Error('rollback copy denied')
         }
         return nodeFileOps.copyFile(src, dest)
@@ -198,7 +253,17 @@ describe('applyRestore', () => {
     const error = await expectRestoreFailed(run(files))
 
     expect(error.message).toContain(safetyPath)
+    expect(readMarker(livePath)).toBe(LIVE_MARKER)
     expect(relaunch).toHaveBeenCalledTimes(1)
+    expect(leftoverTemps()).toEqual([])
+  })
+
+  it('still reports RESTORE_FAILED when relaunch throws', async () => {
+    relaunch.mockImplementation(() => {
+      throw new Error('relaunch failed')
+    })
+
+    await expectRestoreFailed(run({ ...nodeFileOps, rename: failingRename(new Error('nope')) }))
   })
 
   it('the safety backup contains the pre-restore data', async () => {

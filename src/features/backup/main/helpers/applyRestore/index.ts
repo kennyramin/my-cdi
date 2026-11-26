@@ -1,2 +1,2 @@
-export { applyRestore, nodeFileOps } from './applyRestore'
+export { applyRestore } from './applyRestore'
 export type { ApplyRestoreDeps } from './applyRestore'
