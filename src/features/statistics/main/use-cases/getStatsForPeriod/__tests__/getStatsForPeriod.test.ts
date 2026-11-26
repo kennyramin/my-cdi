@@ -54,6 +54,9 @@ function createMockFrequentationGateway(
     update: vi.fn().mockResolvedValue(null),
     delete: vi.fn().mockResolvedValue(false),
     deleteByStudentId: vi.fn().mockResolvedValue(0),
+    createManyChecked: vi.fn(),
+    updateChecked: vi.fn(),
+    getWithStudentById: vi.fn(),
     count: vi.fn().mockResolvedValue(0)
   }
 }

@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
@@ -6,6 +9,8 @@ import { migrateTestDatabase } from '@shared/db/testing/migrateTestDatabase'
 import { ErrorCode } from '@lib/errors'
 import { updateFrequentation } from '@frequentation/use-cases/updateFrequentation'
 import { FrequentationGatewayDrizzle } from '../frequentation.gateway.drizzle'
+import type { FrequentationTx } from '../frequentation.gateway.drizzle'
+import type { ExistingVisit } from '../helpers/findDuplicateMatches'
 
 const NONEXISTENT_ID = 999
 const EXPECTED_TWO = 2
@@ -348,6 +353,247 @@ describe('FrequentationGatewayDrizzle', () => {
         studentId: null,
         activity: ActivityType.READING
       })
+    })
+  })
+
+  describe('checked writes', () => {
+    const BASE_DAY = '2026-01-15'
+    const at = (time: string): string => `${BASE_DAY}T${time}`
+    const unwrapWritten = <T>(result: { written: T } | { duplicates: unknown[] }): T => {
+      if (!('written' in result)) {
+        throw new Error('expected a written result')
+      }
+      return result.written
+    }
+    const visitCount = (): number =>
+      (sqlite.prepare('SELECT COUNT(*) AS n FROM frequentation').get() as { n: number }).n
+    const snapshotOf = (id: number): string | null =>
+      (
+        sqlite.prepare('SELECT student_classe AS c FROM frequentation WHERE id = ?').get(id) as {
+          c: string | null
+        }
+      ).c
+    const item = (studentId: number, time: string) => ({
+      startsAt: at(time),
+      activity: ActivityType.WORK,
+      studentId
+    })
+
+    it("createManyChecked writes all and snapshots each student's class", async () => {
+      const written = unwrapWritten(
+        await gateway.createManyChecked(
+          [item(1, '09:00:00'), item(SECOND_STUDENT_ID, '09:00:00')],
+          {
+            allowDuplicates: false
+          }
+        )
+      )
+      expect(written).toHaveLength(EXPECTED_TWO)
+      expect(written.map((entry) => snapshotOf(entry.id))).toEqual([FIRST_CLASS, '5ème B'])
+    })
+
+    it('createManyChecked returns duplicates and writes nothing when one of several students is a duplicate', async () => {
+      await gateway.create(item(1, '09:00:00'))
+      await gateway.create(item(SECOND_STUDENT_ID, '09:10:00'))
+      const before = visitCount()
+      const result = await gateway.createManyChecked(
+        [item(1, '09:05:00'), item(SECOND_STUDENT_ID, '09:05:00')],
+        { allowDuplicates: false }
+      )
+      expect(result).toEqual({
+        duplicates: [
+          expect.objectContaining({ studentId: 1, existingId: 1 }),
+          expect.objectContaining({ studentId: SECOND_STUDENT_ID, existingId: EXPECTED_TWO })
+        ]
+      })
+      expect(visitCount()).toBe(before)
+    })
+
+    it('createManyChecked with allowDuplicates writes everything even with duplicates', async () => {
+      await gateway.create(item(1, '09:00:00'))
+      const result = await gateway.createManyChecked([item(1, '09:05:00')], {
+        allowDuplicates: true
+      })
+      expect(unwrapWritten(result)).toHaveLength(1)
+      expect(visitCount()).toBe(EXPECTED_TWO)
+    })
+
+    it('createManyChecked dedupes repeated studentIds in candidates', async () => {
+      await gateway.create(item(1, '09:00:00'))
+      const result = await gateway.createManyChecked([item(1, '09:05:00'), item(1, '09:06:00')], {
+        allowDuplicates: false
+      })
+      expect(result).toEqual({ duplicates: expect.any(Array) })
+      expect(visitCount()).toBe(1)
+    })
+
+    it('createManyChecked rolls back the whole batch when a later insert fails', async () => {
+      await expect(
+        gateway.createManyChecked([item(1, '09:00:00'), item(NONEXISTENT_ID, '10:00:00')], {
+          allowDuplicates: false
+        })
+      ).rejects.toThrow()
+      expect(visitCount()).toBe(0)
+    })
+
+    it('updateChecked excludes the edited entry from its own check', async () => {
+      const own = await gateway.create(item(1, '09:00:00'))
+      const result = await gateway.updateChecked(
+        own.id,
+        { startsAt: at('09:05:00') },
+        { allowDuplicates: false }
+      )
+      expect(unwrapWritten(result)?.startsAt).toBe(at('09:05:00'))
+    })
+
+    it('updateChecked ignores anonymized rows', async () => {
+      const own = await gateway.create(item(1, '10:00:00'))
+      const anonymized = await gateway.create(item(SECOND_STUDENT_ID, '09:00:00'))
+      sqlite.prepare('UPDATE frequentation SET student_id = NULL WHERE id = ?').run(anonymized.id)
+      const result = await gateway.updateChecked(
+        own.id,
+        { startsAt: at('09:00:00') },
+        { allowDuplicates: false }
+      )
+      expect(unwrapWritten(result)?.startsAt).toBe(at('09:00:00'))
+    })
+
+    it('updateChecked student change refreshes the class snapshot', async () => {
+      const own = await gateway.create(item(1, '09:00:00'))
+      sqlite.prepare('UPDATE students SET classe = ? WHERE id = 1').run(NEW_CLASS)
+      await gateway.updateChecked(own.id, { startsAt: at('11:00:00') }, { allowDuplicates: false })
+      expect(snapshotOf(own.id)).toBe(FIRST_CLASS)
+      await gateway.updateChecked(
+        own.id,
+        { studentId: SECOND_STUDENT_ID },
+        { allowDuplicates: false }
+      )
+      expect(snapshotOf(own.id)).toBe('5ème B')
+    })
+
+    it('updateChecked returns { written: null } for unknown id', async () => {
+      const result = await gateway.updateChecked(
+        NONEXISTENT_ID,
+        { startsAt: at('09:00:00') },
+        { allowDuplicates: false }
+      )
+      expect(result).toEqual({ written: null })
+    })
+
+    it('updateChecked reports duplicates and leaves the entry untouched', async () => {
+      await gateway.create(item(1, '09:00:00'))
+      const own = await gateway.create(item(1, '12:00:00'))
+      const result = await gateway.updateChecked(
+        own.id,
+        { startsAt: at('09:10:00') },
+        { allowDuplicates: false }
+      )
+      expect(result).toEqual({
+        duplicates: [expect.objectContaining({ studentId: 1, existingId: 1 })]
+      })
+      expect((await gateway.getById(own.id))?.startsAt).toBe(at('12:00:00'))
+    })
+
+    it('updateChecked skips the check when neither startsAt nor studentId changes', async () => {
+      await gateway.create(item(1, '09:00:00'))
+      const own = await gateway.create(item(1, '09:10:00'))
+      const result = await gateway.updateChecked(
+        own.id,
+        { activity: ActivityType.READING },
+        { allowDuplicates: false }
+      )
+      expect(unwrapWritten(result)?.activity).toBe(ActivityType.READING)
+    })
+
+    it('updateChecked with allowDuplicates writes despite duplicates', async () => {
+      await gateway.create(item(1, '09:00:00'))
+      const own = await gateway.create(item(1, '12:00:00'))
+      const result = await gateway.updateChecked(
+        own.id,
+        { startsAt: at('09:10:00') },
+        { allowDuplicates: true }
+      )
+      expect(unwrapWritten(result)?.startsAt).toBe(at('09:10:00'))
+    })
+
+    it('updateChecked never re-links an anonymized visit', async () => {
+      const visit = await gateway.create(item(1, '09:00:00'))
+      sqlite.prepare('UPDATE frequentation SET student_id = NULL WHERE id = ?').run(visit.id)
+      const result = await gateway.updateChecked(
+        visit.id,
+        { studentId: SECOND_STUDENT_ID, activity: ActivityType.READING },
+        { allowDuplicates: false }
+      )
+      expect(unwrapWritten(result)?.studentId).toBeNull()
+    })
+
+    it('getWithStudentById returns the joined entry, anonymized-aware', async () => {
+      const visit = await gateway.create(item(1, '09:00:00'))
+      expect((await gateway.getWithStudentById(visit.id))?.studentNom).toBe('Dupont')
+      sqlite.prepare('UPDATE frequentation SET student_id = NULL WHERE id = ?').run(visit.id)
+      const anonymized = await gateway.getWithStudentById(visit.id)
+      expect(anonymized?.studentNom).toBeNull()
+      expect(anonymized?.studentClasse).toBe(FIRST_CLASS)
+      expect(await gateway.getWithStudentById(NONEXISTENT_ID)).toBeNull()
+    })
+  })
+
+  describe('atomicity', () => {
+    class HookedGateway extends FrequentationGatewayDrizzle {
+      afterLookup: () => void = () => undefined
+
+      protected override findExisting(
+        tx: FrequentationTx,
+        studentIds: number[],
+        days: string[]
+      ): ExistingVisit[] {
+        const rows = super.findExisting(tx, studentIds, days)
+        this.afterLookup()
+        return rows
+      }
+    }
+
+    it('check and write hold one write lock (concurrent insert between check and write)', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'freq-lock-'))
+      const file = join(dir, 'test.db')
+      const first = new Database(file)
+      first.pragma('foreign_keys = ON')
+      migrateTestDatabase(first)
+      first
+        .prepare(
+          `INSERT INTO students (nom, prenom, classe, ine, created_at, updated_at) VALUES ('A', 'B', '6ème A', '11111111A', 'n', 'n')`
+        )
+        .run()
+      const second = new Database(file, { timeout: 0 })
+      try {
+        const hooked = new HookedGateway(drizzle(first))
+        let concurrentError: unknown = null
+        hooked.afterLookup = () => {
+          try {
+            second
+              .prepare(
+                `INSERT INTO frequentation (starts_at, activity, student_id, created_at, updated_at) VALUES ('2026-01-15T09:00:00', 'work', 1, 'n', 'n')`
+              )
+              .run()
+          } catch (error) {
+            concurrentError = error
+          }
+        }
+        const result = await hooked.createManyChecked(
+          [{ startsAt: '2026-01-15T09:00:00', activity: ActivityType.WORK, studentId: 1 }],
+          { allowDuplicates: false }
+        )
+        expect(concurrentError).toMatchObject({ code: 'SQLITE_BUSY' })
+        expect(result).toEqual({ written: [expect.objectContaining({ studentId: 1 })] })
+        const total = first.prepare('SELECT COUNT(*) AS n FROM frequentation').get() as {
+          n: number
+        }
+        expect(total.n).toBe(1)
+      } finally {
+        second.close()
+        first.close()
+        rmSync(dir, { recursive: true, force: true })
+      }
     })
   })
 
