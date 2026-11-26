@@ -786,10 +786,12 @@ Every artifact lives as close as possible to its consumer. Only hoist when share
 | `@frequentation/*`      | `src/features/frequentation/renderer/*` | `src/features/frequentation/main/*` |
 | `@statistics/*`         | `src/features/statistics/renderer/*`    | `src/features/statistics/main/*`    |
 | `@settings/*`           | `src/features/settings/renderer/*`      | `src/features/settings/main/*`      |
+| `@backup/*`             | `src/features/backup/renderer/*`        | `src/features/backup/main/*`        |
 | `@student-shared`       | `src/features/student/shared`           | `src/features/student/shared`       |
 | `@frequentation-shared` | `src/features/frequentation/shared`     | `src/features/frequentation/shared` |
 | `@statistics-shared`    | `src/features/statistics/shared`        | `src/features/statistics/shared`    |
 | `@settings-shared`      | `src/features/settings/shared`          | `src/features/settings/shared`      |
+| `@backup-shared`        | `src/features/backup/shared`            | `src/features/backup/shared`        |
 | `@shared/*`             | `src/shared/*`                          | `src/shared/*`                      |
 | `@ui/*`                 | `src/shared/ui/*`                       | N/A                                 |
 | `@lib`                  | `src/shared/lib`                        | `src/shared/lib`                    |
