@@ -79,7 +79,7 @@ export interface CsvRemovalExpectation {
   fingerprint: string
 }
 
-export type CsvRemovalBlockedReason = 'rowErrors' | 'emptyFile'
+export type CsvRemovalBlockedReason = 'missingColumns' | 'rowErrors' | 'emptyFile'
 
 export interface CsvRemovalPreview {
   toRemove: number

@@ -31,6 +31,12 @@ describe('planCsvRemoval', () => {
     expect(plan.toRemove).toEqual([])
   })
 
+  it('a header mismatch (wrong file) is blocked as missingColumns, not rowErrors', () => {
+    const plan = planCsvRemoval([student(1, 'X')], parseStudentCsv('nom;prenom\nA;B'))
+    expect(plan.blockedReason).toBe('missingColumns')
+    expect(plan.toRemove).toEqual([])
+  })
+
   it('empty file blocks (header only)', () => {
     const plan = planCsvRemoval([student(1, 'X')], parseStudentCsv(HEADER))
     expect(plan.blockedReason).toBe('emptyFile')

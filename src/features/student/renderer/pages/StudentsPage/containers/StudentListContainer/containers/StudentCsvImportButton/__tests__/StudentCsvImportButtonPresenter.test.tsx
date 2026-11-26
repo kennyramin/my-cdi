@@ -144,6 +144,22 @@ describe('StudentCsvImportButtonPresenter removal option', () => {
     expect(screen.getByRole('button', { name: 'Importer et retirer' })).toBeDisabled()
   })
 
+  it('explains a missingColumns block without blaming rows', () => {
+    withPreview(
+      {
+        toRemove: NONE,
+        total: 5,
+        sample: [],
+        fingerprint: FINGERPRINT,
+        blockedReason: 'missingColumns'
+      },
+      { canSubmit: false }
+    )
+    expect(screen.getByText(/ne contient pas les colonnes attendues/)).toBeInTheDocument()
+    expect(screen.queryByText(/lignes en erreur/)).not.toBeInTheDocument()
+    expect(screen.queryByText('missingColumns')).not.toBeInTheDocument()
+  })
+
   it('explains an emptyFile block', () => {
     withPreview(
       {

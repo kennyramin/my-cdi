@@ -68,6 +68,7 @@
     "removalNone": "Aucun élève à retirer.",
     "removalMore": "… et {{count}} autres",
     "removalBlocked": {
+      "missingColumns": "Le fichier ne contient pas les colonnes attendues (nom, prénom, classe, INE) : le retrait est impossible. Vérifiez qu'il s'agit du bon fichier.",
       "rowErrors": "Le fichier contient des lignes en erreur : le retrait est impossible tant qu'elles ne sont pas corrigées.",
       "emptyFile": "Le fichier ne contient aucun élève valide : le retrait est impossible."
     },

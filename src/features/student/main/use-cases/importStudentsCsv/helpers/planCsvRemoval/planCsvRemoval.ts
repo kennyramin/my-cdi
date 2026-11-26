@@ -9,6 +9,9 @@ export interface CsvRemovalPlan {
 }
 
 export function planCsvRemoval(existing: StudentEntity[], parsed: ParseResult): CsvRemovalPlan {
+  if (parsed.errors.some((error) => error.type === 'MISSING_COLUMNS')) {
+    return { blockedReason: 'missingColumns', toRemove: [] }
+  }
   if (parsed.errors.length > 0) {
     return { blockedReason: 'rowErrors', toRemove: [] }
   }

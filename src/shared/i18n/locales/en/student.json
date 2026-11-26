@@ -68,6 +68,7 @@
     "removalNone": "No student to remove.",
     "removalMore": "… and {{count}} more",
     "removalBlocked": {
+      "missingColumns": "The file does not contain the expected columns (surname, first name, class, INE): removal is not possible. Check that it is the right file.",
       "rowErrors": "The file contains rows with errors: removal is not possible until they are fixed.",
       "emptyFile": "The file contains no valid student: removal is not possible."
     },
