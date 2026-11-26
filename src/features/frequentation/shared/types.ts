@@ -4,6 +4,7 @@ export const ANONYMIZED_STUDENT_LABEL = 'Élève anonymisé'
 export const UNKNOWN_CLASS_LABEL = 'Classe inconnue'
 
 export const DUPLICATE_WINDOW_SECONDS = 1800
+const NONE_CREATED = 0
 
 export interface CreateFrequentationDto {
   startsAt: string
@@ -44,6 +45,8 @@ export function isDuplicatesFound(value: unknown): value is DuplicatesFoundDto {
   return (
     typeof value === 'object' &&
     value !== null &&
+    'created' in value &&
+    value.created === NONE_CREATED &&
     'duplicates' in value &&
     Array.isArray(value.duplicates)
   )

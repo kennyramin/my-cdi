@@ -55,6 +55,8 @@ describe('localDateTime', () => {
     const SECONDS_1799 = 1799
     const SECONDS_1800 = 1800
     const SECONDS_3600 = 3600
+    const SECONDS_LAST_OF_DAY = 86399
+    const SECONDS_5 = 5
     it('returns seconds below the half hour', () =>
       expect(localSameDayDistanceSeconds(BASE, '2026-01-15T14:29:59')).toBe(SECONDS_1799))
     it('returns exactly the half hour', () =>
@@ -67,5 +69,11 @@ describe('localDateTime', () => {
       expect(localSameDayDistanceSeconds('2026-01-15T23:50:00', '2026-01-16T00:10:00')).toBeNull())
     it('returns 0 for identical values', () =>
       expect(localSameDayDistanceSeconds(BASE, BASE)).toBe(0))
+    it('spans the whole day between its first and last second', () =>
+      expect(localSameDayDistanceSeconds('2026-01-15T00:00:00', '2026-01-15T23:59:59')).toBe(
+        SECONDS_LAST_OF_DAY
+      ))
+    it('ignores a trailing fractional or zone suffix on the time', () =>
+      expect(localSameDayDistanceSeconds(BASE, '2026-01-15T14:00:05.123Z')).toBe(SECONDS_5))
   })
 })

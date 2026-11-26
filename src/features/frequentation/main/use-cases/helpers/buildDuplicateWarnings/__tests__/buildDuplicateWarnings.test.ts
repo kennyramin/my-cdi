@@ -7,9 +7,11 @@ import type { DuplicateMatch } from '@frequentation/gateways/frequentation'
 import { buildDuplicateWarnings } from '../buildDuplicateWarnings'
 
 const STUDENT_ID = 1
+const OTHER_STUDENT_ID = 2
 const MISSING_STUDENT_ID = 9
 const EXISTING_ID = 7
 const OTHER_EXISTING_ID = 8
+const THIRD_EXISTING_ID = 10
 
 const STUDENT: StudentEntity = {
   id: STUDENT_ID,
@@ -62,6 +64,23 @@ describe('buildDuplicateWarnings', () => {
       existingActivity: ActivityType.GAME
     })
     expect(gateway.getByIds).toHaveBeenCalledWith([STUDENT_ID])
+  })
+
+  it('asks for each student once however many visits match, and names several students', async () => {
+    const other: StudentEntity = { ...STUDENT, id: OTHER_STUDENT_ID, prenom: 'Paul', nom: 'Martin' }
+    const gateway = createStudentGateway([STUDENT, other])
+    const warnings = await buildDuplicateWarnings(gateway, [
+      match(STUDENT_ID, EXISTING_ID),
+      match(OTHER_STUDENT_ID, OTHER_EXISTING_ID),
+      match(STUDENT_ID, THIRD_EXISTING_ID)
+    ])
+    expect(gateway.getByIds).toHaveBeenCalledOnce()
+    expect(gateway.getByIds).toHaveBeenCalledWith([STUDENT_ID, OTHER_STUDENT_ID])
+    expect(warnings.map((w) => w.studentName)).toEqual([
+      'Marie Dupont',
+      'Paul Martin',
+      'Marie Dupont'
+    ])
   })
 
   it('falls back to the anonymized label when the student is gone', async () => {

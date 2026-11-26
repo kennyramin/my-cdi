@@ -20,8 +20,8 @@
     "submit": "Enregistrer",
     "cancel": "Annuler",
     "successMessage": "Fréquentation(s) enregistrée(s)",
-    "allFailed": "Aucune présence enregistrée : {{count}} élève introuvable ou entrée invalide.",
-    "partialSuccess": "{{created}} présence(s) enregistrée(s), {{failed}} ignorée(s) (élève introuvable ou entrée invalide)."
+    "allFailed": "Aucune présence enregistrée : {{count}} élève(s) introuvable(s).",
+    "partialSuccess": "{{created}} présence(s) enregistrée(s). {{failed}} élève(s) introuvable(s), toujours sélectionné(s) pour réessayer."
   },
   "anonymizedStudent": "Élève anonymisé",
   "loading": "Chargement…",

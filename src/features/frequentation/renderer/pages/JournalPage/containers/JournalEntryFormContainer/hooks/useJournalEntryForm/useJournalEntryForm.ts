@@ -9,7 +9,11 @@ import { useActivityLabels } from '@frequentation/hooks/useActivityLabels'
 import { useStudentList } from '@student/api/useStudentQueries'
 import { buildActivityOptions } from '@frequentation/helpers/buildActivityOptions'
 import { isDuplicatesFound } from '@frequentation-shared'
-import type { CreateFrequentationBatchDto, DuplicateWarningDto } from '@frequentation-shared'
+import type {
+  BatchItemErrorDto,
+  CreateFrequentationBatchDto,
+  DuplicateWarningDto
+} from '@frequentation-shared'
 import { ActivityType } from '@types'
 import { isFutureLocalDate, isFutureLocalDateTime } from '@lib/localDateTime'
 import { journalEntryFormSchema } from '../../validations/journalEntryFormSchema'
@@ -82,12 +86,26 @@ export function useJournalEntryForm({ selectedDate, onSubmitted }: UseJournalEnt
     setPending(next)
   }
 
-  function reportBatchErrors(created: number, failed: number) {
+  function failedStudentIds(dto: CreateFrequentationBatchDto, errors: BatchItemErrorDto[]) {
+    return errors.flatMap((error) => {
+      const item = dto.frequentations[error.index]
+      return item ? [item.studentId] : []
+    })
+  }
+
+  // Partial success: the saved students leave the form, the failed ones stay selected (with the
+  // same activity and time) so the user can retry exactly those.
+  function reportBatchErrors(
+    dto: CreateFrequentationBatchDto,
+    created: number,
+    errors: BatchItemErrorDto[]
+  ) {
+    const failed = errors.length
     if (created === NONE_CREATED) {
       show(t('form.allFailed', { count: failed }), 'error')
       return
     }
-    form.reset(buildDefaultValues())
+    form.reset({ ...form.getValues(), studentIds: failedStudentIds(dto, errors) })
     show(t('form.partialSuccess', { created, failed }), 'warning')
     if (onSubmitted) {
       onSubmitted()
@@ -102,7 +120,7 @@ export function useJournalEntryForm({ selectedDate, onSubmitted }: UseJournalEnt
           return
         }
         if (data.errors.length > NONE_CREATED) {
-          reportBatchErrors(data.created, data.errors.length)
+          reportBatchErrors(dto, data.created, data.errors)
           return
         }
         form.reset(buildDefaultValues())

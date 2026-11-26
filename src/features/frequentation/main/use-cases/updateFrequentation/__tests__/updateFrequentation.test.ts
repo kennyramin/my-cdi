@@ -109,6 +109,33 @@ describe('updateFrequentation', () => {
     expect(gateway.getWithStudentById).toHaveBeenCalledWith(1)
   })
 
+  it.each([{}, { allowDuplicates: true }])(
+    'refuses an update with nothing to change (%o) without touching the database',
+    async (payload) => {
+      const gateway = createMockGateway()
+      const result = await updateFrequentation(gateway, createMockStudentGateway(), 1, payload, NOW)
+      expect(result).toEqual({
+        success: false,
+        error: 'Nothing to update',
+        code: ErrorCode.VALIDATION_ERROR
+      })
+      expect(gateway.getById).not.toHaveBeenCalled()
+      expect(gateway.updateChecked).not.toHaveBeenCalled()
+    }
+  )
+
+  it.each([
+    ['a non-boolean allowDuplicates', { activity: ActivityType.READING, allowDuplicates: 'yes' }],
+    ['a numeric allowDuplicates', { activity: ActivityType.READING, allowDuplicates: 1 }],
+    ['a non-integer studentId', { studentId: 1.5 }],
+    ['a string studentId', { studentId: '1' }]
+  ])('rejects %s', async (_label, payload) => {
+    const gateway = createMockGateway()
+    const result = await updateFrequentation(gateway, createMockStudentGateway(), 1, payload, NOW)
+    expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+    expect(gateway.updateChecked).not.toHaveBeenCalled()
+  })
+
   it('returns FREQUENTATION_NOT_FOUND for an unknown id', async () => {
     const gateway = createMockGateway({ getById: vi.fn().mockResolvedValue(null) })
     const result = await updateFrequentation(
@@ -307,9 +334,11 @@ describe('updateFrequentation', () => {
         { startsAt: '2026-01-15T09:05:00' },
         NOW
       )
-      expect(result.success && 'duplicates' in result.data && result.data.duplicates).toHaveLength(
-        1
-      )
+      expect(result.success).toBe(true)
+      if (!result.success || !('duplicates' in result.data)) {
+        throw new Error('expected a duplicates outcome')
+      }
+      expect(result.data.duplicates).toHaveLength(1)
     })
 
     it('forwards allowDuplicates to the gateway', async () => {

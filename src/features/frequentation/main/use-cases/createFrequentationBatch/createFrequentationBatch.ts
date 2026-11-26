@@ -7,13 +7,11 @@ import type { UseCaseResult } from '@lib/use-case'
 import { buildDuplicateWarnings } from '../helpers/buildDuplicateWarnings'
 import type { BatchItemError, BatchResult } from './types/BatchResult'
 import { createFrequentationBatchSchema } from './validations/createFrequentationBatchSchema'
-import { validateBatchItem } from './helpers/validateBatchItem'
 
 export type CreateBatchOutcome = BatchResult | { duplicates: DuplicateWarningDto[] }
 
 const FUTURE_STARTS_AT_ERROR = 'startsAt cannot be in the future'
 const STUDENT_NOT_FOUND_ERROR = 'Student not found'
-const UNKNOWN_VALIDATION_ERROR = 'Unknown validation error'
 const UNKNOWN_ERROR = 'Unknown error'
 
 export async function createFrequentationBatch(
@@ -41,11 +39,9 @@ export async function createFrequentationBatch(
 
     const errors: BatchItemError[] = []
     const validItems: CreateFrequentationDto[] = []
+    // Field shapes are already guaranteed by the zod schema: only existence is checked here.
     frequentations.forEach((item, index) => {
-      const validation = validateBatchItem(item, index)
-      if (!validation.valid) {
-        errors.push({ index, error: validation.error ?? UNKNOWN_VALIDATION_ERROR })
-      } else if (!knownIds.has(item.studentId)) {
+      if (!knownIds.has(item.studentId)) {
         errors.push({ index, error: `Item ${index}: ${STUDENT_NOT_FOUND_ERROR}` })
       } else {
         validItems.push(item)

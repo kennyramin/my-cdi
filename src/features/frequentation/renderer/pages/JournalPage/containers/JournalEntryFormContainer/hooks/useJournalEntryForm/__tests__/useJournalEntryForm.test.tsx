@@ -174,6 +174,16 @@ describe('useJournalEntryForm', () => {
       expect(result.current.form.getValues().studentIds).toEqual([])
     })
 
+    it('ignores a confirmation when no warning is pending', () => {
+      const { result } = renderHook(() => useJournalEntryForm({ selectedDate: '2026-04-01' }), {
+        wrapper: createWrapper()
+      })
+      act(() => {
+        result.current.confirmDuplicates()
+      })
+      expect(window.electronAPI.frequentation.createBatch).not.toHaveBeenCalled()
+    })
+
     it('sends a single request when confirm is triggered twice quickly', async () => {
       const { result } = await submitWithDuplicates()
       act(() => {
@@ -226,10 +236,16 @@ describe('useJournalEntryForm', () => {
       expect(onSubmitted).not.toHaveBeenCalled()
     })
 
-    it('warns when only some items were saved', async () => {
+    it('says how many students were not found when nothing was saved', async () => {
       window.electronAPI.frequentation.createBatch = vi.fn().mockResolvedValue({
         success: true,
-        data: { created: 1, errors: [{ index: 1, error: 'Item 1: Student not found' }] }
+        data: {
+          created: 0,
+          errors: [
+            { index: 0, error: 'Item 0: Student not found' },
+            { index: 1, error: 'Item 1: Student not found' }
+          ]
+        }
       })
       const { result } = renderHook(() => useJournalEntryForm({ selectedDate: '2026-04-01' }), {
         wrapper: createWrapper()
@@ -242,8 +258,63 @@ describe('useJournalEntryForm', () => {
         })
       })
       await waitFor(() => {
+        expect(result.current.toast).toMatchObject({ severity: 'error' })
+      })
+      expect(result.current.toast?.message).toBe(
+        'Aucune présence enregistrée : 2 élève(s) introuvable(s).'
+      )
+    })
+
+    it('keeps only the failed students for a retry when some items were saved', async () => {
+      window.electronAPI.frequentation.createBatch = vi.fn().mockResolvedValue({
+        success: true,
+        data: { created: 1, errors: [{ index: 1, error: 'Item 1: Student not found' }] }
+      })
+      const onSubmitted = vi.fn()
+      const { result } = renderHook(
+        () => useJournalEntryForm({ selectedDate: '2026-04-01', onSubmitted }),
+        { wrapper: createWrapper() }
+      )
+      const values = {
+        studentIds: [FIRST_ID, SECOND_ID],
+        activity: ActivityType.READING,
+        time: '10:30'
+      }
+      act(() => {
+        result.current.form.reset(values)
+      })
+      act(() => {
+        result.current.handleSubmit(values)
+      })
+      await waitFor(() => {
         expect(result.current.toast).toMatchObject({ severity: 'warning' })
       })
+      expect(result.current.toast?.message).toBe(
+        '1 présence(s) enregistrée(s). 1 élève(s) introuvable(s), toujours sélectionné(s) pour réessayer.'
+      )
+      expect(result.current.form.getValues()).toEqual({ ...values, studentIds: [SECOND_ID] })
+      expect(onSubmitted).toHaveBeenCalledOnce()
+    })
+
+    it('ignores an error whose index matches no submitted item', async () => {
+      window.electronAPI.frequentation.createBatch = vi.fn().mockResolvedValue({
+        success: true,
+        data: { created: 1, errors: [{ index: 7, error: 'Item 7: boom' }] }
+      })
+      const { result } = renderHook(() => useJournalEntryForm({ selectedDate: '2026-04-01' }), {
+        wrapper: createWrapper()
+      })
+      const values = { studentIds: [FIRST_ID], activity: ActivityType.WORK, time: '10:30' }
+      act(() => {
+        result.current.form.reset(values)
+      })
+      act(() => {
+        result.current.handleSubmit(values)
+      })
+      await waitFor(() => {
+        expect(result.current.toast).toMatchObject({ severity: 'warning' })
+      })
+      expect(result.current.form.getValues().studentIds).toEqual([])
     })
   })
 })

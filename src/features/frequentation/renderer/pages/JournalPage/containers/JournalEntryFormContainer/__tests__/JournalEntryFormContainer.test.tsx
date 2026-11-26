@@ -165,6 +165,29 @@ describe('JournalEntryFormContainer', () => {
       expect(window.electronAPI.frequentation.createBatch).toHaveBeenCalledOnce()
     })
 
+    it('keeps the submit button enabled while the dialog is open', async () => {
+      const { submit } = await submitWithDuplicates('2026-04-01')
+      await screen.findByRole('dialog')
+      expect(submit).toBeEnabled()
+    })
+
+    it('resends once with allowDuplicates when confirmed, then clears the form', async () => {
+      const { user } = await submitWithDuplicates('2026-04-01')
+      const createBatch = vi.mocked(window.electronAPI.frequentation.createBatch)
+      createBatch.mockResolvedValueOnce({ success: true, data: { created: 1, errors: [] } })
+      await screen.findByRole('dialog')
+      await user.click(screen.getByRole('button', { name: 'Enregistrer quand même' }))
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).toBeNull()
+      })
+      await waitFor(() => {
+        expect(createBatch).toHaveBeenCalledTimes(2)
+      })
+      expect(createBatch.mock.calls[0]?.[0]).not.toHaveProperty('allowDuplicates')
+      expect(createBatch.mock.calls[1]?.[0]).toMatchObject({ allowDuplicates: true })
+      expect(await screen.findByText('Fréquentation(s) enregistrée(s)')).toBeInTheDocument()
+    })
+
     it('refocuses the submit button on cancel even when focus was lost while sending', async () => {
       const { user, submit } = await submitWithDuplicates('2026-04-01', true)
       await screen.findByRole('dialog')

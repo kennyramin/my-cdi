@@ -17,6 +17,7 @@ export type UpdateOutcome =
   { updated: FrequentationWithStudentEntity } | { duplicates: DuplicateWarningDto[] }
 
 const INVALID_PAYLOAD_ERROR = 'Invalid frequentation update payload'
+const NOTHING_TO_UPDATE_ERROR = 'Nothing to update'
 const FUTURE_STARTS_AT_ERROR = 'startsAt cannot be in the future'
 const ANONYMIZED_RELINK_ERROR = 'An anonymized visit cannot be linked to a student again'
 const NOT_FOUND_ERROR = 'Frequentation not found'
@@ -43,6 +44,10 @@ export async function updateFrequentation(
     return { success: false, error: INVALID_PAYLOAD_ERROR, code: ErrorCode.VALIDATION_ERROR }
   }
   const { allowDuplicates = false, ...dto } = parsed.data
+
+  if (Object.values(dto).every((value) => value === undefined)) {
+    return { success: false, error: NOTHING_TO_UPDATE_ERROR, code: ErrorCode.VALIDATION_ERROR }
+  }
 
   if (dto.startsAt !== undefined && isFutureLocalDateTime(dto.startsAt, now)) {
     return { success: false, error: FUTURE_STARTS_AT_ERROR, code: ErrorCode.VALIDATION_ERROR }

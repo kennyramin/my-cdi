@@ -269,11 +269,9 @@ describe('createFrequentationBatch', () => {
     expect(gateway.createManyChecked).not.toHaveBeenCalled()
   })
 
-  it('queries each student once and dedupes repeated existing visits', async () => {
+  it('looks each student up once before writing, then once more to name the warnings', async () => {
     const gateway = createMockGateway({
-      createManyChecked: vi
-        .fn()
-        .mockResolvedValue({ duplicates: [duplicateOf(1, 7), duplicateOf(1, 7)] })
+      createManyChecked: vi.fn().mockResolvedValue({ duplicates: [duplicateOf(1, 7)] })
     })
     const studentGateway = createMockStudentGateway()
     const result = await createFrequentationBatch(
@@ -282,11 +280,10 @@ describe('createFrequentationBatch', () => {
       { frequentations: [ITEM_ONE, { ...ITEM_ONE, startsAt: '2026-01-15T09:05:00' }] },
       NOW
     )
+    expect(studentGateway.getByIds).toHaveBeenCalledTimes(2)
     expect(studentGateway.getByIds).toHaveBeenNthCalledWith(1, [1])
+    expect(studentGateway.getByIds).toHaveBeenNthCalledWith(2, [1])
     expect(result.success).toBe(true)
-    if (result.success && 'duplicates' in result.data) {
-      expect(result.data.duplicates).toHaveLength(1)
-    }
   })
 
   it('falls back to the anonymized label for an unnamed duplicate student', async () => {
