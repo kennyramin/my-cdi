@@ -21,13 +21,16 @@ export function findDuplicateMatches(
   excludeId?: number
 ): DuplicateMatch[] {
   const matches: DuplicateMatch[] = []
+  const seen = new Set<string>()
   for (const candidate of candidates) {
     for (const visit of existing) {
       if (visit.studentId !== candidate.studentId || visit.id === excludeId) {
         continue
       }
       const distance = localSameDayDistanceSeconds(candidate.startsAt, visit.startsAt)
-      if (distance !== null && distance < DUPLICATE_WINDOW_SECONDS) {
+      const key = `${candidate.studentId}:${visit.id}`
+      if (distance !== null && distance < DUPLICATE_WINDOW_SECONDS && !seen.has(key)) {
+        seen.add(key)
         matches.push({
           studentId: candidate.studentId,
           existingId: visit.id,

@@ -1,6 +1,6 @@
 import type { SQL } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import { eq, and, gte, lte, inArray, or, sql } from 'drizzle-orm'
+import { eq, and, gte, lt, lte, inArray, or, sql } from 'drizzle-orm'
 import type {
   CheckedWriteOptions,
   CheckedWriteResult,
@@ -13,17 +13,31 @@ import type {
 import type { CreateFrequentationDto, UpdateFrequentationDto } from '@frequentation-shared'
 import { UNKNOWN_CLASS_LABEL } from '@frequentation-shared'
 import { frequentationTable } from '@frequentation/entities/frequentation'
+import { formatLocalDate } from '@lib/localDateTime'
 import { mapFrequentationRow, mapFrequentationWithStudentRow } from './helpers/mapFrequentationRow'
 import { studentTable } from '@shared/db/schema'
 import { findDuplicateMatches } from './helpers/findDuplicateMatches'
 import type { DuplicateCandidate, ExistingVisit } from './helpers/findDuplicateMatches'
 
 type FrequentationDb = BetterSQLite3Database<Record<string, unknown>>
+// Exported for test subclasses hooking findExisting; not part of the module API
 export type FrequentationTx = Parameters<Parameters<FrequentationDb['transaction']>[0]>[0]
 
 const ISO_DATE_LENGTH = 10
+const MONTH_OFFSET = 1
+const DAY_PART_START = 8
+const MONTH_PART_START = 5
+const NEXT_DAY = 1
+
+// Calendar arithmetic on a local YYYY-MM-DD day, independent of the time zone
+function nextDay(day: string): string {
+  const year = Number(day.slice(0, MONTH_PART_START - 1))
+  const month = Number(day.slice(MONTH_PART_START, DAY_PART_START - 1))
+  const date = Number(day.slice(DAY_PART_START))
+  return formatLocalDate(new Date(year, month - MONTH_OFFSET, date + NEXT_DAY))
+}
+
 const START_OF_DAY_SUFFIX = 'T00:00:00'
-const END_OF_DAY_SUFFIX = 'T23:59:59'
 
 export class FrequentationGatewayDrizzle implements FrequentationGateway {
   constructor(private db: FrequentationDb) {}
@@ -58,7 +72,7 @@ export class FrequentationGatewayDrizzle implements FrequentationGateway {
     const dayRanges = days.map((day) =>
       and(
         gte(frequentationTable.startsAt, `${day}${START_OF_DAY_SUFFIX}`),
-        lte(frequentationTable.startsAt, `${day}${END_OF_DAY_SUFFIX}`)
+        lt(frequentationTable.startsAt, `${nextDay(day)}${START_OF_DAY_SUFFIX}`)
       )
     )
     return tx

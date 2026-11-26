@@ -111,4 +111,15 @@ describe('findDuplicateMatches', () => {
     )
     expect(result.map((match) => match.existingId)).toEqual([FIRST_ID, SECOND_ID])
   })
+
+  it('lists a single existing entry once when two same-student candidates are near it', () => {
+    const result = findDuplicateMatches(
+      [
+        { studentId: STUDENT, startsAt: BASE },
+        { studentId: STUDENT, startsAt: '2026-01-15T10:05:00' }
+      ],
+      [existing('2026-01-15T10:02:00')]
+    )
+    expect(result).toHaveLength(1)
+  })
 })

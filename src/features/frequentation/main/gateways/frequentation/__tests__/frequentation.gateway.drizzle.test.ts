@@ -426,12 +426,50 @@ describe('FrequentationGatewayDrizzle', () => {
     })
 
     it('createManyChecked dedupes repeated studentIds in candidates', async () => {
-      await gateway.create(item(1, '09:00:00'))
-      const result = await gateway.createManyChecked([item(1, '09:05:00'), item(1, '09:06:00')], {
+      const lookups: Array<{ studentIds: number[]; days: string[] }> = []
+      class SpyGateway extends FrequentationGatewayDrizzle {
+        protected override findExisting(
+          tx: FrequentationTx,
+          studentIds: number[],
+          days: string[]
+        ): ExistingVisit[] {
+          lookups.push({ studentIds, days })
+          return super.findExisting(tx, studentIds, days)
+        }
+      }
+      const spy = new SpyGateway(drizzle(sqlite))
+      await spy.createManyChecked(
+        [item(1, '09:00:00'), item(1, '09:40:00'), item(SECOND_STUDENT_ID, '10:00:00')],
+        { allowDuplicates: false }
+      )
+      expect(lookups).toEqual([{ studentIds: [1, SECOND_STUDENT_ID], days: [BASE_DAY] }])
+    })
+
+    it('createManyChecked does not compare entries of the same batch with each other', async () => {
+      const result = await gateway.createManyChecked([item(1, '09:00:00'), item(1, '09:10:00')], {
         allowDuplicates: false
       })
-      expect(result).toEqual({ duplicates: expect.any(Array) })
-      expect(visitCount()).toBe(1)
+      expect(unwrapWritten(result)).toHaveLength(EXPECTED_TWO)
+    })
+
+    it('createManyChecked finds a legacy entry stored with milliseconds and a Z suffix', async () => {
+      await gateway.create({
+        startsAt: `${BASE_DAY}T23:59:59.500Z`,
+        activity: ActivityType.WORK,
+        studentId: 1
+      })
+      const result = await gateway.createManyChecked([item(1, '23:59:00')], {
+        allowDuplicates: false
+      })
+      expect(result).toEqual({
+        duplicates: [expect.objectContaining({ existingId: 1 })]
+      })
+    })
+
+    it('getWithStudentById returns the snapshot class, not the live one', async () => {
+      const visit = await gateway.create(item(1, '09:00:00'))
+      sqlite.prepare('UPDATE students SET classe = ? WHERE id = 1').run(NEW_CLASS)
+      expect((await gateway.getWithStudentById(visit.id))?.studentClasse).toBe(FIRST_CLASS)
     })
 
     it('createManyChecked rolls back the whole batch when a later insert fails', async () => {
@@ -564,6 +602,7 @@ describe('FrequentationGatewayDrizzle', () => {
       const dir = mkdtempSync(join(tmpdir(), 'freq-lock-'))
       const file = join(dir, 'test.db')
       const first = new Database(file)
+      first.pragma('journal_mode = WAL')
       first.pragma('foreign_keys = ON')
       migrateTestDatabase(first)
       first
