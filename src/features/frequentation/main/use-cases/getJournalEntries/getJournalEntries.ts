@@ -18,7 +18,10 @@ export async function getJournalEntries(
     const entries: JournalEntryDto[] = []
 
     for (const frequentation of frequentations) {
-      const student = await studentGateway.getById(frequentation.studentId)
+      const student =
+        frequentation.studentId === null
+          ? null
+          : await studentGateway.getById(frequentation.studentId)
       const frequentationResponse = formatFrequentationResponse(frequentation)
 
       entries.push({
@@ -31,13 +34,7 @@ export async function getJournalEntries(
               classe: student.classe,
               ine: student.ine
             }
-          : {
-              id: frequentation.studentId,
-              nom: frequentation.studentNom,
-              prenom: frequentation.studentPrenom,
-              classe: frequentation.studentClasse,
-              ine: frequentation.studentIne
-            }
+          : null
       })
     }
 

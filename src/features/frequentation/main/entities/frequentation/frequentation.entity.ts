@@ -39,16 +39,17 @@ export const FrequentationEntitySchema = z.object({
   id: z.number().int().positive(),
   startsAt: z.string().min(1),
   activity: ActivityTypeSchema,
-  studentId: z.number().int().positive(),
+  studentId: z.number().int().positive().nullable(),
+  studentClasse: z.string().min(1).nullable(),
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1)
 })
 
 export const FrequentationWithStudentEntitySchema = FrequentationEntitySchema.extend({
-  studentNom: z.string().min(1),
-  studentPrenom: z.string().min(1),
+  studentNom: z.string().min(1).nullable(),
+  studentPrenom: z.string().min(1).nullable(),
   studentClasse: z.string().min(1),
-  studentIne: z.string().min(1)
+  studentIne: z.string().min(1).nullable()
 })
 
 export type FrequentationEntity = z.infer<typeof FrequentationEntitySchema>

@@ -81,7 +81,7 @@ describe('Frequentation shared types', () => {
       }
     }
     expect(entry.frequentation.activity).toBe('work')
-    expect(entry.student.nom).toBe('Dupont')
+    expect(entry.student?.nom).toBe('Dupont')
   })
 
   it('DateRangeDto has start and end', () => {

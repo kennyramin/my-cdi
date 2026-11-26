@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { migrateTestDatabase } from '@shared/db/testing/migrateTestDatabase'
 import { StudentGatewayDrizzle } from '../student.gateway.drizzle'
 
 const NONEXISTENT_ID = 9999
@@ -18,30 +19,7 @@ function createTestDb() {
   sqlite.pragma('foreign_keys = ON')
   const db = drizzle(sqlite)
 
-  sqlite.exec(`
-    CREATE TABLE students (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nom TEXT NOT NULL,
-      prenom TEXT NOT NULL,
-      classe TEXT NOT NULL,
-      ine TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-    CREATE INDEX idx_students_nom ON students(nom, prenom);
-    CREATE INDEX idx_students_classe ON students(classe);
-    CREATE TABLE frequentation (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      starts_at TEXT NOT NULL,
-      activity TEXT NOT NULL,
-      student_id INTEGER NOT NULL,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
-    );
-    CREATE INDEX idx_freq_starts_at ON frequentation(starts_at);
-    CREATE INDEX idx_freq_student ON frequentation(student_id);
-  `)
+  migrateTestDatabase(sqlite)
 
   return { db, sqlite }
 }
@@ -192,6 +170,18 @@ describe('StudentGatewayDrizzle', () => {
       expect(rows).toHaveLength(EXPECTED_ONE_STUDENT)
       expect(rows[0]?.visitCount).toBe(NO_VISITS)
       expect(rows[0]?.nom).toBe('A')
+    })
+
+    it('getAllWithVisitCount ignores anonymized visits', async () => {
+      const a = await gateway.create({ nom: 'A', prenom: 'B', classe: '1A', ine: 'INE1' })
+      insertVisit(sqlite, a.id)
+      sqlite
+        .prepare(
+          `INSERT INTO frequentation (starts_at, activity, student_id, student_classe, created_at, updated_at) VALUES (?, ?, NULL, ?, ?, ?)`
+        )
+        .run('2026-03-02T10:15:00', 'reading', '1A', '2026-03-02', '2026-03-02')
+      const rows = await gateway.getAllWithVisitCount()
+      expect(rows[0]?.visitCount).toBe(EXPECTED_ONE_VISIT)
     })
 
     it('filters by classe and still counts visits', async () => {

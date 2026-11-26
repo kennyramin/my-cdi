@@ -13,6 +13,7 @@ export function mapFrequentationRow(row: Record<string, unknown>): Frequentation
     startsAt: row.startsAt,
     activity: row.activity,
     studentId: row.studentId,
+    studentClasse: row.studentClasse,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt
   })

@@ -18,6 +18,7 @@ const FALLBACK_ENTITY: FrequentationEntity = {
   startsAt: '2026-01-15T09:00:00.000Z',
   activity: ActivityType.WORK,
   studentId: 1,
+  studentClasse: null,
   createdAt: '2026-01-15T09:00:00.000Z',
   updatedAt: '2026-01-15T09:00:00.000Z'
 }

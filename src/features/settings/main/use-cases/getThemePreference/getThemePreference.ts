@@ -4,8 +4,7 @@ import { parseThemePreference } from '@lib/themePreference'
 import { DEFAULT_THEME_PREFERENCE, THEME_STORAGE_KEY } from '@types'
 
 export type GetThemePreferenceResult =
-  | { success: true; data: ThemePreferenceResponseDto }
-  | { success: false; error: string }
+  { success: true; data: ThemePreferenceResponseDto } | { success: false; error: string }
 
 export async function getThemePreference(
   settingGateway: SettingGateway
