@@ -388,10 +388,11 @@ try {
   expect(existsSync(join(backupsDir, 'notes.txt')), '6: unrelated notes.txt survives')
   await closeQuietly(app)
 
-  // 7. Older schema: last migration forgotten + settings table dropped
+  // 7. Older schema: the last two migrations (settings table, then the nullable student_id rebuild)
+  // forgotten + settings table dropped
   runInElectronNode(
     `const D=require('better-sqlite3');const d=new D(${JSON.stringify(livePath)});d.pragma('journal_mode = WAL');` +
-      `d.exec('DROP TABLE settings');d.exec('DELETE FROM __drizzle_migrations WHERE created_at=(SELECT max(created_at) FROM __drizzle_migrations)');d.pragma('wal_checkpoint(TRUNCATE)');d.close()`
+      `d.exec('DROP TABLE settings');d.exec('DELETE FROM __drizzle_migrations WHERE created_at IN (SELECT created_at FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 2)');d.pragma('wal_checkpoint(TRUNCATE)');d.close()`
   )
   ;({ app, page } = await launch(userData))
   const migrationBackups = autoFiles(backupsDir).filter((f) => f.endsWith('-migration.db'))
