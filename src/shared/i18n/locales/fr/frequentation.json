@@ -16,16 +16,20 @@
     "startsAt": "Date et heure",
     "selectStudents": "Élève(s)",
     "searchStudent": "Rechercher un élève…",
+    "futureNotAllowed": "Impossible d'enregistrer une présence dans le futur",
     "submit": "Enregistrer",
     "cancel": "Annuler",
     "successMessage": "Fréquentation(s) enregistrée(s)"
   },
+  "anonymizedStudent": "Élève anonymisé",
   "loading": "Chargement…",
   "present": "Présents",
   "searchPlaceholder": "Rechercher…",
   "emptyHint": "Sélectionnez des élèves et enregistrez leur présence",
   "row": {
     "edit": "Modifier",
+    "select": "Sélectionner {{name}}",
+    "selectAnonymized": "Sélectionner un élève anonymisé ({{classe}}, {{time}})",
     "delete": "Supprimer",
     "confirmDelete": "Voulez-vous vraiment supprimer cette fréquentation ?"
   },

@@ -59,4 +59,56 @@ Dupont,Jean,3B,INE1`
     expect(result.errors).toHaveLength(EXPECTED_ZERO_ERRORS)
     expect(result.data[FIRST_INDEX]?.nom).toBe('Dupont')
   })
+
+  it('reports an unterminated quote with its physical line, blank lines included', () => {
+    const csv = `nom;prenom;classe;ine
+
+Dupont;Jean;3B;INE1
+
+
+"Martin;Pierre;3A;INE2`
+    const result = parseStudentCsv(csv)
+    expect(result.errors).toContainEqual({
+      type: 'ROW_VALIDATION',
+      rowNumber: 6,
+      issues: [{ field: 'csv', code: 'invalid_quotes' }]
+    })
+    expect(result.errors).toHaveLength(1)
+  })
+
+  it('treats a row with an extra delimiter as an error and does not import it', () => {
+    const csv = `nom;prenom;classe;ine
+A;B;3B;I1
+Dup;ont;Jean;3B;I2
+C;D;3B;I3`
+    const result = parseStudentCsv(csv)
+    expect(result.errors).toEqual([
+      {
+        type: 'ROW_VALIDATION',
+        rowNumber: 3,
+        issues: [{ field: 'csv', code: 'invalid_field_count' }]
+      }
+    ])
+    expect(result.data.map((row) => row.ine)).toEqual(['I1', 'I3'])
+  })
+
+  it('treats a row with a missing field as an error', () => {
+    const csv = `nom;prenom;classe;ine
+A;B;3B
+C;D;3B;I3`
+    const result = parseStudentCsv(csv)
+    expect(result.errors).toHaveLength(1)
+    expect(result.errors[0]).toMatchObject({ type: 'ROW_VALIDATION', rowNumber: 2 })
+    expect(result.data).toHaveLength(1)
+  })
+
+  it('reports validation errors with the physical line when blank lines are skipped', () => {
+    const csv = `nom;prenom;classe;ine
+
+A;B;3B;I1
+
+;X;3B;I2`
+    const result = parseStudentCsv(csv)
+    expect(result.errors[0]).toMatchObject({ type: 'ROW_VALIDATION', rowNumber: 5 })
+  })
 })

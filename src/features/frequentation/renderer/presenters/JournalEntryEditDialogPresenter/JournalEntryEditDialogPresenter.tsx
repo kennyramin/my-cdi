@@ -8,7 +8,8 @@ import { EntrySummary, StudentClasse, StudentName } from './JournalEntryEditDial
 
 export interface EditDialogEntryViewModel {
   initials: string
-  colorSeed: number
+  colorSeed: number | null
+  neutral: boolean
   displayName: string
   classe: string
 }
@@ -49,7 +50,7 @@ export function JournalEntryEditDialogPresenter({
     >
       {entry ? (
         <EntrySummary>
-          <Avatar initials={entry.initials} colorSeed={entry.colorSeed} />
+          <Avatar initials={entry.initials} colorSeed={entry.colorSeed} neutral={entry.neutral} />
           <div>
             <StudentName variant="body1">{entry.displayName}</StudentName>
             <StudentClasse variant="caption">{entry.classe}</StudentClasse>

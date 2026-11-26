@@ -2,7 +2,6 @@ import type { IpcMain } from 'electron'
 import { createMainRouter } from '@shared/ipc/router'
 import { FREQUENTATION_CHANNELS } from '@shared/ipc/channels'
 import type { FrequentationGateway } from '@frequentation/gateways/frequentation'
-import type { StudentGateway } from '@student/gateways/student'
 import type {
   CreateFrequentationDto,
   UpdateFrequentationDto,
@@ -44,8 +43,7 @@ export type IpcMainHandle = Pick<IpcMain, 'handle'>
 
 export function registerFrequentationController(
   ipcMain: IpcMainHandle,
-  frequentationGateway: FrequentationGateway,
-  studentGateway: StudentGateway
+  frequentationGateway: FrequentationGateway
 ): void {
   const router = createMainRouter(ipcMain)
 
@@ -96,7 +94,7 @@ export function registerFrequentationController(
   router.procedure<DateRangeDto, JournalEntryDto[]>(
     FREQUENTATION_CHANNELS.GET_JOURNAL_ENTRIES,
     async (input) => {
-      return unwrap(await getJournalEntries(frequentationGateway, studentGateway, input))
+      return unwrap(await getJournalEntries(frequentationGateway, input))
     }
   )
 }

@@ -8,6 +8,7 @@ describe('mapFrequentationRow', () => {
       startsAt: '2026-01-15T09:00:00.000Z',
       activity: 'work',
       studentId: 1,
+      studentClasse: '6ème A',
       createdAt: '2026-01-15T09:00:00.000Z',
       updatedAt: '2026-01-15T09:00:00.000Z'
     }
@@ -17,6 +18,7 @@ describe('mapFrequentationRow', () => {
       startsAt: '2026-01-15T09:00:00.000Z',
       activity: 'work',
       studentId: 1,
+      studentClasse: '6ème A',
       createdAt: '2026-01-15T09:00:00.000Z',
       updatedAt: '2026-01-15T09:00:00.000Z'
     })
@@ -48,5 +50,23 @@ describe('mapFrequentationRow', () => {
       createdAt: '2026-01-15T09:00:00.000Z',
       updatedAt: '2026-01-15T09:00:00.000Z'
     })
+  })
+
+  it('mapFrequentationWithStudentRow accepts null identity', () => {
+    const result = mapFrequentationWithStudentRow({
+      id: 1,
+      startsAt: '2026-01-15T09:00:00.000Z',
+      activity: 'work',
+      studentId: null,
+      studentNom: null,
+      studentPrenom: null,
+      studentClasse: 'Classe inconnue',
+      studentIne: null,
+      createdAt: '2026-01-15T09:00:00.000Z',
+      updatedAt: '2026-01-15T09:00:00.000Z'
+    })
+    expect(result.studentId).toBeNull()
+    expect(result.studentNom).toBeNull()
+    expect(result.studentClasse).toBe('Classe inconnue')
   })
 })

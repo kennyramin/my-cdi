@@ -8,6 +8,15 @@ const ERROR_MESSAGE_KEYS: Record<string, string> = {
   [ErrorCode.DATABASE_ERROR]: 'errors.generic',
   [ErrorCode.IPC_ERROR]: 'errors.generic',
   [ErrorCode.CSV_PARSE_ERROR]: 'errors.generic',
+  [ErrorCode.BACKUP_PATH_IS_LIVE_DB]: 'errors.backup.pathIsLiveDb',
+  [ErrorCode.BACKUP_WRITE_FAILED]: 'errors.backup.writeFailed',
+  [ErrorCode.RESTORE_NOT_A_DATABASE]: 'errors.restore.notADatabase',
+  [ErrorCode.RESTORE_CORRUPTED]: 'errors.restore.corrupted',
+  [ErrorCode.RESTORE_MISSING_TABLES]: 'errors.restore.missingTables',
+  [ErrorCode.RESTORE_NEWER_VERSION]: 'errors.restore.newerVersion',
+  [ErrorCode.RESTORE_UNKNOWN_SCHEMA]: 'errors.restore.unknownSchema',
+  [ErrorCode.RESTORE_MIGRATION_FAILED]: 'errors.restore.migrationFailed',
+  [ErrorCode.RESTORE_FAILED]: 'errors.restore.failed',
   [ErrorCode.UNKNOWN_ERROR]: 'app.unknownError'
 }
 

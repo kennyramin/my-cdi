@@ -8,7 +8,7 @@ const FIVE = 5
 describe('WeeklyBarChartContainer', () => {
   it('renders the chart title', () => {
     render(<WeeklyBarChartContainer dailyCounts={[]} />)
-    expect(screen.getByText('Fréquentation par jour')).toBeInTheDocument()
+    expect(screen.getByText('Fréquentation par jour de la semaine')).toBeInTheDocument()
   })
 
   it('renders all weekday labels', () => {

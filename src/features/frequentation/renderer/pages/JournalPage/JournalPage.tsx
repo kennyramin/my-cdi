@@ -4,9 +4,10 @@ import { JournalEntryListContainer } from './containers/JournalEntryListContaine
 import { JournalEntryEditDialogPresenter } from '@frequentation/presenters/JournalEntryEditDialogPresenter'
 import { buildActivityTiles } from '@frequentation/presenters/ActivityGridPresenter/helpers/buildActivityTiles'
 import { buildActivityTileNodes } from '@frequentation/presenters/ActivityGridPresenter/helpers/buildActivityTileNodes'
-import { buildInitials } from '@frequentation/helpers/buildInitials'
+import { getEntryAvatar } from '@frequentation/helpers/getEntryAvatar'
 import { useJournalPage } from './hooks/useJournalPage'
-import { PageGrid, SideColumn } from './JournalPage.styles'
+import { useSubmitBarHeight } from './hooks/useSubmitBarHeight'
+import { FormColumn, ListColumn, PageGrid } from './JournalPage.styles'
 
 export function JournalPage() {
   const {
@@ -21,15 +22,17 @@ export function JournalPage() {
     submitEdit
   } = useJournalPage()
 
+  const formColumnRef = useSubmitBarHeight<HTMLDivElement>()
+
   return (
     <PageGrid>
-      <SideColumn>
+      <FormColumn ref={formColumnRef}>
         <CalendarContainer selectedDate={selectedDate} onSelectDate={setSelectedDate} />
         <JournalEntryFormContainer selectedDate={selectedDate} />
-      </SideColumn>
-      <SideColumn>
+      </FormColumn>
+      <ListColumn>
         <JournalEntryListContainer selectedDate={selectedDate} onEditEntry={startEditing} />
-      </SideColumn>
+      </ListColumn>
       {editingEntry && editingActivity ? (
         <JournalEntryEditDialogPresenter
           open
@@ -39,8 +42,7 @@ export function JournalPage() {
           onSubmit={submitEdit}
           onClose={closeEditDialog}
           entry={{
-            initials: buildInitials(editingEntry.student.prenom, editingEntry.student.nom),
-            colorSeed: editingEntry.student.id,
+            ...getEntryAvatar(editingEntry),
             displayName: editingEntry.student.displayName,
             classe: editingEntry.student.classe
           }}

@@ -9,6 +9,7 @@ import { useActivityLabels } from '@frequentation/hooks/useActivityLabels'
 import { useStudentList } from '@student/api/useStudentQueries'
 import { buildActivityOptions } from '@frequentation/helpers/buildActivityOptions'
 import { ActivityType } from '@types'
+import { isFutureLocalDate, isFutureLocalDateTime } from '@lib/localDateTime'
 import { journalEntryFormSchema } from '../../validations/journalEntryFormSchema'
 import { mapFormToBatchDto } from '../../helpers/mapFormToBatchDto'
 import type { JournalEntryFormData } from '../../types/JournalEntryFormData'
@@ -19,6 +20,7 @@ interface UseJournalEntryFormOptions {
 }
 
 const TIME_FORMAT = 'HH:mm'
+const SECONDS_SUFFIX = ':00'
 
 function buildDefaultTime(): string {
   return dayjs().format(TIME_FORMAT)
@@ -54,7 +56,13 @@ export function useJournalEntryForm({ selectedDate, onSubmitted }: UseJournalEnt
     classe: student.classe
   }))
 
+  const isFutureDate = isFutureLocalDate(selectedDate, new Date())
+
   function handleSubmit(values: JournalEntryFormData) {
+    if (isFutureLocalDateTime(`${selectedDate}T${values.time}${SECONDS_SUFFIX}`, new Date())) {
+      show(t('form.futureNotAllowed'), 'error')
+      return
+    }
     mutate(mapFormToBatchDto(values, selectedDate), {
       onSuccess: () => {
         form.reset(buildDefaultValues())
@@ -95,6 +103,7 @@ export function useJournalEntryForm({ selectedDate, onSubmitted }: UseJournalEnt
     handleStudentSelect,
     handleStudentRemove,
     isStudentLoading,
+    isFutureDate,
     isSubmitting: isPending,
     toast,
     dismissToast: dismiss

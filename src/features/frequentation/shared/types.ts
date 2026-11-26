@@ -1,5 +1,8 @@
 import type { ActivityType } from '@types'
 
+export const ANONYMIZED_STUDENT_LABEL = 'Élève anonymisé'
+export const UNKNOWN_CLASS_LABEL = 'Classe inconnue'
+
 export interface CreateFrequentationDto {
   startsAt: string
   activity: ActivityType
@@ -20,7 +23,7 @@ export interface FrequentationResponseDto {
   id: number
   startsAt: string
   activity: ActivityType
-  studentId: number
+  studentId: number | null
   studentName: string
   studentClass: string
   studentIne: string
@@ -36,7 +39,7 @@ export interface JournalEntryDto {
     prenom: string
     classe: string
     ine: string
-  }
+  } | null
 }
 
 export interface DateRangeDto {

@@ -1,3 +1,5 @@
+export const ANONYMOUS_INITIALS = '?'
+
 const FIRST_CHAR_INDEX = 0
 
 export function buildInitials(prenom: string, nom: string): string {

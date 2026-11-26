@@ -4,8 +4,9 @@ export interface JournalEntryViewModel {
   id: number
   startsAt: string
   activity: ActivityType
+  isAnonymized: boolean
   student: {
-    id: number
+    id: number | null
     nom: string
     prenom: string
     classe: string

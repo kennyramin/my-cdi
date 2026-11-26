@@ -1,4 +1,6 @@
-import type { DailyCountDto } from '@statistics-shared'
+import type { DailyCountDto, PeriodRangeDto } from '@statistics-shared'
+import { countDaysBetween } from '../countDaysBetween'
+import { formatDayMonth } from '../formatDayMonth'
 
 export interface TrendDimensions {
   width: number
@@ -12,11 +14,22 @@ export interface TrendDimensions {
 export interface TrendDot {
   cx: number
   cy: number
+  date: string
+  dayLabel: string
+  count: number
 }
 
 export interface TrendYLabel {
+  id: 'min' | 'mid' | 'max'
   y: number
-  label: number
+  value: number
+}
+
+export interface TrendXLabel {
+  id: 'start' | 'end'
+  x: number
+  label: string
+  anchor: 'start' | 'end'
 }
 
 export interface TrendPath {
@@ -24,11 +37,10 @@ export interface TrendPath {
   areaPath: string
   dots: TrendDot[]
   yLabels: TrendYLabel[]
+  xLabels: TrendXLabel[]
   viewBox: string
 }
 
-const RANGE_PADDING_HIGH = 1.1
-const RANGE_PADDING_LOW = 0.8
 const HALF_DIVISOR = 2
 const Y_LABEL_X_OFFSET = 6
 const EMPTY_PATH: TrendPath = {
@@ -36,6 +48,7 @@ const EMPTY_PATH: TrendPath = {
   areaPath: '',
   dots: [],
   yLabels: [],
+  xLabels: [],
   viewBox: '0 0 0 0'
 }
 
@@ -56,47 +69,57 @@ export const DEFAULT_TREND_DIMENSIONS: TrendDimensions = {
 
 export function buildTrendPath(
   dailyCounts: DailyCountDto[],
+  range: PeriodRangeDto,
   dimensions: TrendDimensions = DEFAULT_TREND_DIMENSIONS
 ): TrendPath {
+  const viewBox = `0 0 ${dimensions.width} ${dimensions.height}`
   if (dailyCounts.length === 0) {
-    return EMPTY_PATH
+    return { ...EMPTY_PATH, viewBox }
   }
   const sorted = [...dailyCounts].sort((left, right) => (left.date < right.date ? -1 : 1))
-  const values = sorted.map((item) => item.count)
-  const rawMax = Math.max(...values)
-  const rawMin = Math.min(...values)
-  const max = rawMax === 0 ? 1 : rawMax * RANGE_PADDING_HIGH
-  const min = rawMin * RANGE_PADDING_LOW
-  const range = max - min === 0 ? 1 : max - min
+  const rawMax = Math.max(...sorted.map((item) => item.count))
+  const max = rawMax === 0 ? 1 : rawMax
   const innerWidth = dimensions.width - dimensions.paddingLeft - dimensions.paddingRight
   const innerHeight = dimensions.height - dimensions.paddingTop - dimensions.paddingBottom
-  const stepX = sorted.length > 1 ? innerWidth / (sorted.length - 1) : innerWidth
-  const dots: TrendDot[] = sorted.map((item, index) => {
-    const cx = dimensions.paddingLeft + index * stepX
-    const ratio = (item.count - min) / range
-    const cy = dimensions.paddingTop + (1 - ratio) * innerHeight
-    return { cx, cy }
-  })
-  const path = `M${dots.map((dot) => `${dot.cx},${dot.cy}`).join(' L')}`
   const baseY = dimensions.height - dimensions.paddingBottom
-  const lastX = dimensions.paddingLeft + (sorted.length - 1) * stepX
-  const areaPath = `${path} L${lastX},${baseY} L${dimensions.paddingLeft},${baseY} Z`
-  const midLabel = (rawMin + rawMax) / HALF_DIVISOR
-  const yLabelValues = [Math.round(rawMin), Math.round(midLabel), Math.round(rawMax)]
-  const yLabels = yLabelValues.map((label) => {
-    const ratio = (label - min) / range
-    return {
-      label,
-      y: dimensions.paddingTop + (1 - ratio) * innerHeight
+  const spanDays = countDaysBetween(range.startDate, range.endDate)
+  const toY = (value: number) => dimensions.paddingTop + (1 - value / max) * innerHeight
+  const dots: TrendDot[] = sorted.map((item) => ({
+    cx:
+      dimensions.paddingLeft +
+      (spanDays === 0
+        ? innerWidth / HALF_DIVISOR
+        : (countDaysBetween(range.startDate, item.date) / spanDays) * innerWidth),
+    cy: toY(item.count),
+    date: item.date,
+    dayLabel: formatDayMonth(item.date),
+    count: item.count
+  }))
+  const path = `M${dots.map((dot) => `${dot.cx},${dot.cy}`).join(' L')}`
+  const firstX = dots[0]?.cx ?? dimensions.paddingLeft
+  const lastX = dots[dots.length - 1]?.cx ?? dimensions.paddingLeft
+  const areaPath = `${path} L${lastX},${baseY} L${firstX},${baseY} Z`
+  const midValue = Math.round(max / HALF_DIVISOR)
+  const yLabels: TrendYLabel[] = [
+    { id: 'min', value: 0, y: toY(0) },
+    { id: 'mid', value: midValue, y: toY(midValue) },
+    { id: 'max', value: max, y: toY(max) }
+  ]
+  const xLabels: TrendXLabel[] = [
+    {
+      id: 'start',
+      x: dimensions.paddingLeft,
+      label: formatDayMonth(range.startDate),
+      anchor: 'start'
+    },
+    {
+      id: 'end',
+      x: dimensions.width - dimensions.paddingRight,
+      label: formatDayMonth(range.endDate),
+      anchor: 'end'
     }
-  })
-  return {
-    path,
-    areaPath,
-    dots,
-    yLabels,
-    viewBox: `0 0 ${dimensions.width} ${dimensions.height}`
-  }
+  ]
+  return { path, areaPath, dots, yLabels, xLabels, viewBox }
 }
 
 export const Y_LABEL_OFFSET_X = Y_LABEL_X_OFFSET

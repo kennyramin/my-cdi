@@ -10,6 +10,7 @@ export const SMALL_ICON_FONT_SIZE_PX = TYPE_SCALE.subtitle1
 export const SMALL_ICON_STYLE = { fontSize: SMALL_ICON_FONT_SIZE_PX } as const
 
 const SEARCH_WRAPPER_MAX_WIDTH_PX = 380
+const SEARCH_MIN_WIDTH_PX = 200
 const INPUT_TRANSITION = 'border-color'
 export const SEARCH_ICON_FONT_SIZE_PX = TYPE_SCALE.h5
 
@@ -17,6 +18,7 @@ export const ToolbarRoot = styled(Box, {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
   display: 'flex',
+  flexWrap: 'wrap',
   alignItems: 'center',
   gap: theme.spacing(1.5),
   marginBottom: theme.spacing(2.5)
@@ -25,7 +27,8 @@ export const ToolbarRoot = styled(Box, {
 export const SearchField = styled(TextField, {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
-  flex: 1,
+  flex: `1 1 ${SEARCH_MIN_WIDTH_PX}px`,
+  minWidth: `${SEARCH_MIN_WIDTH_PX}px`,
   maxWidth: `${SEARCH_WRAPPER_MAX_WIDTH_PX}px`,
   '& .MuiOutlinedInput-root': {
     height: `${CONTROL_HEIGHTS.md}px`,

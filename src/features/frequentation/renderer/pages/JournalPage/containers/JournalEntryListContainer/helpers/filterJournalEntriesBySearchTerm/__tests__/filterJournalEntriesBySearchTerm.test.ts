@@ -6,6 +6,7 @@ import type { JournalEntryViewModel } from '@frequentation/types'
 const FIRST_ID = 1
 const SECOND_ID = 2
 const STUDENT_ID = 7
+const ANONYMIZED_ID = 3
 
 function buildEntry(
   id: number,
@@ -16,6 +17,7 @@ function buildEntry(
     id,
     startsAt,
     activity: ActivityType.WORK,
+    isAnonymized: false,
     student: {
       id: STUDENT_ID,
       nom: overrides.nom ?? 'Dupont',
@@ -68,6 +70,33 @@ describe('filterJournalEntriesBySearchTerm', () => {
   it('filters by time', () => {
     expect(filterJournalEntriesBySearchTerm(all, '09:00')).toEqual([morningEntry])
     expect(filterJournalEntriesBySearchTerm(all, '14:30')).toEqual([afternoonEntry])
+  })
+
+  describe('anonymized entries', () => {
+    const anonymizedEntry: JournalEntryViewModel = {
+      ...buildEntry(ANONYMIZED_ID, '2026-04-30T10:15:00', { classe: '5C', activityLabel: 'Jeux' }),
+      isAnonymized: true,
+      student: {
+        id: null,
+        nom: '',
+        prenom: '',
+        classe: '5C',
+        ine: '',
+        displayName: 'Élève anonymisé'
+      }
+    }
+    const withAnonymized = [...all, anonymizedEntry]
+
+    it('never matches an anonymized entry on its display name', () => {
+      expect(filterJournalEntriesBySearchTerm(withAnonymized, 'anonym')).toEqual([])
+      expect(filterJournalEntriesBySearchTerm(withAnonymized, 'élève')).toEqual([])
+    })
+
+    it('still matches it by class snapshot, activity and time', () => {
+      expect(filterJournalEntriesBySearchTerm(withAnonymized, '5c')).toEqual([anonymizedEntry])
+      expect(filterJournalEntriesBySearchTerm(withAnonymized, 'jeux')).toEqual([anonymizedEntry])
+      expect(filterJournalEntriesBySearchTerm(withAnonymized, '10:15')).toEqual([anonymizedEntry])
+    })
   })
 
   it('returns empty array when no entry matches', () => {

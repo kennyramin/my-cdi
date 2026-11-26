@@ -21,6 +21,7 @@ const STUDENTS: StudentViewModel[] = [
     fullName: 'Jean Dupont',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
+    visitCount: 0,
     displayName: 'Jean Dupont',
     classLabel: '3ème A'
   },
@@ -33,6 +34,7 @@ const STUDENTS: StudentViewModel[] = [
     fullName: 'Marie Martin',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
+    visitCount: 0,
     displayName: 'Marie Martin',
     classLabel: '3ème B'
   }
@@ -46,6 +48,7 @@ function buildRowProps(student: StudentViewModel, selected = false): StudentTabl
     onCheckboxChange: () => {},
     onCheckboxClick: () => {},
     onEditClick: () => {},
+    onAnonymizeClick: () => {},
     onDeleteClick: () => {}
   }
 }
@@ -72,6 +75,7 @@ describe('StudentTablePresenter', () => {
             <StudentTableRowPresenter key={student.id} {...buildRowProps(student)} />
           ))}
           countLabel="2 élèves"
+          emptyMessage={null}
         />
       </ThemeProvider>
     )
@@ -89,6 +93,7 @@ describe('StudentTablePresenter', () => {
           headerNodes={buildHeaderNodes()}
           rowNodes={[]}
           countLabel="0 élève"
+          emptyMessage={null}
         />
       </ThemeProvider>
     )
@@ -97,5 +102,52 @@ describe('StudentTablePresenter', () => {
     expect(screen.getByText('Prénom')).toBeInTheDocument()
     expect(screen.getByText('Classe')).toBeInTheDocument()
     expect(screen.getByText('INE')).toBeInTheDocument()
+  })
+
+  it('renders an empty message cell spanning all columns when there are no rows', () => {
+    render(
+      <ThemeProvider theme={theme}>
+        <StudentTablePresenter
+          headerNodes={buildHeaderNodes()}
+          rowNodes={[]}
+          countLabel="0 élève"
+          emptyMessage="Aucun élève"
+        />
+      </ThemeProvider>
+    )
+
+    expect(screen.getByRole('cell', { name: 'Aucun élève' })).toHaveAttribute('colspan', '7')
+  })
+
+  it('does not render the empty message when rows are present', () => {
+    render(
+      <ThemeProvider theme={theme}>
+        <StudentTablePresenter
+          headerNodes={buildHeaderNodes()}
+          rowNodes={STUDENTS.map((student) => (
+            <StudentTableRowPresenter key={student.id} {...buildRowProps(student)} />
+          ))}
+          countLabel="2 élèves"
+          emptyMessage="Aucun élève"
+        />
+      </ThemeProvider>
+    )
+
+    expect(screen.queryByRole('cell', { name: 'Aucun élève' })).not.toBeInTheDocument()
+  })
+
+  it('uses a fixed table layout', () => {
+    render(
+      <ThemeProvider theme={theme}>
+        <StudentTablePresenter
+          headerNodes={buildHeaderNodes()}
+          rowNodes={[]}
+          countLabel="0 élève"
+          emptyMessage={null}
+        />
+      </ThemeProvider>
+    )
+
+    expect(screen.getByRole('table')).toHaveStyle({ tableLayout: 'fixed' })
   })
 })

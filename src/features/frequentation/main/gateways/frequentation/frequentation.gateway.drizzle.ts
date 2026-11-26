@@ -1,11 +1,13 @@
+import type { SQL } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import { eq, and, gte, lte } from 'drizzle-orm'
+import { eq, and, gte, lte, sql } from 'drizzle-orm'
 import type { FrequentationGateway } from './frequentation.gateway'
 import type {
   FrequentationEntity,
   FrequentationWithStudentEntity
 } from '@frequentation/entities/frequentation'
 import type { CreateFrequentationDto, UpdateFrequentationDto } from '@frequentation-shared'
+import { UNKNOWN_CLASS_LABEL } from '@frequentation-shared'
 import { frequentationTable } from '@frequentation/entities/frequentation'
 import { mapFrequentationRow, mapFrequentationWithStudentRow } from './helpers/mapFrequentationRow'
 import { studentTable } from '@shared/db/schema'
@@ -15,6 +17,25 @@ const ISO_DATE_LENGTH = 10
 export class FrequentationGatewayDrizzle implements FrequentationGateway {
   constructor(private db: BetterSQLite3Database<Record<string, unknown>>) {}
 
+  private studentClassSnapshot(studentId: number): SQL<string | null> {
+    return sql<string | null>`(SELECT classe FROM students WHERE id = ${studentId})`
+  }
+
+  private buildSelection() {
+    return {
+      id: frequentationTable.id,
+      startsAt: frequentationTable.startsAt,
+      activity: frequentationTable.activity,
+      studentId: frequentationTable.studentId,
+      studentNom: studentTable.nom,
+      studentPrenom: studentTable.prenom,
+      studentClasse: sql<string>`COALESCE(${frequentationTable.studentClasse}, ${studentTable.classe}, ${UNKNOWN_CLASS_LABEL})`,
+      studentIne: studentTable.ine,
+      createdAt: frequentationTable.createdAt,
+      updatedAt: frequentationTable.updatedAt
+    }
+  }
+
   async create(dto: CreateFrequentationDto): Promise<FrequentationEntity> {
     const now = new Date().toISOString()
     const result = await this.db
@@ -23,6 +44,7 @@ export class FrequentationGatewayDrizzle implements FrequentationGateway {
         startsAt: dto.startsAt,
         activity: dto.activity,
         studentId: dto.studentId,
+        studentClasse: this.studentClassSnapshot(dto.studentId),
         createdAt: now,
         updatedAt: now
       })
@@ -50,18 +72,7 @@ export class FrequentationGatewayDrizzle implements FrequentationGateway {
 
   async getAll(): Promise<FrequentationWithStudentEntity[]> {
     const results = await this.db
-      .select({
-        id: frequentationTable.id,
-        startsAt: frequentationTable.startsAt,
-        activity: frequentationTable.activity,
-        studentId: frequentationTable.studentId,
-        studentNom: studentTable.nom,
-        studentPrenom: studentTable.prenom,
-        studentClasse: studentTable.classe,
-        studentIne: studentTable.ine,
-        createdAt: frequentationTable.createdAt,
-        updatedAt: frequentationTable.updatedAt
-      })
+      .select(this.buildSelection())
       .from(frequentationTable)
       .leftJoin(studentTable, eq(frequentationTable.studentId, studentTable.id))
       .orderBy(frequentationTable.startsAt)
@@ -71,18 +82,7 @@ export class FrequentationGatewayDrizzle implements FrequentationGateway {
 
   async getByStudentId(studentId: number): Promise<FrequentationWithStudentEntity[]> {
     const results = await this.db
-      .select({
-        id: frequentationTable.id,
-        startsAt: frequentationTable.startsAt,
-        activity: frequentationTable.activity,
-        studentId: frequentationTable.studentId,
-        studentNom: studentTable.nom,
-        studentPrenom: studentTable.prenom,
-        studentClasse: studentTable.classe,
-        studentIne: studentTable.ine,
-        createdAt: frequentationTable.createdAt,
-        updatedAt: frequentationTable.updatedAt
-      })
+      .select(this.buildSelection())
       .from(frequentationTable)
       .leftJoin(studentTable, eq(frequentationTable.studentId, studentTable.id))
       .where(eq(frequentationTable.studentId, studentId))
@@ -98,18 +98,7 @@ export class FrequentationGatewayDrizzle implements FrequentationGateway {
     const endOfDay = endDate.length === ISO_DATE_LENGTH ? `${endDate}T23:59:59` : endDate
 
     const results = await this.db
-      .select({
-        id: frequentationTable.id,
-        startsAt: frequentationTable.startsAt,
-        activity: frequentationTable.activity,
-        studentId: frequentationTable.studentId,
-        studentNom: studentTable.nom,
-        studentPrenom: studentTable.prenom,
-        studentClasse: studentTable.classe,
-        studentIne: studentTable.ine,
-        createdAt: frequentationTable.createdAt,
-        updatedAt: frequentationTable.updatedAt
-      })
+      .select(this.buildSelection())
       .from(frequentationTable)
       .leftJoin(studentTable, eq(frequentationTable.studentId, studentTable.id))
       .where(
@@ -129,12 +118,17 @@ export class FrequentationGatewayDrizzle implements FrequentationGateway {
     }
 
     const now = new Date().toISOString()
+    const reassignedStudentId =
+      dto.studentId !== existingFrequentation.studentId ? dto.studentId : undefined
     await this.db
       .update(frequentationTable)
       .set({
         ...(dto.startsAt !== undefined && { startsAt: dto.startsAt }),
         ...(dto.activity !== undefined && { activity: dto.activity }),
         ...(dto.studentId !== undefined && { studentId: dto.studentId }),
+        ...(reassignedStudentId !== undefined && {
+          studentClasse: this.studentClassSnapshot(reassignedStudentId)
+        }),
         updatedAt: now
       })
       .where(eq(frequentationTable.id, id))

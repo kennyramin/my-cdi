@@ -10,9 +10,12 @@ const DEFAULT_SORT_CONFIG: StudentSortConfig = {
 }
 
 const EMPTY_SEARCH_TERM = ''
+const STUDENT_LIST_REFETCH_ON_MOUNT = 'always'
 
 export function useStudentListData() {
-  const { data, isLoading, isError, error } = useStudentList()
+  const { data, isLoading, isError, error } = useStudentList({
+    refetchOnMount: STUDENT_LIST_REFETCH_ON_MOUNT
+  })
   const [searchTerm, setSearchTerm] = useState<string>(EMPTY_SEARCH_TERM)
   const [sortConfig, setSortConfig] = useState<StudentSortConfig>(DEFAULT_SORT_CONFIG)
 

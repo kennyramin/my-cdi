@@ -2,37 +2,24 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { ActivityType } from '@types'
+import { migrateTestDatabase } from '@shared/db/testing/migrateTestDatabase'
+import { ErrorCode } from '@lib/errors'
+import { updateFrequentation } from '@frequentation/use-cases/updateFrequentation'
 import { FrequentationGatewayDrizzle } from '../frequentation.gateway.drizzle'
 
 const NONEXISTENT_ID = 999
 const EXPECTED_TWO = 2
 const SECOND_STUDENT_ID = 2
+const UNKNOWN_CLASS = 'Classe inconnue'
+const FIRST_CLASS = '6ème A'
+const NEW_CLASS = '5ème C'
+const VISIT_DAY = '2026-01-15'
+const VISIT_START = '2026-01-15T09:00:00.000Z'
 
 function createTestDb(): { sqlite: Database.Database; db: ReturnType<typeof drizzle> } {
   const sqlite = new Database(':memory:')
   sqlite.pragma('foreign_keys = ON')
-  sqlite.exec(`
-    CREATE TABLE students (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nom TEXT NOT NULL,
-      prenom TEXT NOT NULL,
-      classe TEXT NOT NULL,
-      ine TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-    CREATE TABLE frequentation (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      starts_at TEXT NOT NULL,
-      activity TEXT NOT NULL,
-      student_id INTEGER NOT NULL,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
-    );
-    CREATE INDEX idx_freq_starts_at ON frequentation(starts_at);
-    CREATE INDEX idx_freq_student ON frequentation(student_id);
-  `)
+  migrateTestDatabase(sqlite)
   const now = '2026-01-01T00:00:00.000Z'
   sqlite
     .prepare(
@@ -202,6 +189,171 @@ describe('FrequentationGatewayDrizzle', () => {
       })
       const count = await gateway.deleteByStudentId(1)
       expect(count).toBe(EXPECTED_TWO)
+    })
+  })
+
+  describe('class snapshot', () => {
+    const snapshotOf = (id: number): string | null => {
+      const row = sqlite
+        .prepare('SELECT student_classe AS c FROM frequentation WHERE id = ?')
+        .get(id)
+      return (row as { c: string | null }).c
+    }
+    const createVisit = (studentId: number): Promise<{ id: number }> =>
+      gateway.create({ startsAt: VISIT_START, activity: ActivityType.WORK, studentId })
+
+    it("create stores the student's current class as snapshot", async () => {
+      const visit = await createVisit(1)
+      expect(snapshotOf(visit.id)).toBe(FIRST_CLASS)
+    })
+
+    it("update with a new studentId re-snapshots that student's class", async () => {
+      const visit = await createVisit(1)
+      await gateway.update(visit.id, { studentId: SECOND_STUDENT_ID })
+      expect(snapshotOf(visit.id)).toBe('5ème B')
+    })
+
+    it('update without studentId leaves the snapshot untouched', async () => {
+      const visit = await createVisit(1)
+      sqlite.prepare('UPDATE students SET classe = ? WHERE id = 1').run(NEW_CLASS)
+      await gateway.update(visit.id, { activity: ActivityType.READING })
+      expect(snapshotOf(visit.id)).toBe(FIRST_CLASS)
+    })
+
+    it('editing a student class never rewrites snapshots', async () => {
+      await createVisit(1)
+      sqlite.prepare('UPDATE students SET classe = ? WHERE id = 1').run(NEW_CLASS)
+      const results = await gateway.getByDateRange(VISIT_DAY, VISIT_DAY)
+      expect(results[0]?.studentClasse).toBe(FIRST_CLASS)
+    })
+
+    it('new entries after a class change get the new class', async () => {
+      await createVisit(1)
+      sqlite.prepare('UPDATE students SET classe = ? WHERE id = 1').run(NEW_CLASS)
+      const visit = await createVisit(1)
+      expect(snapshotOf(visit.id)).toBe(NEW_CLASS)
+    })
+
+    it('getByDateRange falls back to students.classe when the snapshot is NULL', async () => {
+      const visit = await createVisit(1)
+      sqlite.prepare('UPDATE frequentation SET student_classe = NULL WHERE id = ?').run(visit.id)
+      const results = await gateway.getByDateRange(VISIT_DAY, VISIT_DAY)
+      expect(results[0]?.studentClasse).toBe(FIRST_CLASS)
+    })
+
+    it('getByDateRange falls back to Classe inconnue when both are missing', async () => {
+      const visit = await createVisit(1)
+      sqlite.prepare('UPDATE frequentation SET student_classe = NULL WHERE id = ?').run(visit.id)
+      sqlite.pragma('foreign_keys = OFF')
+      sqlite.prepare('DELETE FROM students WHERE id = 1').run()
+      const results = await gateway.getByDateRange(VISIT_DAY, VISIT_DAY)
+      expect(results[0]?.studentClasse).toBe(UNKNOWN_CLASS)
+    })
+
+    it('orphan visit is anonymized with Classe inconnue', async () => {
+      sqlite.pragma('foreign_keys = OFF')
+      sqlite
+        .prepare(
+          `INSERT INTO frequentation (starts_at, activity, student_id, created_at, updated_at) VALUES (?, 'work', 999, ?, ?)`
+        )
+        .run(VISIT_START, VISIT_START, VISIT_START)
+      const results = await gateway.getByDateRange(VISIT_DAY, VISIT_DAY)
+      expect(results).toHaveLength(1)
+      expect(results[0]?.studentNom).toBeNull()
+      expect(results[0]?.studentClasse).toBe(UNKNOWN_CLASS)
+    })
+
+    it('anonymized row (student_id NULL) maps with null identity and its snapshot class', async () => {
+      const visit = await createVisit(1)
+      sqlite.prepare('UPDATE frequentation SET student_id = NULL WHERE id = ?').run(visit.id)
+      const results = await gateway.getAll()
+      expect(results[0]).toMatchObject({
+        studentId: null,
+        studentNom: null,
+        studentPrenom: null,
+        studentIne: null,
+        studentClasse: FIRST_CLASS
+      })
+    })
+
+    it('getAll and getByStudentId fall back to students.classe when the snapshot is NULL', async () => {
+      const visit = await createVisit(1)
+      sqlite.prepare('UPDATE frequentation SET student_classe = NULL WHERE id = ?').run(visit.id)
+      expect((await gateway.getAll())[0]?.studentClasse).toBe(FIRST_CLASS)
+      expect((await gateway.getByStudentId(1))[0]?.studentClasse).toBe(FIRST_CLASS)
+    })
+
+    it('getAll and getByStudentId fall back to Classe inconnue when both are missing', async () => {
+      const visit = await createVisit(1)
+      sqlite.prepare('UPDATE frequentation SET student_classe = NULL WHERE id = ?').run(visit.id)
+      sqlite.pragma('foreign_keys = OFF')
+      sqlite.prepare('DELETE FROM students WHERE id = 1').run()
+      expect((await gateway.getAll())[0]?.studentClasse).toBe(UNKNOWN_CLASS)
+      expect((await gateway.getByStudentId(1))[0]?.studentClasse).toBe(UNKNOWN_CLASS)
+    })
+
+    it('getByDateRange includes an anonymized (student_id NULL) visit', async () => {
+      const visit = await createVisit(1)
+      sqlite.prepare('UPDATE frequentation SET student_id = NULL WHERE id = ?').run(visit.id)
+      const results = await gateway.getByDateRange(VISIT_DAY, VISIT_DAY)
+      expect(results).toHaveLength(1)
+      expect(results[0]).toMatchObject({
+        studentId: null,
+        studentNom: null,
+        studentClasse: FIRST_CLASS
+      })
+    })
+
+    it('update with the same studentId keeps the old snapshot after a class change', async () => {
+      const visit = await createVisit(1)
+      sqlite.prepare('UPDATE students SET classe = ? WHERE id = 1').run(NEW_CLASS)
+      await gateway.update(visit.id, { studentId: 1, activity: ActivityType.READING })
+      expect(snapshotOf(visit.id)).toBe(FIRST_CLASS)
+    })
+
+    it('deleting a student still cascades its visits', async () => {
+      await createVisit(1)
+      sqlite.prepare('DELETE FROM students WHERE id = 1').run()
+      expect(await gateway.count()).toBe(0)
+    })
+  })
+
+  describe('anonymized visit through the update use-case', () => {
+    const createAnonymizedVisit = async (): Promise<number> => {
+      const visit = await gateway.create({
+        startsAt: VISIT_START,
+        activity: ActivityType.WORK,
+        studentId: 1
+      })
+      sqlite.prepare('UPDATE frequentation SET student_id = NULL WHERE id = ?').run(visit.id)
+      return visit.id
+    }
+
+    it('cannot be re-linked to a student and stays anonymous', async () => {
+      const id = await createAnonymizedVisit()
+
+      const result = await updateFrequentation(gateway, id, { studentId: SECOND_STUDENT_ID })
+
+      expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+      expect((await gateway.getById(id))?.studentId).toBeNull()
+    })
+
+    it('accepts an activity change and keeps it anonymous', async () => {
+      const id = await createAnonymizedVisit()
+
+      const result = await updateFrequentation(gateway, id, { activity: ActivityType.READING })
+
+      expect(result.success).toBe(true)
+      expect(await gateway.getById(id)).toMatchObject({
+        studentId: null,
+        activity: ActivityType.READING
+      })
+    })
+  })
+
+  describe('retention', () => {
+    it('does not expose a purge method', () => {
+      expect('deleteOlderThan' in gateway).toBe(false)
     })
   })
 

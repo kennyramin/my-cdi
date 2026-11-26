@@ -23,12 +23,12 @@ const FONT_SIZE_BY_SIZE: Record<AvatarSize, number> = {
 
 export const AvatarRoot = styled(MuiAvatar, {
   shouldForwardProp: shouldForwardStyledProp
-})<{ $bg: string; $size: AvatarSize }>(({ $bg, $size }) => ({
+})<{ $bg: string; $neutral: boolean; $size: AvatarSize }>(({ theme, $bg, $neutral, $size }) => ({
   width: `${SIZE_PX[$size]}px`,
   height: `${SIZE_PX[$size]}px`,
   fontSize: FONT_SIZE_BY_SIZE[$size],
   fontWeight: FONT_WEIGHTS.semibold,
-  backgroundColor: alpha($bg, BG_ALPHA),
-  color: $bg,
+  backgroundColor: $neutral ? $bg : alpha($bg, BG_ALPHA),
+  color: $neutral ? theme.palette.text.secondary : $bg,
   flexShrink: 0
 }))

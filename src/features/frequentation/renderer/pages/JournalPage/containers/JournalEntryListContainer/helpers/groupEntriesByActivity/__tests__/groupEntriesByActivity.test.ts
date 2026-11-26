@@ -18,6 +18,7 @@ const makeEntry = (
   id,
   startsAt: '2026-04-01T09:00:00.000Z',
   activity,
+  isAnonymized: false,
   student: { id, nom, prenom, classe: '3A', ine: `INE-${id}`, displayName: `${prenom} ${nom}` },
   activityLabel: '',
   activityColor: ''

@@ -48,7 +48,14 @@ function buildWeekdayNodes(labels: string[]): ReactNode[] {
 
 function buildDayNodes(cells: CalendarCell[], onSelectCell: (iso: string) => void): ReactNode[] {
   return cells.map((cell) => (
-    <CalendarDayPresenter key={cell.iso} cell={cell} onClick={() => onSelectCell(cell.iso)} />
+    <CalendarDayPresenter
+      key={cell.iso}
+      cell={cell}
+      tabIndex={0}
+      onClick={() => onSelectCell(cell.iso)}
+      onFocus={vi.fn()}
+      onKeyDown={vi.fn()}
+    />
   ))
 }
 
@@ -73,6 +80,11 @@ describe('CalendarViewPresenter', () => {
   it('renders the month label', () => {
     renderView()
     expect(screen.getByText('Avril 2026')).toBeInTheDocument()
+  })
+
+  it('exposes the month label as a level-2 heading under the page title', () => {
+    renderView()
+    expect(screen.getByRole('heading', { level: 2, name: 'Avril 2026' })).toBeInTheDocument()
   })
 
   it('renders weekday headers', () => {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { formatImportError, formatRowIssues, isStructuralError } from '../formatImportError'
+import i18n from '@shared/i18n/config'
 import type { CsvImportError, CsvRowIssue } from '@student-shared'
 
 function createTranslate(): (key: string, options?: Record<string, unknown>) => string {
@@ -16,7 +17,7 @@ describe('formatImportError', () => {
     const t = createTranslate()
     const error: CsvImportError = { type: 'MISSING_COLUMNS', columns: ['nom', 'prenom'] }
     expect(formatImportError(error, t)).toContain('csvImport.error.missingColumns')
-    expect(formatImportError(error, t)).toContain('nom, prenom')
+    expect(formatImportError(error, t)).toContain('csvImport.columns.nom, csvImport.columns.prenom')
   })
 
   it('formats ROW_VALIDATION error', () => {
@@ -43,6 +44,21 @@ describe('formatImportError', () => {
     }
     expect(formatImportError(error, t)).toContain('csvImport.error.databaseError')
     expect(formatImportError(error, t)).toContain('DB fail')
+  })
+})
+
+describe('French CSV column names', () => {
+  const t = i18n.getFixedT('fr', 'student')
+
+  it('lists expected French header names for missing columns', () => {
+    const error: CsvImportError = { type: 'MISSING_COLUMNS', columns: ['classe', 'ine'] }
+    expect(formatImportError(error, t)).toBe('Colonnes manquantes : Division, INE')
+  })
+
+  it('hint says other columns are ignored', () => {
+    expect(t('csvImport.expectedColumnsHint')).toBe(
+      'Les autres colonnes (adresse, téléphone…) sont ignorées et ne sont pas enregistrées.'
+    )
   })
 })
 
