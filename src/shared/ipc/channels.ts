@@ -8,7 +8,8 @@ export const STUDENT_CHANNELS = {
   LIST: 'student.list',
   UPDATE: 'student.update',
   DELETE: 'student.delete',
-  IMPORT_CSV: 'student.importCsv'
+  IMPORT_CSV: 'student.importCsv',
+  ANONYMIZE: 'student.anonymize'
 } as const
 
 export const FREQUENTATION_CHANNELS = {

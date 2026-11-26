@@ -17,6 +17,8 @@ const SAMPLE_ENTITY: StudentEntity = {
   updatedAt: '2026-04-26T00:00:00.000Z'
 }
 
+type AnonymizeBackup = (reason: 'anonymization') => Promise<string>
+
 type IpcMainHandle = Pick<IpcMain, 'handle'>
 type IpcHandler = Parameters<IpcMain['handle']>[1]
 
@@ -51,21 +53,25 @@ function createGatewayStub(): StudentGateway {
     getAll: vi.fn().mockResolvedValue([]),
     getByIds: vi.fn().mockResolvedValue([]),
     getAllWithVisitCount: vi.fn().mockResolvedValue([]),
-    countVisitsByStudentId: vi.fn().mockResolvedValue(0)
+    countVisitsByStudentId: vi.fn().mockResolvedValue(0),
+    anonymizeByIds: vi.fn().mockResolvedValue({ anonymized: 0, deletedWithoutVisits: 0 }),
+    withTransaction: vi.fn().mockImplementation((work: () => Promise<unknown>) => work())
   }
 }
 
 describe('registerStudentController', () => {
   let ipcMain: IpcMainStub
   let gateway: StudentGateway
+  let createAutomaticBackup: AnonymizeBackup
 
   beforeEach(() => {
     ipcMain = createIpcMainStub()
     gateway = createGatewayStub()
+    createAutomaticBackup = vi.fn().mockResolvedValue('/backup.db')
   })
 
   it('registers create handler that delegates to use-case', async () => {
-    registerStudentController(ipcMain, gateway)
+    registerStudentController(ipcMain, gateway, createAutomaticBackup)
     const result = await ipcMain.invoke(STUDENT_CHANNELS.CREATE, {
       nom: 'Dupont',
       prenom: 'Jean',
@@ -77,9 +83,21 @@ describe('registerStudentController', () => {
   })
 
   it('registers every channel from STUDENT_CHANNELS', () => {
-    registerStudentController(ipcMain, gateway)
+    registerStudentController(ipcMain, gateway, createAutomaticBackup)
     for (const channel of Object.values(STUDENT_CHANNELS)) {
       expect(() => ipcMain.invoke(channel, {})).not.toThrow()
     }
+  })
+
+  it('student.anonymize delegates and unwraps', async () => {
+    vi.mocked(gateway.getByIds).mockResolvedValue([SAMPLE_ENTITY])
+    vi.mocked(gateway.anonymizeByIds).mockResolvedValue({ anonymized: 1, deletedWithoutVisits: 0 })
+    registerStudentController(ipcMain, gateway, createAutomaticBackup)
+    const result = await ipcMain.invoke(STUDENT_CHANNELS.ANONYMIZE, { ids: [STUDENT_ID] })
+    expect(result).toEqual({
+      success: true,
+      data: { anonymized: 1, deletedWithoutVisits: 0, ignored: 0 }
+    })
+    expect(createAutomaticBackup).toHaveBeenCalledWith('anonymization')
   })
 })

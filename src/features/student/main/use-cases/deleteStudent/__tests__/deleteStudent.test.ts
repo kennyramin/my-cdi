@@ -27,6 +27,8 @@ function createMockGateway(overrides: Partial<StudentGateway> = {}): StudentGate
     getByIds: vi.fn().mockResolvedValue([]),
     getAllWithVisitCount: vi.fn().mockResolvedValue([]),
     countVisitsByStudentId: vi.fn().mockResolvedValue(0),
+    anonymizeByIds: vi.fn().mockResolvedValue({ anonymized: 0, deletedWithoutVisits: 0 }),
+    withTransaction: vi.fn().mockImplementation((work: () => Promise<unknown>) => work()),
     ...overrides
   }
 }

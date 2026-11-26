@@ -31,7 +31,8 @@ const electronAPI = {
     list: (input: unknown) => invoke(STUDENT_CHANNELS.LIST, input),
     update: (input: unknown) => invoke(STUDENT_CHANNELS.UPDATE, input),
     delete: (input: unknown) => invoke(STUDENT_CHANNELS.DELETE, input),
-    importCsv: (input: unknown) => invoke(STUDENT_CHANNELS.IMPORT_CSV, input)
+    importCsv: (input: unknown) => invoke(STUDENT_CHANNELS.IMPORT_CSV, input),
+    anonymize: (input: unknown) => invoke(STUDENT_CHANNELS.ANONYMIZE, input)
   },
   frequentation: {
     create: (input: unknown) => invoke(FREQUENTATION_CHANNELS.CREATE, input),

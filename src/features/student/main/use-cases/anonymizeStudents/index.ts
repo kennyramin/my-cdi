@@ -1,0 +1,1 @@
+export { anonymizeStudents } from './anonymizeStudents'

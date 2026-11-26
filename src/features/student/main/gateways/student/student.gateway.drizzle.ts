@@ -1,16 +1,38 @@
 import { count, eq, getTableColumns, inArray } from 'drizzle-orm'
+import type Database from 'better-sqlite3'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import type { StudentGateway } from './student.gateway'
+import type { AnonymizeByIdsResult, StudentGateway } from './student.gateway'
 import type { StudentEntity, StudentWithVisitCountEntity } from '@student/entities/student'
 import { studentTable } from '@student/entities/student'
 import { frequentationTable } from '@frequentation/entities/frequentation'
 import type { CreateStudentDto, UpdateStudentDto } from '@student-shared'
 import { mapStudentRow } from './helpers/mapStudentRow'
 
+export type StudentDb = BetterSQLite3Database<Record<string, unknown>> & {
+  $client: Database.Database
+}
+
 const NO_VISITS = 0
+const ANONYMIZE_CHUNK_SIZE = 500
+
+interface CountRow {
+  total: number
+}
+
+function chunkIds(ids: number[]): number[][] {
+  const chunks: number[][] = []
+  for (let start = 0; start < ids.length; start += ANONYMIZE_CHUNK_SIZE) {
+    chunks.push(ids.slice(start, start + ANONYMIZE_CHUNK_SIZE))
+  }
+  return chunks
+}
+
+function placeholders(ids: number[]): string {
+  return ids.map(() => '?').join(', ')
+}
 
 export class StudentGatewayDrizzle implements StudentGateway {
-  constructor(private db: BetterSQLite3Database<Record<string, unknown>>) {}
+  constructor(private db: StudentDb) {}
 
   async create(studentData: CreateStudentDto): Promise<StudentEntity> {
     const now = new Date().toISOString()
@@ -101,5 +123,54 @@ export class StudentGatewayDrizzle implements StudentGateway {
       .from(frequentationTable)
       .where(eq(frequentationTable.studentId, studentId))
     return rows[0]?.value ?? NO_VISITS
+  }
+
+  async anonymizeByIds(ids: number[]): Promise<AnonymizeByIdsResult> {
+    const sqlite = this.db.$client
+    const run = sqlite.transaction((): AnonymizeByIdsResult => {
+      let existing = 0
+      let withVisits = 0
+      for (const chunk of chunkIds(ids)) {
+        const marks = placeholders(chunk)
+        sqlite
+          .prepare(
+            `UPDATE frequentation SET student_classe = (SELECT classe FROM students WHERE id = frequentation.student_id) WHERE student_id IN (${marks}) AND student_classe IS NULL`
+          )
+          .run(...chunk)
+        const existingRow = sqlite
+          .prepare<number[], CountRow>(
+            `SELECT COUNT(*) AS total FROM students WHERE id IN (${marks})`
+          )
+          .get(...chunk)
+        const withVisitsRow = sqlite
+          .prepare<number[], CountRow>(
+            `SELECT COUNT(*) AS total FROM students WHERE id IN (${marks}) AND EXISTS (SELECT 1 FROM frequentation WHERE frequentation.student_id = students.id)`
+          )
+          .get(...chunk)
+        existing += existingRow?.total ?? NO_VISITS
+        withVisits += withVisitsRow?.total ?? NO_VISITS
+        sqlite
+          .prepare(`UPDATE frequentation SET student_id = NULL WHERE student_id IN (${marks})`)
+          .run(...chunk)
+        sqlite.prepare(`DELETE FROM students WHERE id IN (${marks})`).run(...chunk)
+      }
+      return { anonymized: withVisits, deletedWithoutVisits: existing - withVisits }
+    })
+    return run()
+  }
+
+  // `work` must only await synchronous-backed gateway calls (no real I/O), so no other
+  // statement can interleave on this connection while the transaction is open
+  async withTransaction<T>(work: () => Promise<T>): Promise<T> {
+    const sqlite = this.db.$client
+    sqlite.exec('BEGIN IMMEDIATE')
+    try {
+      const result = await work()
+      sqlite.exec('COMMIT')
+      return result
+    } catch (error) {
+      sqlite.exec('ROLLBACK')
+      throw error
+    }
   }
 }

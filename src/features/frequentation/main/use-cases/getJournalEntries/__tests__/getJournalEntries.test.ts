@@ -72,7 +72,9 @@ function createMockStudentGateway(): StudentGateway {
     delete: vi.fn().mockResolvedValue(true),
     getByIds: vi.fn().mockResolvedValue([]),
     getAllWithVisitCount: vi.fn().mockResolvedValue([]),
-    countVisitsByStudentId: vi.fn().mockResolvedValue(0)
+    countVisitsByStudentId: vi.fn().mockResolvedValue(0),
+    anonymizeByIds: vi.fn().mockResolvedValue({ anonymized: 0, deletedWithoutVisits: 0 }),
+    withTransaction: vi.fn().mockImplementation((work: () => Promise<unknown>) => work())
   }
 }
 

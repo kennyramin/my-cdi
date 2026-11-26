@@ -9,7 +9,8 @@ import { deleteStudent } from '@student/use-cases/deleteStudent'
 import { getStudent } from '@student/use-cases/getStudent'
 import { listStudents } from '@student/use-cases/listStudents'
 import { importStudentsCsv } from '@student/use-cases/importStudentsCsv'
-import type { ImportStudentsCsvPayload } from '@student-shared'
+import { anonymizeStudents } from '@student/use-cases/anonymizeStudents'
+import type { AnonymizeStudentsPayload, ImportStudentsCsvPayload } from '@student-shared'
 
 interface CreateStudentInput {
   nom: string
@@ -40,7 +41,11 @@ interface DeleteStudentInput {
 
 export type IpcMainHandle = Pick<IpcMain, 'handle'>
 
-export function registerStudentController(ipcMain: IpcMainHandle, gateway: StudentGateway): void {
+export function registerStudentController(
+  ipcMain: IpcMainHandle,
+  gateway: StudentGateway,
+  createAutomaticBackup: (reason: 'anonymization') => Promise<string>
+): void {
   const router = createMainRouter(ipcMain)
   const deps = { gateway }
 
@@ -67,5 +72,9 @@ export function registerStudentController(ipcMain: IpcMainHandle, gateway: Stude
 
   router.procedure(STUDENT_CHANNELS.IMPORT_CSV, async (input: ImportStudentsCsvPayload) => {
     return unwrap(await importStudentsCsv(deps, input))
+  })
+
+  router.procedure(STUDENT_CHANNELS.ANONYMIZE, async (input: AnonymizeStudentsPayload) => {
+    return unwrap(await anonymizeStudents({ gateway, createAutomaticBackup }, input))
   })
 }

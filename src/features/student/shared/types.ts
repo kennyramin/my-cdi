@@ -68,3 +68,13 @@ export interface ImportStudentsCsvPayload {
   csv: string
   onDuplicateIne?: CsvDuplicateInePolicy
 }
+
+export interface AnonymizeStudentsPayload {
+  ids: number[]
+}
+
+export interface AnonymizeStudentsResult {
+  anonymized: number
+  deletedWithoutVisits: number
+  ignored: number
+}

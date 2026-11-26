@@ -220,4 +220,192 @@ describe('StudentGatewayDrizzle', () => {
       expect(await gateway.countVisitsByStudentId(NONEXISTENT_ID)).toBe(NO_VISITS)
     })
   })
+
+  describe('anonymizeByIds', () => {
+    const CHUNK_TEST_SIZE = 1200
+    const EXISTING_SNAPSHOT = '4C'
+
+    function insertSnapshotVisit(studentId: number, snapshot: string | null): void {
+      const now = new Date().toISOString()
+      sqlite
+        .prepare(
+          `INSERT INTO frequentation (starts_at, activity, student_id, student_classe, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+        )
+        .run('2026-03-02T10:15:00', 'reading', studentId, snapshot, now, now)
+    }
+
+    interface VisitRow {
+      student_id: number | null
+      student_classe: string | null
+    }
+
+    function visitRows(): VisitRow[] {
+      return sqlite
+        .prepare<[], VisitRow>('SELECT student_id, student_classe FROM frequentation ORDER BY id')
+        .all()
+    }
+
+    function studentCount(): number {
+      const row = sqlite.prepare<[], { n: number }>('SELECT COUNT(*) AS n FROM students').get()
+      return row?.n ?? 0
+    }
+
+    async function seed(nom: string, ine: string, classe = '3B') {
+      return gateway.create({ nom, prenom: 'Prenom', classe, ine })
+    }
+
+    it('anonymizes a student with visits: visits kept, student_id NULL, snapshot kept, student row gone', async () => {
+      const s = await seed('Dupont', 'INE1')
+      insertSnapshotVisit(s.id, '3B')
+      insertSnapshotVisit(s.id, '3B')
+      const result = await gateway.anonymizeByIds([s.id])
+      expect(result).toEqual({ anonymized: EXPECTED_ONE_STUDENT, deletedWithoutVisits: 0 })
+      expect(visitRows()).toEqual([
+        { student_id: null, student_classe: '3B' },
+        { student_id: null, student_classe: '3B' }
+      ])
+      expect(studentCount()).toBe(0)
+    })
+
+    it("sets the snapshot from the student's class when it was NULL", async () => {
+      const s = await seed('Dupont', 'INE1', '5A')
+      insertVisit(sqlite, s.id)
+      await gateway.anonymizeByIds([s.id])
+      expect(visitRows()).toEqual([{ student_id: null, student_classe: '5A' }])
+    })
+
+    it('keeps an existing snapshot different from the current class', async () => {
+      const s = await seed('Dupont', 'INE1', '3B')
+      insertSnapshotVisit(s.id, EXISTING_SNAPSHOT)
+      await gateway.anonymizeByIds([s.id])
+      expect(visitRows()).toEqual([{ student_id: null, student_classe: EXISTING_SNAPSHOT }])
+    })
+
+    it('student with 0 visits is deleted and counted in deletedWithoutVisits', async () => {
+      const s = await seed('Dupont', 'INE1')
+      const result = await gateway.anonymizeByIds([s.id])
+      expect(result).toEqual({ anonymized: 0, deletedWithoutVisits: EXPECTED_ONE_STUDENT })
+      expect(studentCount()).toBe(0)
+    })
+
+    it('mix of with/without visits', async () => {
+      const a = await seed('A', 'INE1')
+      const b = await seed('B', 'INE2')
+      const c = await seed('C', 'INE3')
+      insertVisit(sqlite, a.id)
+      insertVisit(sqlite, c.id)
+      const result = await gateway.anonymizeByIds([a.id, b.id, c.id])
+      expect(result).toEqual({ anonymized: EXPECTED_TWO_STUDENTS, deletedWithoutVisits: 1 })
+      expect(studentCount()).toBe(0)
+    })
+
+    it('unknown ids are ignored by the gateway', async () => {
+      const s = await seed('A', 'INE1')
+      const result = await gateway.anonymizeByIds([s.id, NONEXISTENT_ID])
+      expect(result).toEqual({ anonymized: 0, deletedWithoutVisits: EXPECTED_ONE_STUDENT })
+    })
+
+    it('empty list is a no-op returning zeros', async () => {
+      await seed('A', 'INE1')
+      const result = await gateway.anonymizeByIds([])
+      expect(result).toEqual({ anonymized: 0, deletedWithoutVisits: 0 })
+      expect(studentCount()).toBe(EXPECTED_ONE_STUDENT)
+    })
+
+    it('handles 1200 ids in chunks', async () => {
+      const insert = sqlite.prepare(
+        `INSERT INTO students (nom, prenom, classe, ine, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+      )
+      const now = new Date().toISOString()
+      const ids: number[] = []
+      for (let i = 0; i < CHUNK_TEST_SIZE; i++) {
+        const info = insert.run(`N${i}`, 'P', '3B', `INE-${i}`, now, now)
+        ids.push(Number(info.lastInsertRowid))
+      }
+      const [firstId] = ids
+      if (firstId === undefined) {
+        throw new Error('no ids')
+      }
+      insertVisit(sqlite, firstId)
+      const result = await gateway.anonymizeByIds(ids)
+      expect(result).toEqual({ anonymized: 1, deletedWithoutVisits: CHUNK_TEST_SIZE - 1 })
+      expect(studentCount()).toBe(0)
+    })
+
+    it("other students' visits are untouched", async () => {
+      const a = await seed('A', 'INE1')
+      const b = await seed('B', 'INE2')
+      insertVisit(sqlite, a.id)
+      insertVisit(sqlite, b.id)
+      await gateway.anonymizeByIds([a.id])
+      const rows = visitRows()
+      expect(rows.filter((r) => r.student_id === b.id)).toHaveLength(EXPECTED_ONE_VISIT)
+      expect(rows.filter((r) => r.student_id === null)).toHaveLength(EXPECTED_ONE_VISIT)
+      expect(rows.find((r) => r.student_id === b.id)?.student_classe).toBeNull()
+    })
+
+    it('no name, first name or INE remains anywhere in the database file', async () => {
+      const surname = 'Zzyzxsurname'
+      const firstName = 'Qwertyfirstname'
+      const ine = 'INEZZ99887766'
+      const s = await gateway.create({ nom: surname, prenom: firstName, classe: '3B', ine })
+      insertVisit(sqlite, s.id)
+      await gateway.anonymizeByIds([s.id])
+      sqlite.exec('VACUUM')
+      sqlite.pragma('wal_checkpoint(TRUNCATE)')
+      const dump = sqlite.serialize()
+      for (const secret of [surname, firstName, ine]) {
+        expect(dump.includes(Buffer.from(secret))).toBe(false)
+      }
+    })
+
+    describe('atomicity', () => {
+      function failDeletes(): void {
+        sqlite.exec(
+          `CREATE TRIGGER block_delete BEFORE DELETE ON students BEGIN SELECT RAISE(ABORT, 'blocked'); END`
+        )
+      }
+
+      it('rolls back everything when the delete fails mid-way', async () => {
+        const a = await seed('A', 'INE1')
+        const b = await seed('B', 'INE2')
+        insertVisit(sqlite, a.id)
+        failDeletes()
+        await expect(gateway.anonymizeByIds([a.id, b.id])).rejects.toThrow()
+        expect(visitRows()).toEqual([{ student_id: a.id, student_classe: null }])
+        expect(studentCount()).toBe(EXPECTED_TWO_STUDENTS)
+      })
+
+      it('withTransaction rolls back work and rethrows', async () => {
+        const s = await seed('A', 'INE1')
+        await expect(
+          gateway.withTransaction(async () => {
+            await gateway.delete(s.id)
+            throw new Error('boom')
+          })
+        ).rejects.toThrow('boom')
+        expect(studentCount()).toBe(EXPECTED_ONE_STUDENT)
+      })
+
+      it('withTransaction commits and returns the work result', async () => {
+        const s = await seed('A', 'INE1')
+        const result = await gateway.withTransaction(async () => gateway.delete(s.id))
+        expect(result).toBe(true)
+        expect(studentCount()).toBe(0)
+      })
+
+      it('anonymizeByIds inside withTransaction rolls back with the outer failure', async () => {
+        const a = await seed('A', 'INE1')
+        insertVisit(sqlite, a.id)
+        await expect(
+          gateway.withTransaction(async () => {
+            await gateway.anonymizeByIds([a.id])
+            throw new Error('outer failure')
+          })
+        ).rejects.toThrow('outer failure')
+        expect(visitRows()).toEqual([{ student_id: a.id, student_classe: null }])
+        expect(studentCount()).toBe(EXPECTED_ONE_STUDENT)
+      })
+    })
+  })
 })
