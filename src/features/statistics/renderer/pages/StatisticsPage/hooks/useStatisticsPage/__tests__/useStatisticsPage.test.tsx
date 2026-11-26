@@ -8,6 +8,7 @@ import { useStatisticsPage } from '../useStatisticsPage'
 const SAMPLE_TOTAL = 12
 const TEST_YEAR = 2026
 const TEST_DAY = 25
+const WEEK_RANGE = { startDate: '2026-11-23', endDate: '2026-11-29' }
 
 function createWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -49,6 +50,11 @@ describe('useStatisticsPage', () => {
     expect(result.current.stats?.totalVisits).toBe(SAMPLE_TOTAL)
   })
 
+  it('does not expose a range field', () => {
+    const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
+    expect(result.current).not.toHaveProperty('range')
+  })
+
   it('updates the period when selectPeriod is called', () => {
     const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
     act(() => {
@@ -63,7 +69,6 @@ describe('useStatisticsPage', () => {
       result.current.selectPeriod('custom')
     })
     expect(result.current.customRange).toEqual({ startDate: '2026-11-01', endDate: '2026-11-30' })
-    expect(result.current.range).toEqual({ startDate: '2026-11-01', endDate: '2026-11-30' })
   })
 
   it('queries the inclusive custom range', async () => {
@@ -122,7 +127,7 @@ describe('useStatisticsPage', () => {
     act(() => {
       result.current.setCustomRange({ startDate: '2026-11-20', endDate: '2026-11-10' })
     })
-    expect(result.current.range).toEqual({ startDate: '2026-11-20', endDate: '2026-11-10' })
+    expect(result.current.customRange).toEqual({ startDate: '2026-11-20', endDate: '2026-11-10' })
     expect(result.current.dataRange).toEqual({ startDate: '2026-11-01', endDate: '2026-11-30' })
     expect(result.current.isStale).toBe(true)
   })
@@ -141,7 +146,7 @@ describe('useStatisticsPage', () => {
       result.current.selectPeriod('week')
     })
     expect(result.current.dataRange).toEqual({ startDate: '2026-11-01', endDate: '2026-11-30' })
-    expect(result.current.range).not.toEqual(result.current.dataRange)
+    expect(window.electronAPI.statistics.getStats).toHaveBeenLastCalledWith(WEEK_RANGE)
     expect(result.current.isStale).toBe(true)
     await act(async () => {
       resolveWeek({
@@ -158,6 +163,6 @@ describe('useStatisticsPage', () => {
       })
     })
     await waitFor(() => expect(result.current.isStale).toBe(false))
-    expect(result.current.dataRange).toEqual(result.current.range)
+    expect(result.current.dataRange).toEqual(WEEK_RANGE)
   })
 })

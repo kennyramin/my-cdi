@@ -23,7 +23,6 @@ export function useStatisticsPage() {
   return {
     period,
     selectPeriod,
-    range,
     customRange,
     setCustomRange,
     customRangeError,
