@@ -7,6 +7,7 @@ import log from 'electron-log/main'
 import { createDbConnection, closeDbConnection, getDb, getSqlite } from '@shared/db/connection'
 import { readMigrationFiles } from 'drizzle-orm/migrator'
 import { MIGRATIONS_FOLDER, runMigrations } from '@shared/db/migrate'
+import { normalizeLegacyStartsAt } from '@shared/db/helpers/normalizeLegacyStartsAt'
 import { APP_CHANNELS } from '@shared/ipc/channels'
 import { UPDATER_CHANNELS } from '@shared/ipc/updaterChannels'
 import { createMainRouter } from '@shared/ipc/router'
@@ -201,6 +202,7 @@ if (!gotTheLock) {
         log.info(`Pre-migration backup written to ${backupPath}`)
       }
       runMigrations()
+      await normalizeLegacyStartsAt(getSqlite(), { createAutomaticBackup, logger: log })
       dbInitialized = true
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
