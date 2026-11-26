@@ -87,6 +87,13 @@ describe('ExportDialogContainer', () => {
 
   it('renders exact fr copy', () => {
     renderDialog()
+    expect(screen.getByRole('dialog', { name: 'Exporter les statistiques' })).toBeInTheDocument()
+    expect(screen.getByText('Données à exporter')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Disponible uniquement pour le journal. Les autres exports ne contiennent jamais de noms.'
+      )
+    ).toBeInTheDocument()
     expect(screen.getByText('Période : du 01/09/2026 au 30/11/2026')).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Visites par activité' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Visites par classe' })).toBeInTheDocument()
@@ -108,6 +115,10 @@ describe('ExportDialogContainer', () => {
     ).toHaveAccessibleDescription(
       'Only available for the journal. Other exports never contain names.'
     )
+    expect(screen.getByText('Data to export')).toBeInTheDocument()
+    expect(
+      screen.getByText('Only available for the journal. Other exports never contain names.')
+    ).toBeInTheDocument()
     expect(screen.getByText('Period: 01/09/2026 to 30/11/2026')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Export' })).toBeInTheDocument()
@@ -149,7 +160,7 @@ describe('ExportDialogContainer', () => {
     expect(onResult).not.toHaveBeenCalled()
   })
 
-  it('shows the failure inside the dialog as an alert and in the toast', async () => {
+  it('shows the failure inside the dialog as an alert only, without a toast', async () => {
     run.mockResolvedValue({ success: false, error: 'raw', code: ErrorCode.EXPORT_FILE_LOCKED })
     const user = userEvent.setup()
     renderDialog()
@@ -157,9 +168,30 @@ describe('ExportDialogContainer', () => {
     const alert = await screen.findByRole('alert')
     expect(alert.textContent).toMatch(/\S/)
     expect(alert).not.toHaveTextContent('raw')
-    expect(onResult).toHaveBeenCalledWith(alert.textContent, 'error')
+    expect(onResult).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Exporter' })).toBeEnabled()
+  })
+
+  it('ignores a backdrop click while the export is pending', async () => {
+    run.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRun = resolve
+        })
+    )
+    const user = userEvent.setup()
+    renderDialog()
+    await user.click(screen.getByRole('button', { name: 'Exporter' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Annuler' })).toBeDisabled())
+    const backdrop = document.querySelector('.MuiBackdrop-root')
+    expect(backdrop).not.toBeNull()
+    if (backdrop !== null) {
+      await user.click(backdrop)
+    }
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    await act(async () => resolveRun({ success: true, data: { cancelled: true } }))
   })
 
   it('closes from Annuler', async () => {

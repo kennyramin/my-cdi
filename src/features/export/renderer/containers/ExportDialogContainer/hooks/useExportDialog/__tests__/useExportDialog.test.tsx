@@ -139,7 +139,7 @@ describe('useExportDialog', () => {
     await waitFor(() => expect(onResult).toHaveBeenCalledWith('1234 lignes exportées', 'success'))
   })
 
-  it('shows the resolved error toast and keeps the dialog open on IPC failure', async () => {
+  it('keeps the dialog open with the resolved error text and no toast on IPC failure', async () => {
     run.mockResolvedValue({
       success: false,
       error: 'raw',
@@ -147,11 +147,10 @@ describe('useExportDialog', () => {
     })
     const { result } = setup()
     act(() => result.current.submit())
-    await waitFor(() => expect(onResult).toHaveBeenCalledTimes(1))
-    expect(onResult).toHaveBeenCalledWith(expect.not.stringMatching(/^raw$/), 'error')
+    await waitFor(() => expect(result.current.errorMessage).toMatch(/\S/))
+    expect(result.current.errorMessage).not.toBe('raw')
+    expect(onResult).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
-    expect(result.current.errorMessage).toMatch(/\S/)
-    expect(onResult).toHaveBeenCalledWith(result.current.errorMessage, 'error')
   })
 
   it('allows a new attempt after a failure', async () => {

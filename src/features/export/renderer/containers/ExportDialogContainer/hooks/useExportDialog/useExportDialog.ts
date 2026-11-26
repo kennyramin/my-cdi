@@ -54,10 +54,6 @@ export function useExportDialog({ scope, onClose, onResult }: UseExportDialogOpt
     onClose()
   }
 
-  function handleError(failure: Error) {
-    onResult(failure.message, 'error')
-  }
-
   function releaseInFlight() {
     inFlightRef.current = false
   }
@@ -69,7 +65,6 @@ export function useExportDialog({ scope, onClose, onResult }: UseExportDialogOpt
     inFlightRef.current = true
     mutate(buildExportRequest(scope, kind, includeNames), {
       onSuccess: handleSuccess,
-      onError: handleError,
       onSettled: releaseInFlight
     })
   }
