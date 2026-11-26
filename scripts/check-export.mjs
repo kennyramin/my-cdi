@@ -49,9 +49,11 @@ const MIN_DAYS_INTO_SCHOOL_YEAR = 3
 const SCHOOL_YEAR_START_MONTH = 8
 const BOM = [0xef, 0xbb, 0xbf]
 const BOM_LENGTH = BOM.length
+// eslint-disable-next-line no-control-regex -- control characters are exactly what is checked
 const WINDOWS_FORBIDDEN = /[<>:"/\\|?*\u0000-\u001f]/
 const FILE_NAME_PATTERN = /^mon-cdi-[a-z-]+-\d{4}-\d{2}-\d{2}(_\d{4}-\d{2}-\d{2})?\.csv$/
-const UNGUARDED_FORMULA = /^[ \t\r   -   　﻿​-‍⁠]*[=+\-@]|^[\t\r]/
+const FORMULA_SPACES = ' \\t\\r\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff\u200b-\u200d\u2060'
+const UNGUARDED_FORMULA = new RegExp(`^[${FORMULA_SPACES}]*[=+\\-@]|^[\\t\\r]`)
 
 const LABELS = {
   statisticsTrigger: 'Exporter',
