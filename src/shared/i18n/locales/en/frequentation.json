@@ -55,7 +55,11 @@
   },
   "edit": {
     "title": "Edit entry",
-    "save": "Save"
+    "save": "Save",
+    "date": "Date",
+    "time": "Time",
+    "student": "Student",
+    "anonymizedStudentLocked": "An anonymized student cannot be linked to a person again."
   },
   "duplicate": {
     "title": "Visit already recorded",

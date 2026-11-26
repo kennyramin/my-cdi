@@ -27,3 +27,10 @@ export const StudentClasse = styled(Typography, {
 })(({ theme }) => ({
   color: theme.palette.text.disabled
 }))
+
+export const ErrorText = styled(Typography, {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  marginTop: theme.spacing(2),
+  color: theme.palette.error.main
+}))

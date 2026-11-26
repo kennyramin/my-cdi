@@ -3,7 +3,12 @@ import InputAdornment from '@mui/material/InputAdornment'
 import type { AutocompleteInputProps } from './types/AutocompleteInputProps'
 import { InputField, SearchIcon } from './AutocompleteInput.styles'
 
-export function AutocompleteInput({ placeholder, params, inputRef }: AutocompleteInputProps) {
+export function AutocompleteInput({
+  placeholder,
+  params,
+  inputRef,
+  ariaLabel
+}: AutocompleteInputProps) {
   // MUI's Autocomplete installs its own ref on the native input via
   // slotProps.htmlInput (focus management); fork-merge it with the caller's
   // ref so both keep working.
@@ -25,7 +30,7 @@ export function AutocompleteInput({ placeholder, params, inputRef }: Autocomplet
             </InputAdornment>
           )
         },
-        htmlInput: { ...htmlInput, ref: handleInputRef }
+        htmlInput: { ...htmlInput, ref: handleInputRef, 'aria-label': ariaLabel }
       }}
     />
   )

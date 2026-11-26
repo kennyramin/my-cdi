@@ -5,4 +5,5 @@ export interface AutocompleteInputProps {
   placeholder?: string
   params: AutocompleteRenderInputParams
   inputRef?: RefObject<HTMLInputElement | null>
+  ariaLabel?: string
 }

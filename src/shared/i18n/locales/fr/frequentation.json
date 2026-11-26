@@ -55,7 +55,11 @@
   },
   "edit": {
     "title": "Modifier l'entrée",
-    "save": "Enregistrer"
+    "save": "Enregistrer",
+    "date": "Date",
+    "time": "Heure",
+    "student": "Élève",
+    "anonymizedStudentLocked": "Un élève anonymisé ne peut pas être réassocié à une personne."
   },
   "duplicate": {
     "title": "Présence déjà enregistrée",

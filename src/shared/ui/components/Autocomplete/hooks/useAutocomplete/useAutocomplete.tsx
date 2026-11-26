@@ -9,6 +9,7 @@ import { filterAutocompleteOptions } from '../../helpers/filterAutocompleteOptio
 import { filterExcludedOptions } from '../../helpers/filterExcludedOptions'
 
 const DEFAULT_MAX_RESULTS = 8
+const MUI_INPUT_RESET_REASON = 'reset'
 
 type MuiProps<T> = AutocompleteProps<AutocompleteOption<T>, false, false, false>
 
@@ -33,7 +34,10 @@ export function useAutocomplete<T>(props: UiAutocompleteProps<T>): MuiProps<T> {
     excludedValues,
     maxResults = DEFAULT_MAX_RESULTS,
     disableCloseOnSelect = false,
-    inputRef
+    inputRef,
+    disabled = false,
+    ariaLabel,
+    clearInputOnSelect = true
   } = props
 
   const filteredOptions = filterExcludedOptions(options, excludedValues)
@@ -44,7 +48,11 @@ export function useAutocomplete<T>(props: UiAutocompleteProps<T>): MuiProps<T> {
     isOptionEqualToValue,
     filterOptions: (candidates, state) => filterAutocompleteOptions(candidates, state, maxResults),
     inputValue,
-    onInputChange: (_event, value) => {
+    disabled,
+    onInputChange: (_event, value, reason) => {
+      if (!clearInputOnSelect && reason === MUI_INPUT_RESET_REASON) {
+        return
+      }
       if (onInputChange) {
         onInputChange(value)
       }
@@ -52,7 +60,7 @@ export function useAutocomplete<T>(props: UiAutocompleteProps<T>): MuiProps<T> {
     onChange: (_event, value) => {
       if (value !== null) {
         onSelect(value)
-        if (onInputChange) {
+        if (onInputChange && clearInputOnSelect) {
           onInputChange('')
         }
       }
@@ -65,7 +73,12 @@ export function useAutocomplete<T>(props: UiAutocompleteProps<T>): MuiProps<T> {
       <AutocompleteOptionItem {...renderProps} option={option} />
     ),
     renderInput: (params) => (
-      <AutocompleteInput placeholder={placeholder} params={params} inputRef={inputRef} />
+      <AutocompleteInput
+        placeholder={placeholder}
+        params={params}
+        inputRef={inputRef}
+        ariaLabel={ariaLabel}
+      />
     )
   }
 }

@@ -4,7 +4,12 @@ import { Modal } from '@ui/components/Modal'
 import { Button } from '@ui/components/Button'
 import { Avatar } from '@ui/components/Avatar'
 import { ActivityGridPresenter } from '@frequentation/presenters/ActivityGridPresenter'
-import { EntrySummary, StudentClasse, StudentName } from './JournalEntryEditDialogPresenter.styles'
+import {
+  EntrySummary,
+  ErrorText,
+  StudentClasse,
+  StudentName
+} from './JournalEntryEditDialogPresenter.styles'
 
 export interface EditDialogEntryViewModel {
   initials: string
@@ -19,6 +24,9 @@ interface JournalEntryEditDialogPresenterProps {
   tileNodes: ReactNode[]
   onSubmit: () => void
   onClose: () => void
+  fields: ReactNode
+  canSubmit: boolean
+  errorMessage?: string
   saving?: boolean
   entry?: EditDialogEntryViewModel
 }
@@ -28,6 +36,9 @@ export function JournalEntryEditDialogPresenter({
   tileNodes,
   onSubmit,
   onClose,
+  fields,
+  canSubmit,
+  errorMessage,
   saving = false,
   entry
 }: JournalEntryEditDialogPresenterProps) {
@@ -44,7 +55,7 @@ export function JournalEntryEditDialogPresenter({
           <Button variant="secondary" onClick={onClose}>
             {t('form.cancel')}
           </Button>
-          <Button variant="primary" onClick={onSubmit} disabled={saving}>
+          <Button variant="primary" onClick={onSubmit} disabled={saving || !canSubmit}>
             {t('edit.save')}
           </Button>
         </>
@@ -59,7 +70,9 @@ export function JournalEntryEditDialogPresenter({
           </div>
         </EntrySummary>
       ) : null}
+      {fields}
       <ActivityGridPresenter tileNodes={tileNodes} />
+      {errorMessage ? <ErrorText role="alert">{errorMessage}</ErrorText> : null}
     </Modal>
   )
 }

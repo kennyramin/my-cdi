@@ -1,12 +1,13 @@
-import { Toast } from '@ui/components/Toast'
 import { CalendarContainer } from './containers/CalendarContainer'
 import { JournalEntryFormContainer } from './containers/JournalEntryFormContainer'
 import { JournalEntryListContainer } from './containers/JournalEntryListContainer'
 import { JournalEntryEditDialogPresenter } from '@frequentation/presenters/JournalEntryEditDialogPresenter'
 import { buildActivityTiles } from '@frequentation/presenters/ActivityGridPresenter/helpers/buildActivityTiles'
 import { buildActivityTileNodes } from '@frequentation/presenters/ActivityGridPresenter/helpers/buildActivityTileNodes'
+import { EditEntryFieldsPresenter } from '@frequentation/presenters/EditEntryFieldsPresenter'
 import { DuplicateWarningDialogPresenter } from '@frequentation/presenters/DuplicateWarningDialogPresenter'
 import { getEntryAvatar } from '@frequentation/helpers/getEntryAvatar'
+import { formatLocalDate } from '@lib/localDateTime'
 import { useJournalPage } from './hooks/useJournalPage'
 import { useSubmitBarHeight } from './hooks/useSubmitBarHeight'
 import { FormColumn, ListColumn, PageGrid } from './JournalPage.styles'
@@ -16,19 +17,28 @@ export function JournalPage() {
     selectedDate,
     setSelectedDate,
     editingEntry,
+    editDraft,
     editingActivity,
     setEditingActivity,
+    setEditDate,
+    setEditTime,
+    setEditStudent,
+    studentOptions,
+    editStudentInputValue,
+    setEditStudentInputValue,
+    isEditAnonymized,
+    isEditFuture,
+    canSubmitEdit,
+    editError,
     startEditing,
     closeEditDialog,
     activityOptions,
     submitEdit,
     getLabel,
-    pendingDuplicates,
-    confirmDuplicates,
-    cancelDuplicates,
-    isSaving,
-    toast,
-    dismissToast
+    pendingEditDuplicates,
+    confirmEditDuplicates,
+    cancelEditDuplicates,
+    isSaving
   } = useJournalPage()
 
   const formColumnRef = useSubmitBarHeight<HTMLDivElement>()
@@ -42,7 +52,7 @@ export function JournalPage() {
       <ListColumn>
         <JournalEntryListContainer selectedDate={selectedDate} onEditEntry={startEditing} />
       </ListColumn>
-      {editingEntry && editingActivity ? (
+      {editingEntry && editDraft && editingActivity ? (
         <JournalEntryEditDialogPresenter
           open
           tileNodes={buildActivityTileNodes(
@@ -51,6 +61,23 @@ export function JournalPage() {
           onSubmit={submitEdit}
           onClose={closeEditDialog}
           saving={isSaving}
+          canSubmit={canSubmitEdit}
+          errorMessage={editError ?? undefined}
+          fields={
+            <EditEntryFieldsPresenter
+              date={editDraft.date}
+              time={editDraft.time}
+              maxDate={formatLocalDate(new Date())}
+              isFuture={isEditFuture}
+              onDateChange={setEditDate}
+              onTimeChange={setEditTime}
+              studentOptions={studentOptions}
+              studentInputValue={editStudentInputValue}
+              onStudentInputChange={setEditStudentInputValue}
+              onStudentSelect={setEditStudent}
+              studentLocked={isEditAnonymized}
+            />
+          }
           entry={{
             ...getEntryAvatar(editingEntry),
             displayName: editingEntry.student.displayName,
@@ -59,13 +86,12 @@ export function JournalPage() {
         />
       ) : null}
       <DuplicateWarningDialogPresenter
-        duplicates={pendingDuplicates}
-        onConfirm={confirmDuplicates}
-        onCancel={cancelDuplicates}
+        duplicates={pendingEditDuplicates}
+        onConfirm={confirmEditDuplicates}
+        onCancel={cancelEditDuplicates}
         getActivityLabel={getLabel}
         busy={isSaving}
       />
-      <Toast toast={toast} onClose={dismissToast} />
     </PageGrid>
   )
 }
