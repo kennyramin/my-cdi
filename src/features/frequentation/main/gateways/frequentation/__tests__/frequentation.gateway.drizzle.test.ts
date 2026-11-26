@@ -3,6 +3,8 @@ import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { ActivityType } from '@types'
 import { migrateTestDatabase } from '@shared/db/testing/migrateTestDatabase'
+import { ErrorCode } from '@lib/errors'
+import { updateFrequentation } from '@frequentation/use-cases/updateFrequentation'
 import { FrequentationGatewayDrizzle } from '../frequentation.gateway.drizzle'
 
 const NONEXISTENT_ID = 999
@@ -313,6 +315,39 @@ describe('FrequentationGatewayDrizzle', () => {
       await createVisit(1)
       sqlite.prepare('DELETE FROM students WHERE id = 1').run()
       expect(await gateway.count()).toBe(0)
+    })
+  })
+
+  describe('anonymized visit through the update use-case', () => {
+    const createAnonymizedVisit = async (): Promise<number> => {
+      const visit = await gateway.create({
+        startsAt: VISIT_START,
+        activity: ActivityType.WORK,
+        studentId: 1
+      })
+      sqlite.prepare('UPDATE frequentation SET student_id = NULL WHERE id = ?').run(visit.id)
+      return visit.id
+    }
+
+    it('cannot be re-linked to a student and stays anonymous', async () => {
+      const id = await createAnonymizedVisit()
+
+      const result = await updateFrequentation(gateway, id, { studentId: SECOND_STUDENT_ID })
+
+      expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+      expect((await gateway.getById(id))?.studentId).toBeNull()
+    })
+
+    it('accepts an activity change and keeps it anonymous', async () => {
+      const id = await createAnonymizedVisit()
+
+      const result = await updateFrequentation(gateway, id, { activity: ActivityType.READING })
+
+      expect(result.success).toBe(true)
+      expect(await gateway.getById(id)).toMatchObject({
+        studentId: null,
+        activity: ActivityType.READING
+      })
     })
   })
 

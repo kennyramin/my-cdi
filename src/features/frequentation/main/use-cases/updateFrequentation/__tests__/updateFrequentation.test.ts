@@ -80,4 +80,31 @@ describe('updateFrequentation', () => {
       expect(result.error).toContain('Update failed')
     }
   })
+
+  describe('anonymized visit (stored student_id is NULL)', () => {
+    const ANONYMIZED_ENTITY: FrequentationEntity = { ...EXISTING_ENTITY, studentId: null }
+
+    it('refuses to link it to a student again', async () => {
+      const update = vi.fn()
+      const gateway = createMockGateway({
+        getById: vi.fn().mockResolvedValue(ANONYMIZED_ENTITY),
+        update
+      })
+
+      const result = await updateFrequentation(gateway, 1, { studentId: 1 })
+
+      expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+      expect(update).not.toHaveBeenCalled()
+    })
+
+    it('still accepts an activity-only update', async () => {
+      const gateway = createMockGateway({
+        getById: vi.fn().mockResolvedValue(ANONYMIZED_ENTITY)
+      })
+
+      const result = await updateFrequentation(gateway, 1, { activity: ActivityType.READING })
+
+      expect(result.success).toBe(true)
+    })
+  })
 })

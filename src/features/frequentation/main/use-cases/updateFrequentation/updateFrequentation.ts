@@ -18,6 +18,14 @@ export async function updateFrequentation(
     }
   }
 
+  if (existingFrequentation.studentId === null && dto.studentId !== undefined) {
+    return {
+      success: false,
+      error: 'An anonymized visit cannot be linked to a student again',
+      code: ErrorCode.VALIDATION_ERROR
+    }
+  }
+
   if (dto.studentId !== undefined && dto.studentId < 1) {
     return { success: false, error: 'Invalid student id', code: ErrorCode.VALIDATION_ERROR }
   }
