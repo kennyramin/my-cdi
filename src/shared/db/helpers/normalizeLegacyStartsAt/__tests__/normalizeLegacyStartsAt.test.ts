@@ -231,4 +231,68 @@ describe('normalizeLegacyStartsAt', () => {
     expect(flagValue(sqlite)).toBe('true')
     expect(createAutomaticBackup).not.toHaveBeenCalled()
   })
+
+  it('sets the done flag to true after a run that converted rows', async () => {
+    insertVisit(sqlite, '2026-05-01T07:30:00.000Z')
+
+    await run()
+
+    expect(flagValue(sqlite)).toBe('true')
+  })
+
+  it('only treats the flag value "true" as done', async () => {
+    const id = insertVisit(sqlite, '2026-05-01T07:30:00.000Z')
+    sqlite
+      .prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
+      .run(STARTS_AT_LOCAL_DONE_KEY, 'false')
+
+    const result = await run()
+
+    expect(result.status).toBe('converted')
+    expect(startsAtOf(sqlite, id)).toBe('2026-05-01T09:30:00')
+    expect(flagValue(sqlite)).toBe('true')
+  })
+
+  it('converts a timestamp without seconds', async () => {
+    expect(await convert('2026-05-01T07:30Z')).toBe('2026-05-01T09:30:00')
+  })
+
+  it('converts more than three fractional digits', async () => {
+    expect(await convert('2026-05-01T07:30:00.123456Z')).toBe('2026-05-01T09:30:00')
+  })
+
+  it('counts an hour-only offset (+02) as unparseable and leaves it untouched', async () => {
+    const id = insertVisit(sqlite, '2026-07-10T09:30:00+02')
+
+    const result = await run()
+
+    expect(startsAtOf(sqlite, id)).toBe('2026-07-10T09:30:00+02')
+    expect(result).toEqual({ status: 'nothing-to-convert', converted: 0, unparseable: 1 })
+  })
+
+  it.each(['2026-02-30T10:00:00Z', '2026-04-31T10:00:00Z', '2026-05-01T24:00:00Z'])(
+    'treats the impossible date %s as unparseable instead of rolling it over',
+    async (impossible) => {
+      const id = insertVisit(sqlite, impossible)
+
+      const result = await run()
+
+      expect(startsAtOf(sqlite, id)).toBe(impossible)
+      expect(result).toEqual({ status: 'nothing-to-convert', converted: 0, unparseable: 1 })
+    }
+  )
+
+  it('does not overwrite a row that changed while the backup was being written', async () => {
+    const id = insertVisit(sqlite, '2026-05-01T07:30:00.000Z')
+    createAutomaticBackup.mockImplementation(async () => {
+      sqlite
+        .prepare('UPDATE frequentation SET starts_at = ? WHERE id = ?')
+        .run('2026-05-01T11:00:00', id)
+      return BACKUP_PATH
+    })
+
+    await run()
+
+    expect(startsAtOf(sqlite, id)).toBe('2026-05-01T11:00:00')
+  })
 })

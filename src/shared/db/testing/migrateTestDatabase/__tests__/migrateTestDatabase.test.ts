@@ -1,15 +1,12 @@
-import { readdirSync } from 'node:fs'
+import { mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import Database from 'better-sqlite3'
 import { migrateTestDatabase } from '../migrateTestDatabase'
 
 const FIRST_MIGRATION_ONLY = 1
-const TMP_PREFIX = 'my-cdi-migrations-'
-
-function leftoverFolders(): string[] {
-  return readdirSync(tmpdir()).filter((name) => name.startsWith(TMP_PREFIX))
-}
+const TEST_TMP_PREFIX = 'migrate-test-tmp-'
 
 function tableNames(sqlite: Database.Database): string[] {
   return sqlite
@@ -41,10 +38,17 @@ describe('migrateTestDatabase', () => {
   })
 
   it('leaves no temporary migrations folder behind', () => {
-    const before = leftoverFolders()
-    const sqlite = new Database(':memory:')
-    migrateTestDatabase(sqlite)
-    sqlite.close()
-    expect(leftoverFolders()).toEqual(before)
+    const previousTmpDir = process.env.TMPDIR
+    const privateTmpDir = mkdtempSync(join(tmpdir(), TEST_TMP_PREFIX))
+    process.env.TMPDIR = privateTmpDir
+    try {
+      const sqlite = new Database(':memory:')
+      migrateTestDatabase(sqlite)
+      sqlite.close()
+      expect(readdirSync(privateTmpDir)).toEqual([])
+    } finally {
+      process.env.TMPDIR = previousTmpDir
+      rmSync(privateTmpDir, { recursive: true, force: true })
+    }
   })
 })

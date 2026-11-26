@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync 
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import type { AutomaticBackupReason } from '@backup-shared'
+import { AppError, ErrorCode } from '@lib/errors'
 import { buildAutomaticBackupName } from '../../../helpers/backupFileName'
 import { configureBackupRuntime } from '../../../runtime'
 import { listAutomaticBackups } from '../../listAutomaticBackups'
@@ -83,6 +84,15 @@ describe('createAutomaticBackup', () => {
     expect(existsSync(backupsDir)).toBe(false)
     const path = await createAutomaticBackup('restore')
     expect(existsSync(path)).toBe(true)
+  })
+
+  it('reports an unusable backups folder as BACKUP_WRITE_FAILED', async () => {
+    writeFileSync(backupsDir, 'a file where the folder should be')
+
+    const failure = await createAutomaticBackup('migration').catch((error: unknown) => error)
+
+    expect(failure).toBeInstanceOf(AppError)
+    expect(failure).toMatchObject({ code: ErrorCode.BACKUP_WRITE_FAILED })
   })
 
   it('never overwrites a backup written in the same second', async () => {

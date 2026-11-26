@@ -7,6 +7,7 @@ import log from 'electron-log/main'
 import { createDbConnection, closeDbConnection, getDb, getSqlite } from '@shared/db/connection'
 import { readMigrationFiles } from 'drizzle-orm/migrator'
 import { MIGRATIONS_FOLDER, runMigrations } from '@shared/db/migrate'
+import { buildStartupErrorMessage } from './helpers/buildStartupErrorMessage'
 import { normalizeLegacyStartsAt } from '@shared/db/helpers/normalizeLegacyStartsAt'
 import { APP_CHANNELS } from '@shared/ipc/channels'
 import { UPDATER_CHANNELS } from '@shared/ipc/updaterChannels'
@@ -208,10 +209,7 @@ if (!gotTheLock) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       log.error(`Failed to initialize database: ${message}`)
       log.error(`Database path: ${DATABASE_PATH}`)
-      dialog.showErrorBox(
-        'Database Error',
-        `Failed to initialize the database.\n\nPath: ${DATABASE_PATH}\nError: ${message}\n\nIf the database schema is outdated, delete the file and restart the app.`
-      )
+      dialog.showErrorBox('Database Error', buildStartupErrorMessage(error, DATABASE_PATH))
       closeDbConnection()
       app.quit()
       return

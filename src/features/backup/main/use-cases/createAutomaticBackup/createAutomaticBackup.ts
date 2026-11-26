@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { AutomaticBackupReason } from '@backup-shared'
+import { AppError, ErrorCode } from '@lib/errors'
 import { buildAutomaticBackupName, RESTORE_REASON } from '../../helpers/backupFileName'
 import { getBackupRuntime, runExclusive } from '../../runtime'
 import { createBackup } from '../createBackup'
@@ -68,12 +69,21 @@ async function pruneAutomaticBackups(
   }
 }
 
+async function ensureBackupsDir(backupsDir: string): Promise<void> {
+  try {
+    await mkdir(backupsDir, { recursive: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new AppError(ErrorCode.BACKUP_WRITE_FAILED, message, { cause: error })
+  }
+}
+
 export function createAutomaticBackup(reason: AutomaticBackupReason): Promise<string> {
   return runExclusive(async () => {
     const runtime = getBackupRuntime()
     const now = runtime.now()
 
-    await mkdir(runtime.backupsDir, { recursive: true })
+    await ensureBackupsDir(runtime.backupsDir)
     const path = pickFreshPath(runtime.backupsDir, now, reason)
     await createBackup(runtime.getSqlite(), path)
     await pruneAutomaticBackups(runtime.backupsDir, now, path).catch(ignorePruneFailure)
