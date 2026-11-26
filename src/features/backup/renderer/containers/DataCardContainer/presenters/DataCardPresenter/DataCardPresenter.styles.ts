@@ -17,6 +17,9 @@ export const StatusLine = styled(Box, {
   color: theme.palette.text.primary,
   '&[data-warning="true"]': {
     color: theme.palette.warning.main
+  },
+  '&[data-loading="true"]': {
+    color: theme.palette.text.secondary
   }
 }))
 
@@ -33,4 +36,12 @@ export const PrivacyNote = styled(Box, {
 })(({ theme }) => ({
   ...theme.typography.body2,
   color: theme.palette.text.secondary
+}))
+
+export const WarningHint = styled('span', {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  marginInlineStart: theme.spacing(1),
+  fontWeight: theme.typography.fontWeightMedium,
+  '&::before': { content: '"— "' }
 }))

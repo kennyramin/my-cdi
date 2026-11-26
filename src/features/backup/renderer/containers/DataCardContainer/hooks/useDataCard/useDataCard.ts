@@ -18,18 +18,31 @@ export function useDataCard() {
   const createBackup = useCreateBackup()
   const restoreBackup = useRestoreBackup()
   const deleteAutomatic = useDeleteAutomaticBackups()
-  const [restoreFileName, setRestoreFileName] = useState<string | null>(null)
+  const [restoreFileName, setRestoreFileName] = useState('')
+  const [isRestoreOpen, setIsRestoreOpen] = useState(false)
+  const [isRestarting, setIsRestarting] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
+  const isLoading = status.isPending
+  const isError = status.isError
+  const isReady = status.isSuccess
   const statusView = getBackupStatusView(status.data?.lastBackupAt ?? null, new Date())
+  const isWarning = isReady && (statusView.kind === 'never' || statusView.isWarning)
   const automaticCount = status.data?.automaticCount ?? 0
   const isBusy =
     createBackup.isPending ||
     restoreBackup.isPending ||
     deleteAutomatic.isPending ||
-    status.isPending
+    isRestarting ||
+    !isReady
 
   function resolveStatusText(): string {
+    if (isLoading) {
+      return t('settings.data.status.loading')
+    }
+    if (isError) {
+      return errorMessageOf(status.error, t('errors.generic'))
+    }
     if (statusView.kind === 'never') {
       return t('settings.data.status.never')
     }
@@ -39,72 +52,82 @@ export function useDataCard() {
     return t('settings.data.status.days', { count: statusView.days })
   }
 
-  async function onBackup() {
+  async function runAndToast(action: () => Promise<void>) {
     try {
+      await action()
+    } catch (error) {
+      show(errorMessageOf(error, t('errors.generic')), 'error')
+    }
+  }
+
+  function onBackup() {
+    return runAndToast(async () => {
       const result = await createBackup.mutateAsync()
       if ('path' in result) {
         show(t('settings.data.backupSuccess'))
       }
-    } catch (error) {
-      show(errorMessageOf(error, t('errors.generic')), 'error')
-    }
+    })
   }
 
-  async function onRestoreStart() {
-    try {
+  function onRestoreStart() {
+    return runAndToast(async () => {
       const result = await restoreBackup.mutateAsync({ phase: 'select' })
       if ('fileName' in result) {
         setRestoreFileName(result.fileName)
+        setIsRestoreOpen(true)
       }
-    } catch (error) {
-      show(errorMessageOf(error, t('errors.generic')), 'error')
-    }
+    })
   }
 
-  async function onRestoreConfirm() {
-    setRestoreFileName(null)
-    try {
+  function onRestoreConfirm() {
+    setIsRestoreOpen(false)
+    return runAndToast(async () => {
       await restoreBackup.mutateAsync({ phase: 'confirm' })
-    } catch (error) {
-      show(errorMessageOf(error, t('errors.generic')), 'error')
-    }
+      setIsRestarting(true)
+    })
   }
 
   function onRestoreCancel() {
-    setRestoreFileName(null)
+    setIsRestoreOpen(false)
   }
 
   function onDeleteStart() {
     setIsDeleteOpen(true)
   }
 
-  async function onDeleteConfirm() {
+  function onDeleteConfirm() {
     setIsDeleteOpen(false)
-    try {
+    return runAndToast(async () => {
       await deleteAutomatic.mutateAsync()
       show(t('settings.data.deleteSuccess'))
-    } catch (error) {
-      show(errorMessageOf(error, t('errors.generic')), 'error')
-    }
+    })
   }
 
   function onDeleteCancel() {
     setIsDeleteOpen(false)
   }
 
+  function onRetry() {
+    void status.refetch()
+  }
+
   return {
     statusText: resolveStatusText(),
-    isWarning: statusView.kind === 'never' || statusView.isWarning,
+    warningText: isWarning ? t('settings.data.status.recommended') : '',
+    isLoading,
+    isError,
+    isWarning,
     automaticCount,
     onBackup,
     onRestoreStart,
-    restoreDialog: { open: restoreFileName !== null, fileName: restoreFileName ?? '' },
+    restoreDialog: { open: isRestoreOpen, fileName: restoreFileName },
     onRestoreConfirm,
     onRestoreCancel,
     deleteDialog: { open: isDeleteOpen },
     onDeleteStart,
     onDeleteConfirm,
     onDeleteCancel,
+    onRetry,
     toast,
     dismissToast: dismiss,
     isBusy

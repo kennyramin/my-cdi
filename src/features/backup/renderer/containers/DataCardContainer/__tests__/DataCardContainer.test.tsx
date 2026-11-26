@@ -9,7 +9,9 @@ import { ErrorCode } from '@lib/errors'
 import { DataCardContainer } from '../DataCardContainer'
 
 const AUTOMATIC_COUNT = 3
+const LOADING_TEXT = 'Dernière sauvegarde : chargement…'
 const OLD_BACKUP_DAYS = 12
+const STALE_BACKUP_DAYS = 40
 const MS_PER_DAY = 86_400_000
 
 function makeWrapper() {
@@ -56,7 +58,9 @@ function renderCard() {
 }
 
 async function findStatus(text: string) {
-  return screen.findByText(text)
+  const status = await screen.findByText(text)
+  expect(screen.queryByText(LOADING_TEXT)).not.toBeInTheDocument()
+  return status
 }
 
 describe('DataCardContainer', () => {
@@ -315,5 +319,78 @@ describe('DataCardContainer', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Sauvegarder maintenant' })).toBeEnabled()
     )
+  })
+
+  it('shows a neutral placeholder, not "jamais", while the status loads', async () => {
+    let resolveStatus: (value: unknown) => void = () => undefined
+    stubBackup({
+      getStatus: vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveStatus = resolve
+          })
+      )
+    })
+    renderCard()
+
+    const placeholder = await screen.findByText(LOADING_TEXT)
+    expect(placeholder).toHaveAttribute('data-warning', 'false')
+    expect(screen.queryByText('Dernière sauvegarde : jamais')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sauvegarder maintenant' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Supprimer les sauvegardes automatiques (0)' })
+    ).toBeDisabled()
+    resolveStatus({ success: true, data: { lastBackupAt: null, automaticCount: 0 } })
+    expect(await screen.findByText('Dernière sauvegarde : jamais')).toBeInTheDocument()
+  })
+
+  it('shows the translated error with a retry when the status fails', async () => {
+    const getStatus = vi
+      .fn()
+      .mockResolvedValueOnce(failure(ErrorCode.DATABASE_ERROR))
+      .mockResolvedValue({ success: true, data: { lastBackupAt: null, automaticCount: 2 } })
+    stubBackup({ getStatus })
+    renderCard()
+
+    expect(await screen.findByText('Une erreur est survenue')).toBeInTheDocument()
+    expect(screen.queryByText('Dernière sauvegarde : jamais')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sauvegarder maintenant' })).toBeDisabled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }))
+
+    expect(await screen.findByText('Dernière sauvegarde : jamais')).toBeInTheDocument()
+    expect(getStatus).toHaveBeenCalledTimes(2)
+  })
+
+  it('adds a textual cue and a polite live region for a stale backup', async () => {
+    const stale = new Date(Date.now() - STALE_BACKUP_DAYS * MS_PER_DAY).toISOString()
+    stubBackup({
+      getStatus: vi
+        .fn()
+        .mockResolvedValue({ success: true, data: { lastBackupAt: stale, automaticCount: 0 } })
+    })
+    renderCard()
+
+    expect(await screen.findByText('sauvegarde conseillée')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite')
+  })
+
+  it('keeps the buttons disabled after a successful restore until the restart', async () => {
+    const restore = vi
+      .fn()
+      .mockResolvedValueOnce({ success: true, data: { fileName: 'cdi-2026.db' } })
+      .mockResolvedValue({ success: true, data: { restored: true } })
+    stubBackup({ restore })
+    renderCard()
+    await findStatus('Dernière sauvegarde : jamais')
+    await userEvent.click(screen.getByRole('button', { name: 'Restaurer une sauvegarde…' }))
+    const dialog = await screen.findByRole('dialog')
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Restaurer' }))
+
+    await waitFor(() => expect(restore).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Sauvegarder maintenant' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Restaurer une sauvegarde…' })).toBeDisabled()
   })
 })

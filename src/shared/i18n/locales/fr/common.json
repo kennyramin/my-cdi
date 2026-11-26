@@ -55,7 +55,10 @@
     },
     "data": {
       "title": "Données",
+      "retry": "Réessayer",
       "status": {
+        "loading": "Dernière sauvegarde : chargement…",
+        "recommended": "sauvegarde conseillée",
         "never": "Dernière sauvegarde : jamais",
         "today": "Dernière sauvegarde : aujourd'hui",
         "days_one": "Dernière sauvegarde : il y a {{count}} jour",

@@ -12,7 +12,11 @@ export function DataCardContainer() {
     <>
       <DataCardPresenter
         statusText={card.statusText}
+        warningText={card.warningText}
+        isLoading={card.isLoading}
+        isError={card.isError}
         isWarning={card.isWarning}
+        onRetry={card.onRetry}
         automaticCount={card.automaticCount}
         isBusy={card.isBusy}
         onBackup={card.onBackup}

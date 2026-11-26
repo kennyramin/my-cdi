@@ -55,7 +55,10 @@
     },
     "data": {
       "title": "Data",
+      "retry": "Retry",
       "status": {
+        "loading": "Last backup: loading…",
+        "recommended": "backup recommended",
         "never": "Last backup: never",
         "today": "Last backup: today",
         "days_one": "Last backup: {{count}} day ago",
