@@ -1,8 +1,15 @@
+import { readdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { describe, it, expect } from 'vitest'
 import Database from 'better-sqlite3'
 import { migrateTestDatabase } from '../migrateTestDatabase'
 
 const FIRST_MIGRATION_ONLY = 1
+const TMP_PREFIX = 'my-cdi-migrations-'
+
+function leftoverFolders(): string[] {
+  return readdirSync(tmpdir()).filter((name) => name.startsWith(TMP_PREFIX))
+}
 
 function tableNames(sqlite: Database.Database): string[] {
   return sqlite
@@ -31,5 +38,13 @@ describe('migrateTestDatabase', () => {
     expect(names).toContain('frequentation')
     expect(names).toContain('settings')
     sqlite.close()
+  })
+
+  it('leaves no temporary migrations folder behind', () => {
+    const before = leftoverFolders()
+    const sqlite = new Database(':memory:')
+    migrateTestDatabase(sqlite)
+    sqlite.close()
+    expect(leftoverFolders()).toEqual(before)
   })
 })

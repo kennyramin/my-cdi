@@ -21,6 +21,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { AppError, ErrorCode } from '@lib/errors'
+import { migrateTestDatabase } from '@shared/db/testing/migrateTestDatabase'
 import { validateBackupFile } from '../validateBackupFile'
 
 const MIGRATIONS_TABLE = '__drizzle_migrations'
@@ -37,6 +38,7 @@ const CORRUPT_OFFSET = 4096
 const CORRUPT_LENGTH = 8192
 const CORRUPT_BYTE = 0xff
 const PARTIAL_MIGRATIONS_COUNT = 2
+const MIGRATIONS_BEFORE_ANONYMIZATION = 4
 
 interface MakeDbOptions {
   dropTables?: string[]
@@ -146,8 +148,30 @@ describe('validateBackupFile', () => {
       expect(() => validate(path)).not.toThrow()
     })
 
-    it('an older-version backup', () => {
+    it('an older-version backup whose frequentation table still has the pre-0004 shape', () => {
       const path = join(dir, 'older.db')
+      const older = new Database(path)
+      try {
+        migrateTestDatabase(older, { upTo: MIGRATIONS_BEFORE_ANONYMIZATION })
+        older.exec(
+          "INSERT INTO students (nom, prenom, classe, ine, created_at, updated_at) VALUES ('n', 'p', 'c', 'ine1', 'd', 'd')"
+        )
+        older.exec(
+          "INSERT INTO frequentation (starts_at, activity, student_id, created_at, updated_at) VALUES ('2026-01-05T10:00:00', 'work', 1, 'd', 'd')"
+        )
+        const columns = older
+          .prepare<[], { name: string }>("SELECT name FROM pragma_table_info('frequentation')")
+          .all()
+          .map((column) => column.name)
+        expect(columns).not.toContain('student_classe')
+      } finally {
+        older.close()
+      }
+      expect(() => validate(path)).not.toThrow()
+    })
+
+    it('a current backup whose last migration entry was forgotten', () => {
+      const path = join(dir, 'forgotten.db')
       makeDb(path)
       execOn(path, FORGET_LAST_MIGRATION)
       expect(() => validate(path)).not.toThrow()

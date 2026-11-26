@@ -12,8 +12,8 @@ export async function initializeModules(
   backupDeps: BackupModuleDeps
 ): Promise<void> {
   const db = getDb()
-  const studentGateway = initializeStudentModule(db, ipcMain, { createAutomaticBackup })
-  const frequentationGateway = initializeFrequentationModule(db, ipcMain, studentGateway)
+  initializeStudentModule(db, ipcMain, { createAutomaticBackup })
+  const frequentationGateway = initializeFrequentationModule(db, ipcMain)
   initializeStatisticsModule(ipcMain, frequentationGateway)
   initializeSettingsModule(db, ipcMain)
   initializeBackupModule(db, ipcMain, backupDeps)

@@ -1,12 +1,10 @@
 import type { FrequentationGateway } from '@frequentation/gateways/frequentation'
-import type { StudentGateway } from '@student/gateways/student'
 import type { DateRangeDto, JournalEntryDto } from '@frequentation-shared'
 import type { UseCaseResult } from '@lib/use-case'
 import { formatFrequentationResponse } from '../helpers/formatFrequentationResponse'
 
 export async function getJournalEntries(
   frequentationGateway: FrequentationGateway,
-  _studentGateway: StudentGateway,
   dateRange: DateRangeDto
 ): Promise<UseCaseResult<JournalEntryDto[]>> {
   try {

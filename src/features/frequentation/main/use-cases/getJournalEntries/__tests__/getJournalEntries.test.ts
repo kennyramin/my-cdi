@@ -2,12 +2,10 @@ import { describe, it, expect, vi } from 'vitest'
 import { ActivityType } from '@types'
 import { getJournalEntries } from '../getJournalEntries'
 import type { FrequentationGateway } from '@frequentation/gateways/frequentation'
-import type { StudentGateway } from '@student/gateways/student'
 import type {
   FrequentationWithStudentEntity,
   FrequentationEntity
 } from '@frequentation/entities/frequentation'
-import type { StudentEntity } from '@student/entities/student'
 import { ANONYMIZED_STUDENT_LABEL } from '@frequentation-shared'
 import type { DateRangeDto } from '@frequentation-shared'
 
@@ -36,16 +34,6 @@ const FREQUENTATION_ENTITY: FrequentationWithStudentEntity = {
   updatedAt: '2026-01-15T09:00:00.000Z'
 }
 
-const STUDENT_ENTITY: StudentEntity = {
-  id: 1,
-  nom: 'Dupont',
-  prenom: 'Jean',
-  classe: '6ème A',
-  ine: '12345678X',
-  createdAt: '2026-01-15T09:00:00.000Z',
-  updatedAt: '2026-01-15T09:00:00.000Z'
-}
-
 function createMockFrequentationGateway(
   overrides: Partial<FrequentationGateway> = {}
 ): FrequentationGateway {
@@ -63,29 +51,12 @@ function createMockFrequentationGateway(
   }
 }
 
-function createMockStudentGateway(): StudentGateway {
-  return {
-    create: vi.fn().mockResolvedValue(STUDENT_ENTITY),
-    getById: vi.fn().mockResolvedValue(STUDENT_ENTITY),
-    getAll: vi.fn().mockResolvedValue([]),
-    update: vi.fn().mockResolvedValue(STUDENT_ENTITY),
-    delete: vi.fn().mockResolvedValue(true),
-    getByIds: vi.fn().mockResolvedValue([]),
-    getAllWithVisitCount: vi.fn().mockResolvedValue([]),
-    countVisitsByStudentId: vi.fn().mockResolvedValue(0),
-    anonymizeByIds: vi.fn().mockResolvedValue({ anonymized: 0, deletedWithoutVisits: 0 }),
-    checkpoint: vi.fn().mockResolvedValue(undefined),
-    withTransaction: vi.fn().mockImplementation((work: () => Promise<unknown>) => work())
-  }
-}
-
 describe('getJournalEntries', () => {
   it('returns journal entries for a date range', async () => {
     const frequentationGateway = createMockFrequentationGateway()
-    const studentGateway = createMockStudentGateway()
     const dateRange: DateRangeDto = { startDate: '2026-01-15', endDate: '2026-01-15' }
 
-    const result = await getJournalEntries(frequentationGateway, studentGateway, dateRange)
+    const result = await getJournalEntries(frequentationGateway, dateRange)
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data).toHaveLength(1)
@@ -99,10 +70,9 @@ describe('getJournalEntries', () => {
     const frequentationGateway = createMockFrequentationGateway({
       getByDateRange: vi.fn().mockResolvedValue([])
     })
-    const studentGateway = createMockStudentGateway()
     const dateRange: DateRangeDto = { startDate: '2026-01-15', endDate: '2026-01-15' }
 
-    const result = await getJournalEntries(frequentationGateway, studentGateway, dateRange)
+    const result = await getJournalEntries(frequentationGateway, dateRange)
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data).toHaveLength(0)
@@ -113,17 +83,16 @@ describe('getJournalEntries', () => {
     const frequentationGateway = createMockFrequentationGateway({
       getByDateRange: vi.fn().mockRejectedValue(new Error('DB error'))
     })
-    const studentGateway = createMockStudentGateway()
     const dateRange: DateRangeDto = { startDate: '2026-01-15', endDate: '2026-01-15' }
 
-    const result = await getJournalEntries(frequentationGateway, studentGateway, dateRange)
+    const result = await getJournalEntries(frequentationGateway, dateRange)
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.error).toContain('DB error')
     }
   })
 
-  it('returns student: null for an anonymized entry and does not call studentGateway.getById', async () => {
+  it('returns student: null for an anonymized entry', async () => {
     const anonymized: FrequentationWithStudentEntity = {
       ...FREQUENTATION_ENTITY,
       studentId: null,
@@ -134,10 +103,9 @@ describe('getJournalEntries', () => {
     const frequentationGateway = createMockFrequentationGateway({
       getByDateRange: vi.fn().mockResolvedValue([anonymized])
     })
-    const studentGateway = createMockStudentGateway()
     const dateRange: DateRangeDto = { startDate: '2026-01-15', endDate: '2026-01-15' }
 
-    const result = await getJournalEntries(frequentationGateway, studentGateway, dateRange)
+    const result = await getJournalEntries(frequentationGateway, dateRange)
 
     expect(result.success).toBe(true)
     if (result.success) {
@@ -145,7 +113,6 @@ describe('getJournalEntries', () => {
       expect(result.data[0]?.frequentation.studentName).toBe(ANONYMIZED_STUDENT_LABEL)
       expect(result.data[0]?.frequentation.studentClass).toBe('6ème A')
     }
-    expect(studentGateway.getById).not.toHaveBeenCalled()
   })
 
   it('returns student: null for an orphan row whose student is gone', async () => {
@@ -159,24 +126,21 @@ describe('getJournalEntries', () => {
     const frequentationGateway = createMockFrequentationGateway({
       getByDateRange: vi.fn().mockResolvedValue([orphan])
     })
-    const studentGateway = createMockStudentGateway()
     const dateRange: DateRangeDto = { startDate: '2026-01-15', endDate: '2026-01-15' }
 
-    const result = await getJournalEntries(frequentationGateway, studentGateway, dateRange)
+    const result = await getJournalEntries(frequentationGateway, dateRange)
 
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data[0]?.student).toBeNull()
     }
-    expect(studentGateway.getById).not.toHaveBeenCalled()
   })
 
   it('still returns the student for a normal entry', async () => {
     const frequentationGateway = createMockFrequentationGateway()
-    const studentGateway = createMockStudentGateway()
     const dateRange: DateRangeDto = { startDate: '2026-01-15', endDate: '2026-01-15' }
 
-    const result = await getJournalEntries(frequentationGateway, studentGateway, dateRange)
+    const result = await getJournalEntries(frequentationGateway, dateRange)
 
     expect(result.success).toBe(true)
     if (result.success) {
@@ -187,6 +151,26 @@ describe('getJournalEntries', () => {
         classe: '6ème A',
         ine: '12345678X'
       })
+    }
+  })
+
+  it('reports the class carried by the visit, not a later class of the student', async () => {
+    const snapshotClass = '5ème B'
+    const visitInPreviousClass: FrequentationWithStudentEntity = {
+      ...FREQUENTATION_ENTITY,
+      studentClasse: snapshotClass
+    }
+    const frequentationGateway = createMockFrequentationGateway({
+      getByDateRange: vi.fn().mockResolvedValue([visitInPreviousClass])
+    })
+    const dateRange: DateRangeDto = { startDate: '2026-01-15', endDate: '2026-01-15' }
+
+    const result = await getJournalEntries(frequentationGateway, dateRange)
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data[0]?.student?.classe).toBe(snapshotClass)
+      expect(result.data[0]?.frequentation.studentClass).toBe(snapshotClass)
     }
   })
 })

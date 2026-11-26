@@ -118,16 +118,17 @@ export class FrequentationGatewayDrizzle implements FrequentationGateway {
     }
 
     const now = new Date().toISOString()
+    const reassignedStudentId =
+      dto.studentId !== existingFrequentation.studentId ? dto.studentId : undefined
     await this.db
       .update(frequentationTable)
       .set({
         ...(dto.startsAt !== undefined && { startsAt: dto.startsAt }),
         ...(dto.activity !== undefined && { activity: dto.activity }),
         ...(dto.studentId !== undefined && { studentId: dto.studentId }),
-        ...(dto.studentId !== undefined &&
-          dto.studentId !== existingFrequentation.studentId && {
-            studentClasse: this.studentClassSnapshot(dto.studentId)
-          }),
+        ...(reassignedStudentId !== undefined && {
+          studentClasse: this.studentClassSnapshot(reassignedStudentId)
+        }),
         updatedAt: now
       })
       .where(eq(frequentationTable.id, id))

@@ -4,9 +4,7 @@ import { ActivityType } from '@types'
 import { registerFrequentationController } from '../frequentation.controller'
 import { FREQUENTATION_CHANNELS } from '@shared/ipc/channels'
 import type { FrequentationGateway } from '@frequentation/gateways/frequentation'
-import type { StudentGateway } from '@student/gateways/student'
 import type { FrequentationEntity } from '@frequentation/entities/frequentation'
-import type { StudentEntity } from '@student/entities/student'
 
 const STUDENT_ID = 1
 const FREQUENTATION_ID = 1
@@ -17,16 +15,6 @@ const SAMPLE_FREQUENTATION: FrequentationEntity = {
   activity: ActivityType.WORK,
   studentId: STUDENT_ID,
   studentClasse: null,
-  createdAt: '2026-01-15T09:00:00.000Z',
-  updatedAt: '2026-01-15T09:00:00.000Z'
-}
-
-const SAMPLE_STUDENT: StudentEntity = {
-  id: STUDENT_ID,
-  nom: 'Dupont',
-  prenom: 'Jean',
-  classe: '6ème A',
-  ine: '12345678X',
   createdAt: '2026-01-15T09:00:00.000Z',
   updatedAt: '2026-01-15T09:00:00.000Z'
 }
@@ -72,32 +60,14 @@ function createFrequentationGatewayStub(): FrequentationGateway {
   }
 }
 
-function createStudentGatewayStub(): StudentGateway {
-  return {
-    create: vi.fn().mockResolvedValue(SAMPLE_STUDENT),
-    getById: vi.fn().mockResolvedValue(SAMPLE_STUDENT),
-    getAll: vi.fn().mockResolvedValue([]),
-    update: vi.fn().mockResolvedValue(SAMPLE_STUDENT),
-    delete: vi.fn().mockResolvedValue(true),
-    getByIds: vi.fn().mockResolvedValue([]),
-    getAllWithVisitCount: vi.fn().mockResolvedValue([]),
-    countVisitsByStudentId: vi.fn().mockResolvedValue(0),
-    anonymizeByIds: vi.fn().mockResolvedValue({ anonymized: 0, deletedWithoutVisits: 0 }),
-    checkpoint: vi.fn().mockResolvedValue(undefined),
-    withTransaction: vi.fn().mockImplementation((work: () => Promise<unknown>) => work())
-  }
-}
-
 describe('registerFrequentationController', () => {
   let ipcMain: IpcMainStub
   let frequentationGateway: FrequentationGateway
-  let studentGateway: StudentGateway
 
   beforeEach(() => {
     ipcMain = createIpcMainStub()
     frequentationGateway = createFrequentationGatewayStub()
-    studentGateway = createStudentGatewayStub()
-    registerFrequentationController(ipcMain, frequentationGateway, studentGateway)
+    registerFrequentationController(ipcMain, frequentationGateway)
   })
 
   it('registers every channel from FREQUENTATION_CHANNELS', () => {

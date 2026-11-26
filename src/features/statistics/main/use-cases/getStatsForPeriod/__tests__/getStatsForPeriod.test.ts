@@ -182,7 +182,7 @@ describe('getStatsForPeriod', () => {
     }
   })
 
-  it('class counts use the snapshot after the student changed class', async () => {
+  it('groups class counts by the class carried by each visit', async () => {
     const gateway = createMockFrequentationGateway([
       makeFrequentation({ id: 1, studentClasse: '6A' }),
       makeFrequentation({ id: 2, studentClasse: '6A' })
@@ -218,7 +218,7 @@ describe('getStatsForPeriod', () => {
     }
   })
 
-  it('NULL snapshot and no student counts under Classe inconnue', async () => {
+  it('a visit carrying the unknown-class label counts under that label', async () => {
     const gateway = createMockFrequentationGateway([
       makeFrequentation({
         studentId: null,

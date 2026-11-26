@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, resolve } from 'path'
 import type Database from 'better-sqlite3'
@@ -31,17 +31,21 @@ export function migrateTestDatabase(
   const entries = journal.entries.slice(0, options.upTo ?? journal.entries.length)
 
   const folder = mkdtempSync(join(tmpdir(), TMP_PREFIX))
-  mkdirSync(join(folder, 'meta'))
-  for (const entry of entries) {
-    cpSync(
-      join(MIGRATIONS_FOLDER, `${entry.tag}${SQL_EXTENSION}`),
-      join(folder, `${entry.tag}${SQL_EXTENSION}`)
+  try {
+    mkdirSync(join(folder, 'meta'))
+    for (const entry of entries) {
+      cpSync(
+        join(MIGRATIONS_FOLDER, `${entry.tag}${SQL_EXTENSION}`),
+        join(folder, `${entry.tag}${SQL_EXTENSION}`)
+      )
+    }
+    writeFileSync(
+      join(folder, JOURNAL_PATH),
+      JSON.stringify({ ...journal, entries }, null, JSON_INDENT)
     )
-  }
-  writeFileSync(
-    join(folder, JOURNAL_PATH),
-    JSON.stringify({ ...journal, entries }, null, JSON_INDENT)
-  )
 
-  migrate(drizzle(sqlite), { migrationsFolder: folder })
+    migrate(drizzle(sqlite), { migrationsFolder: folder })
+  } finally {
+    rmSync(folder, { recursive: true, force: true })
+  }
 }
