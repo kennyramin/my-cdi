@@ -1,13 +1,17 @@
 import { z } from 'zod'
-import type { DuplicateMatch, FrequentationGateway } from '@frequentation/gateways/frequentation'
+import type { FrequentationGateway } from '@frequentation/gateways/frequentation'
 import type { FrequentationWithStudentEntity } from '@frequentation/entities/frequentation'
 import type { StudentGateway } from '@student/gateways/student'
-import { ANONYMIZED_STUDENT_LABEL } from '@frequentation-shared'
 import type { DuplicateWarningDto } from '@frequentation-shared'
 import { ErrorCode } from '@lib/errors'
-import { isFutureLocalDateTime, LOCAL_DATE_TIME_PATTERN } from '@lib/localDateTime'
+import { isFutureLocalDateTime } from '@lib/localDateTime'
 import type { UseCaseResult } from '@lib/use-case'
-import { ActivityType } from '@types'
+import { buildDuplicateWarnings } from '../helpers/buildDuplicateWarnings'
+import {
+  activitySchema,
+  startsAtSchema,
+  studentIdSchema
+} from '../helpers/frequentationFieldSchemas'
 
 export type UpdateOutcome =
   { updated: FrequentationWithStudentEntity } | { duplicates: DuplicateWarningDto[] }
@@ -20,22 +24,11 @@ const STUDENT_NOT_FOUND_ERROR = 'Student not found'
 const UNKNOWN_ERROR = 'Unknown error'
 
 const updateFrequentationSchema = z.object({
-  startsAt: z.string().regex(LOCAL_DATE_TIME_PATTERN).optional(),
-  activity: z.nativeEnum(ActivityType).optional(),
-  studentId: z.number().int().positive().safe().optional(),
+  startsAt: startsAtSchema.optional(),
+  activity: activitySchema.optional(),
+  studentId: studentIdSchema.optional(),
   allowDuplicates: z.boolean().optional()
 })
-
-function dedupeByExistingId(matches: DuplicateMatch[]): DuplicateMatch[] {
-  const seen = new Set<number>()
-  return matches.filter((match) => {
-    if (seen.has(match.existingId)) {
-      return false
-    }
-    seen.add(match.existingId)
-    return true
-  })
-}
 
 export async function updateFrequentation(
   gateway: FrequentationGateway,
@@ -79,19 +72,7 @@ export async function updateFrequentation(
     const outcome = await gateway.updateChecked(id, dto, { allowDuplicates })
 
     if ('duplicates' in outcome) {
-      const matches = dedupeByExistingId(outcome.duplicates)
-      const students = await studentGateway.getByIds([
-        ...new Set(matches.map((match) => match.studentId))
-      ])
-      const namesById = new Map(
-        students.map((student) => [student.id, `${student.prenom} ${student.nom}`])
-      )
-      const duplicates = matches.map((match) => ({
-        studentId: match.studentId,
-        studentName: namesById.get(match.studentId) ?? ANONYMIZED_STUDENT_LABEL,
-        existingStartsAt: match.existingStartsAt,
-        existingActivity: match.existingActivity
-      }))
+      const duplicates = await buildDuplicateWarnings(studentGateway, outcome.duplicates)
       return { success: true, data: { duplicates } }
     }
 

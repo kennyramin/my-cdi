@@ -7,6 +7,7 @@ import type {
   CreateFrequentationDto,
   UpdateFrequentationDto,
   CreateFrequentationBatchDto,
+  BatchItemErrorDto,
   DateRangeDto,
   DuplicatesFoundDto,
   FrequentationResponseDto,
@@ -19,7 +20,6 @@ import { getFrequentation } from '@frequentation/use-cases/getFrequentation'
 import { listFrequentations } from '@frequentation/use-cases/listFrequentations'
 import { getJournalEntries } from '@frequentation/use-cases/getJournalEntries'
 import { createFrequentationBatch } from '@frequentation/use-cases/createFrequentationBatch'
-import type { BatchResult } from '@frequentation/use-cases/createFrequentationBatch'
 import { formatFrequentationResponse } from '@frequentation/use-cases/helpers/formatFrequentationResponse'
 import type { FrequentationEntity } from '@frequentation/entities/frequentation'
 import { unwrap } from '@shared/lib/use-case'
@@ -93,12 +93,18 @@ export function registerFrequentationController(
     }
   )
 
-  router.procedure<CreateFrequentationBatchDto, BatchResult>(
-    FREQUENTATION_CHANNELS.CREATE_BATCH,
-    async (input) => {
-      return unwrap(await createFrequentationBatch(frequentationGateway, input))
+  router.procedure<
+    CreateFrequentationBatchDto,
+    { created: number; errors: BatchItemErrorDto[] } | DuplicatesFoundDto
+  >(FREQUENTATION_CHANNELS.CREATE_BATCH, async (input) => {
+    const outcome = unwrap(
+      await createFrequentationBatch(frequentationGateway, studentGateway, input)
+    )
+    if ('duplicates' in outcome) {
+      return { created: 0, duplicates: outcome.duplicates }
     }
-  )
+    return { created: outcome.created.length, errors: outcome.errors }
+  })
 
   router.procedure<DateRangeDto, JournalEntryDto[]>(
     FREQUENTATION_CHANNELS.GET_JOURNAL_ENTRIES,

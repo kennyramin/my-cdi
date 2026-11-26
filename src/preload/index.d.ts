@@ -15,6 +15,7 @@ import type {
   CreateFrequentationDto,
   UpdateFrequentationDto,
   CreateFrequentationBatchDto,
+  BatchItemErrorDto,
   DuplicatesFoundDto,
   FrequentationResponseDto,
   JournalEntryDto
@@ -57,7 +58,9 @@ export interface FrequentationApi {
     input: { id: number } & UpdateFrequentationDto
   ) => Promise<IpcResult<FrequentationResponseDto | DuplicatesFoundDto>>
   delete: (input: { id: number }) => Promise<IpcResult<void>>
-  createBatch: (input: CreateFrequentationBatchDto) => Promise<IpcResult<{ created: number }>>
+  createBatch: (
+    input: CreateFrequentationBatchDto
+  ) => Promise<IpcResult<{ created: number; errors: BatchItemErrorDto[] } | DuplicatesFoundDto>>
   getJournalEntries: (input: {
     startDate: string
     endDate: string

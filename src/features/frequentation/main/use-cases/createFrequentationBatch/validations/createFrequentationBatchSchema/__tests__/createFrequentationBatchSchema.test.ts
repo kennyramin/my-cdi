@@ -20,6 +20,22 @@ describe('createFrequentationBatchSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it.each([true, false])('accepts allowDuplicates %s', (allowDuplicates) => {
+    const result = createFrequentationBatchSchema.safeParse({
+      frequentations: [{ startsAt: '2026-01-15T09:00:00', activity: 'work', studentId: 1 }],
+      allowDuplicates
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it.each(['yes', 1, null])('rejects non-boolean allowDuplicates %s', (allowDuplicates) => {
+    const result = createFrequentationBatchSchema.safeParse({
+      frequentations: [{ startsAt: '2026-01-15T09:00:00', activity: 'work', studentId: 1 }],
+      allowDuplicates
+    })
+    expect(result.success).toBe(false)
+  })
+
   it('rejects empty batch', () => {
     const result = createFrequentationBatchSchema.safeParse({
       frequentations: []

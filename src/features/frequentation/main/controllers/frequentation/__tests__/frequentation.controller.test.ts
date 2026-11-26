@@ -194,6 +194,50 @@ describe('registerFrequentationController', () => {
     })
   })
 
+  it('maps a created batch to a created count and its errors', async () => {
+    vi.mocked(frequentationGateway.createManyChecked).mockResolvedValue({
+      written: [SAMPLE_FREQUENTATION]
+    })
+    const result = await ipcMain.invoke(FREQUENTATION_CHANNELS.CREATE_BATCH, {
+      frequentations: [
+        { startsAt: '2026-01-15T09:00:00', activity: ActivityType.WORK, studentId: STUDENT_ID }
+      ]
+    })
+    expect(result).toEqual({ success: true, data: { created: 1, errors: [] } })
+  })
+
+  it('maps batch duplicates to a DuplicatesFoundDto', async () => {
+    vi.mocked(frequentationGateway.createManyChecked).mockResolvedValue({
+      duplicates: [
+        {
+          studentId: STUDENT_ID,
+          existingId: 7,
+          existingStartsAt: '2026-01-15T09:10:00',
+          existingActivity: ActivityType.GAME
+        }
+      ]
+    })
+    const result = await ipcMain.invoke(FREQUENTATION_CHANNELS.CREATE_BATCH, {
+      frequentations: [
+        { startsAt: '2026-01-15T09:00:00', activity: ActivityType.WORK, studentId: STUDENT_ID }
+      ]
+    })
+    expect(result).toEqual({
+      success: true,
+      data: {
+        created: 0,
+        duplicates: [
+          {
+            studentId: STUDENT_ID,
+            studentName: 'Marie Dupont',
+            existingStartsAt: '2026-01-15T09:10:00',
+            existingActivity: ActivityType.GAME
+          }
+        ]
+      }
+    })
+  })
+
   it('returns an error result for an invalid update payload', async () => {
     const result = await ipcMain.invoke(FREQUENTATION_CHANNELS.UPDATE, {
       id: FREQUENTATION_ID,

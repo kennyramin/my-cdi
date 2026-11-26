@@ -1,9 +1,7 @@
 import type { FrequentationEntity } from '@frequentation/entities/frequentation'
+import type { BatchItemErrorDto } from '@frequentation-shared'
 
-export interface BatchItemError {
-  index: number
-  error: string
-}
+export type BatchItemError = BatchItemErrorDto
 
 export interface BatchResult {
   created: FrequentationEntity[]

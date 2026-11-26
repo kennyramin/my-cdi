@@ -23,6 +23,11 @@ export interface CreateFrequentationBatchDto {
   allowDuplicates?: boolean
 }
 
+export interface BatchItemErrorDto {
+  index: number
+  error: string
+}
+
 export interface DuplicateWarningDto {
   studentId: number
   studentName: string
