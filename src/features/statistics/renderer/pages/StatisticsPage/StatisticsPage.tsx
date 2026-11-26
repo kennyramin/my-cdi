@@ -5,11 +5,14 @@ import {
   StatisticsContent,
   StatisticsFullGrid,
   StatisticsLayout,
-  StatisticsLoadingShell
+  StatisticsLoadingShell,
+  StatisticsToolbar
 } from './StatisticsPage.styles'
 import { useStatisticsPage } from './hooks/useStatisticsPage'
 import { StatsKpiCardsContainer } from './containers/StatsKpiCardsContainer'
 import { PeriodFilterContainer } from './containers/PeriodFilterContainer'
+import { CUSTOM_RANGE_MESSAGE_ID } from './containers/PeriodFilterContainer/PeriodFilterContainer.styles'
+import { ExportButtonContainer } from '@export/containers/ExportButtonContainer'
 import { WeeklyBarChartContainer } from './containers/WeeklyBarChartContainer'
 import { ActivityDonutChartContainer } from './containers/ActivityDonutChartContainer'
 import { MonthlyTrendChartContainer } from './containers/MonthlyTrendChartContainer'
@@ -30,6 +33,7 @@ export function StatisticsPage() {
     customRange,
     setCustomRange,
     customRangeError,
+    selectedRange,
     stats,
     isLoading,
     errorMessage,
@@ -38,14 +42,21 @@ export function StatisticsPage() {
   } = useStatisticsPage()
   const { t } = useTranslation('statistics')
   const periodFilter = (
-    <PeriodFilterContainer
-      key={PERIOD_FILTER_KEY}
-      value={period}
-      onChange={selectPeriod}
-      customRange={customRange}
-      customRangeError={customRangeError}
-      onCustomRangeChange={setCustomRange}
-    />
+    <StatisticsToolbar key={PERIOD_FILTER_KEY}>
+      <PeriodFilterContainer
+        value={period}
+        onChange={selectPeriod}
+        customRange={customRange}
+        customRangeError={customRangeError}
+        onCustomRangeChange={setCustomRange}
+      />
+      <ExportButtonContainer
+        scope="statistics"
+        period={selectedRange}
+        disabled={customRangeError !== null}
+        disabledDescriptionId={CUSTOM_RANGE_MESSAGE_ID}
+      />
+    </StatisticsToolbar>
   )
   if (!stats) {
     if (isLoading) {

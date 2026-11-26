@@ -6,6 +6,8 @@ import { theme } from '@ui/theme'
 import type { ReactNode } from 'react'
 import { ActivityType } from '@types'
 import { StatisticsPage } from '../StatisticsPage'
+import { buildPeriodRange } from '../helpers/buildPeriodRange'
+import { formatDate } from '@ui/helpers/formatDate'
 import '@shared/i18n/config'
 
 const SAMPLE_TOTAL = 12
@@ -127,6 +129,56 @@ describe('StatisticsPage', () => {
       })
     })
     await waitFor(() => expect(staleArea(container)).toBeNull())
+  })
+
+  describe('export button', () => {
+    it('shows the Exporter button', async () => {
+      render(<StatisticsPage />, { wrapper: createWrapper() })
+      await waitFor(() => expect(screen.getByText('Visites totales')).toBeInTheDocument())
+      expect(screen.getByRole('button', { name: 'Exporter' })).toBeEnabled()
+    })
+
+    it('is disabled and described by the range error when the custom range is invalid', async () => {
+      render(<StatisticsPage />, { wrapper: createWrapper() })
+      await waitFor(() => expect(screen.getByText('Visites totales')).toBeInTheDocument())
+      fireEvent.click(screen.getByText('Personnalisé'))
+      fireEvent.change(screen.getByLabelText('Date de début'), { target: { value: '2026-11-20' } })
+      fireEvent.change(screen.getByLabelText('Date de fin'), { target: { value: '2026-11-10' } })
+      await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+      const button = screen.getByRole('button', { name: 'Exporter' })
+      expect(button).toBeDisabled()
+      expect(button).toHaveAccessibleDescription(
+        'La date de fin doit être postérieure ou égale à la date de début'
+      )
+    })
+
+    it('stays available while stats are loading and when loading failed', async () => {
+      getStats.mockResolvedValue({ success: false, error: 'boom' })
+      render(<StatisticsPage />, { wrapper: createWrapper() })
+      await screen.findByRole('button', { name: 'Réessayer' })
+      expect(screen.getByRole('button', { name: 'Exporter' })).toBeEnabled()
+    })
+
+    it('gives the dialog the custom range as-is', async () => {
+      render(<StatisticsPage />, { wrapper: createWrapper() })
+      await waitFor(() => expect(screen.getByText('Visites totales')).toBeInTheDocument())
+      fireEvent.click(screen.getByText('Personnalisé'))
+      fireEvent.change(screen.getByLabelText('Date de début'), { target: { value: '2026-11-10' } })
+      fireEvent.change(screen.getByLabelText('Date de fin'), { target: { value: '2026-11-20' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Exporter' }))
+      expect(await screen.findByText('Période : du 10/11/2026 au 20/11/2026')).toBeInTheDocument()
+    })
+
+    it('gives the dialog the school-year period when "Année scolaire" is selected', async () => {
+      render(<StatisticsPage />, { wrapper: createWrapper() })
+      await waitFor(() => expect(screen.getByText('Visites totales')).toBeInTheDocument())
+      fireEvent.click(screen.getByText('Année scolaire'))
+      const { startDate, endDate } = buildPeriodRange('schoolYear')
+      fireEvent.click(screen.getByRole('button', { name: 'Exporter' }))
+      expect(
+        await screen.findByText(`Période : du ${formatDate(startDate)} au ${formatDate(endDate)}`)
+      ).toBeInTheDocument()
+    })
   })
 
   describe('error handling', () => {

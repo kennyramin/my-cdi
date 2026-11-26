@@ -1,0 +1,23 @@
+{
+  "button": {
+    "statistics": "Export"
+  },
+  "title": {
+    "statistics": "Export statistics"
+  },
+  "kind": {
+    "legend": "Data to export",
+    "journal": "Visit journal",
+    "visitsByDay": "Visits per day",
+    "visitsByActivity": "Visits per activity",
+    "visitsByClass": "Visits per class"
+  },
+  "includeNames": "Include student names",
+  "includeNamesHint": "Only available for the journal. Other exports never contain names.",
+  "period": "Period: {{start}} to {{end}}",
+  "confirm": "Export",
+  "cancel": "Cancel",
+  "success_one": "{{count}} row exported",
+  "success_other": "{{count}} rows exported",
+  "namesWarning": "The file will contain students' personal data. Store it safely."
+}

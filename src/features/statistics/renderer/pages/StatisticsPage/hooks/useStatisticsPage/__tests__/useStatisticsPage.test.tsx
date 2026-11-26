@@ -56,6 +56,20 @@ describe('useStatisticsPage', () => {
     expect(result.current).not.toHaveProperty('range')
   })
 
+  it('exposes the selected range, not the loaded data range', () => {
+    const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
+    expect(result.current.selectedRange).toEqual({ startDate: '2026-11-01', endDate: '2026-11-30' })
+    act(() => result.current.selectPeriod('week'))
+    expect(result.current.selectedRange).toEqual(WEEK_RANGE)
+  })
+
+  it('exposes the custom range as selected when custom is chosen', () => {
+    const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
+    act(() => result.current.selectPeriod('custom'))
+    act(() => result.current.setCustomRange({ startDate: '2026-11-10', endDate: '2026-11-20' }))
+    expect(result.current.selectedRange).toEqual({ startDate: '2026-11-10', endDate: '2026-11-20' })
+  })
+
   it('updates the period when selectPeriod is called', () => {
     const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
     act(() => {

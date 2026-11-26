@@ -51,3 +51,13 @@ export const StatisticsContent = styled(Box, {
     opacity: theme.palette.action.disabledOpacity
   }
 }))
+
+export const StatisticsToolbar = styled(Box, {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: theme.spacing(2)
+}))
