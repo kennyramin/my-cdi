@@ -16,3 +16,9 @@ export const EntryForm = styled('form', {
   flexDirection: 'column',
   gap: theme.spacing(2)
 }))
+
+export const FutureDateHelperText = styled(Typography, {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  color: theme.palette.error.main
+}))

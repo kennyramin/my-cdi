@@ -16,6 +16,7 @@
     "startsAt": "Date et heure",
     "selectStudents": "Élève(s)",
     "searchStudent": "Rechercher un élève…",
+    "futureNotAllowed": "Impossible d'enregistrer une présence dans le futur",
     "submit": "Enregistrer",
     "cancel": "Annuler",
     "successMessage": "Fréquentation(s) enregistrée(s)"

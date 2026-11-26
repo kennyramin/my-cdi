@@ -8,7 +8,7 @@ const ITEM_INDEX_5 = 5
 describe('validateBatchItem', () => {
   it('returns valid for a correct dto', () => {
     const dto: CreateFrequentationDto = {
-      startsAt: '2026-01-15T09:00:00.000Z',
+      startsAt: '2026-01-15T09:00:00',
       activity: ActivityType.WORK,
       studentId: 1
     }
@@ -29,7 +29,7 @@ describe('validateBatchItem', () => {
 
   it('returns invalid for non-positive studentId', () => {
     const dto: CreateFrequentationDto = {
-      startsAt: '2026-01-15T09:00:00.000Z',
+      startsAt: '2026-01-15T09:00:00',
       activity: ActivityType.WORK,
       studentId: 0
     }

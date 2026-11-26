@@ -294,12 +294,12 @@ export function CalendarViewPresenter({ dayNodes }: CalendarViewPresenterProps) 
 }
 ```
 
-Conditional rendering (`cond ? <A/> : null`) and early returns choosing *what* to render stay in presenters; everything else derived moves up.
+Conditional rendering (`cond ? <A/> : null`) and early returns choosing _what_ to render stay in presenters; everything else derived moves up.
 
 ### Styling: `styled()` in `.styles.ts`, theme as single source of truth
 
 - **Zero inline `sx={{...}}`** in feature or shared/ui components. All styling lives in `XPresenter.styles.ts` (or `XContainer.styles.ts`) as `styled()` components from `@mui/material/styles`.
-- **The MUI theme (`@ui/theme`) is the only source of design tokens.** `global.css` contains nothing but the font `@import` lines; element resets, scrollbar styling and the base body styles live in the `MuiCssBaseline` overrides in `theme.ts`. Never use CSS custom properties (`var(--...)`), hardcoded hex/rgba colors or raw px `fontSize` in components — resolve everything from the theme.
+- **The MUI theme (`@ui/theme`) is the only source of design tokens.** Fonts are bundled locally from npm (`@fontsource/inter`, `@fontsource/jetbrains-mono`, `material-icons`) and imported in `src/renderer/main.tsx`; there is no global stylesheet. Element resets, scrollbar styling and the base body styles live in the `MuiCssBaseline` overrides in `theme.ts`. Never use CSS custom properties (`var(--...)`), hardcoded hex/rgba colors or raw px `fontSize` in components — resolve everything from the theme.
 - MUI v9's `styled()` serialises style objects with emotion's raw CSS serializer and does **not** resolve MUI system props (`mt`, `px`, `gap`, `bgcolor`, …) — they would reach the stylesheet unprocessed and be silently dropped. Style objects therefore use **real CSS properties** and `theme.spacing()` for spacing-scale values (`paddingInline: theme.spacing(1)`, `backgroundColor`, `gap: theme.spacing(0.75)`), never system-prop shorthands.
 - Every styled call passes the shared prop filter:
 
@@ -355,7 +355,9 @@ Search is case-insensitive multi-field match (`nom`, `prenom`, `classe`, `ine`).
 Consistent 3-layer architecture for any list with multi-select:
 
 1. **Selection hook** (`useStudentSelection` / `useJournalEntrySelection`)
-   - `useState<number[]>` for `selectedIds`
+   - `useJournalEntrySelection(scopeKey)` resets when the scope (selected date) changes
+   - `useStudentSelection`: `useState<number[]>` for `selectedIds`
+   - `useJournalEntrySelection`: `useState<{ scopeKey, ids }>`; ids are only exposed while `scopeKey` matches the current scope
    - `toggle(id)`, `selectAll(ids)`, `clearSelection()`, `isSelected(id)`
 
 2. **Batch actions container** (`StudentBatchActionsContainer` / `JournalBatchActionsContainer`)
@@ -526,16 +528,17 @@ Feature dialogs (e.g., `JournalEntryEditDialogPresenter`) use `Modal` directly. 
 
 Gateway methods follow a strict naming convention:
 
-| Action    | Pattern       | Example                 |
-| --------- | ------------- | ----------------------- |
-| Create    | `create`      | `create(student)`       |
-| Read one  | `getById`     | `getById(id)`           |
-| Read by   | `getByXxx`    | `getByClass(class)`     |
-| Read all  | `getAll`      | `getAll()`              |
-| Update    | `update`      | `update(id, data)`      |
-| Delete    | `delete`      | `delete(id)`            |
-| Delete by | `deleteByXxx` | `deleteByStudentId(id)` |
-| Count     | `count`       | `count()`               |
+| Action    | Pattern                   | Example                                  |
+| --------- | ------------------------- | ---------------------------------------- |
+| Create    | `create`                  | `create(student)`                        |
+| Read one  | `getById`                 | `getById(id)`                            |
+| Read by   | `getByXxx`                | `getByClass(class)`                      |
+| Read all  | `getAll`                  | `getAll()`                               |
+| Update    | `update`                  | `update(id, data)`                       |
+| Delete    | `delete`                  | `delete(id)`                             |
+| Delete by | `deleteByXxx`             | `deleteByStudentId(id)`                  |
+| Delete by | `deleteOlderThan`         | `deleteOlderThan(cutoff)`                |
+| Count     | `count`                   | `count()`                                |
 
 No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single reads, never throws for missing rows.
 
@@ -543,10 +546,10 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 
 ## 17. Date / Time Handling
 
-- **Storage**: dates stored as ISO strings in SQLite; time-of-day stored as `HH:mm` strings.
+- **Storage**: visit start times stored as local wall-clock strings `YYYY-MM-DDTHH:mm:ss` (no timezone suffix) in SQLite; time-of-day stored as `HH:mm` strings.
 - **Display**: `formatDate` (`DD/MM/YYYY`) and `formatDateTime` (`DD/MM/YYYY HH:mm`) via `dayjs` with French locale.
 - **UI**: MUI X Date Pickers wrapped in `LocalizationProvider` with `AdapterDayjs` and `adapterLocale="fr"`.
-- **Cleanup**: `CLEANUP_RETENTION_YEARS = 2` — old frequentations deleted on startup.
+- **Cleanup**: `CLEANUP_RETENTION_YEARS = 2` — old frequentations deleted on startup (local cutoff, single `DELETE … WHERE starts_at < ?`).
 
 ---
 
@@ -729,7 +732,7 @@ const activityIcons: Record<ActivityType, string> = { ... }
 | `Modal`         | Dialog wrapper with custom width mapping       |
 | `ErrorBoundary` | Global render-error catch + fallback UI        |
 
-`.styles.ts` files export `styled()` components (plus `*_PX` size constants) built with `@mui/material/styles` `styled()` using plain CSS properties and `theme.spacing()` — never MUI system props — and the shared `shouldForwardStyledProp` filter; not MUI `sx`. All design tokens come from the MUI theme (`@ui/theme`): palette (including the custom `sidebar`/`surface`/`dividerStrong`/`activity` slots), `TYPE_SCALE` + `FONT_WEIGHTS` for typography, `RADII`, `TINT_ALPHAS` and `theme.shadows[1..4]`. `global.css` contains only the font imports.
+`.styles.ts` files export `styled()` components (plus `*_PX` size constants) built with `@mui/material/styles` `styled()` using plain CSS properties and `theme.spacing()` — never MUI system props — and the shared `shouldForwardStyledProp` filter; not MUI `sx`. All design tokens come from the MUI theme (`@ui/theme`): palette (including the custom `sidebar`/`surface`/`dividerStrong`/`activity` slots), `TYPE_SCALE` + `FONT_WEIGHTS` for typography, `RADII`, `TINT_ALPHAS` and `theme.shadows[1..4]`. Fonts are bundled locally from npm (`@fontsource/inter`, `@fontsource/jetbrains-mono`, `material-icons`) and imported in `src/renderer/main.tsx`; there is no global stylesheet.
 
 ---
 
@@ -809,6 +812,8 @@ Every artifact lives as close as possible to its consumer. Only hoist when share
 ### Test Bootstrapping
 
 `vitest.config.ts` loads `shared/test/setup.ts` which imports `@testing-library/jest-dom/vitest` matchers.
+
+`vitest.config.ts` sets `process.env.TZ = 'Europe/Paris'` so the suite runs in the users' timezone.
 
 ### Renderer Test Mocking
 
