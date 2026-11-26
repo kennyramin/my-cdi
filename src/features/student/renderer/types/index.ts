@@ -5,7 +5,7 @@ export interface StudentViewModel extends StudentResponseDto {
   classLabel: string
 }
 
-export type StudentSortField = 'nom' | 'prenom' | 'classe' | 'ine'
+export type StudentSortField = 'nom' | 'prenom' | 'classe' | 'ine' | 'visitCount'
 
 export type SortDirection = 'asc' | 'desc'
 

@@ -15,11 +15,10 @@ export async function listStudents(
   deps: ListStudentsDeps,
   input: ListStudentsInput
 ): Promise<UseCaseResult<StudentListResponseDto>> {
-  const entities = input.classe
-    ? await deps.gateway.getByClass(input.classe)
-    : await deps.gateway.getAll()
+  const classeFilter = input.classe || undefined
+  const rows = await deps.gateway.getAllWithVisitCount(classeFilter)
 
-  const students = entities.map(formatStudentResponse)
+  const students = rows.map((row) => formatStudentResponse(row, row.visitCount))
 
   return { success: true, data: { students } }
 }

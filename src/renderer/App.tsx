@@ -11,7 +11,6 @@ import { useThemePreference } from '@settings/api/useThemePreference'
 import { AppRoutes } from './routes'
 
 import '@shared/i18n/config'
-import '@shared/ui/styles/global.css'
 
 const MS_PER_SECOND = 1000
 const QUERY_STALE_TIME_SECONDS = 60

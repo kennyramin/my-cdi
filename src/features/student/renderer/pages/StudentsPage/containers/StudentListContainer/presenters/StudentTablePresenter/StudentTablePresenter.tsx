@@ -1,16 +1,18 @@
 import type { ReactNode } from 'react'
-import { TableElement, TableFooter, TableRoot } from './StudentTablePresenter.styles'
+import { EmptyCell, TableElement, TableFooter, TableRoot } from './StudentTablePresenter.styles'
 
 export interface StudentTablePresenterProps {
   headerNodes: ReactNode[]
   rowNodes: ReactNode[]
   countLabel: string
+  emptyMessage: string | null
 }
 
 export function StudentTablePresenter({
   headerNodes,
   rowNodes,
-  countLabel
+  countLabel,
+  emptyMessage
 }: StudentTablePresenterProps) {
   return (
     <TableRoot>
@@ -18,7 +20,15 @@ export function StudentTablePresenter({
         <thead>
           <tr>{headerNodes}</tr>
         </thead>
-        <tbody>{rowNodes}</tbody>
+        <tbody>
+          {rowNodes.length === 0 && emptyMessage !== null ? (
+            <tr>
+              <EmptyCell colSpan={headerNodes.length}>{emptyMessage}</EmptyCell>
+            </tr>
+          ) : (
+            rowNodes
+          )}
+        </tbody>
       </TableElement>
       <TableFooter>
         <span>{countLabel}</span>

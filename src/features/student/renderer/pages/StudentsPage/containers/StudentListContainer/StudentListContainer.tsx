@@ -12,18 +12,29 @@ import { buildStudentInitials } from '@student/helpers/studentFormatters'
 import { StudentTablePresenter } from './presenters/StudentTablePresenter'
 import { StudentTableRowPresenter } from './presenters/StudentTableRowPresenter'
 import { buildNextSortConfig } from './helpers/buildNextSortConfig'
+import { intersectVisibleSelection } from './helpers/intersectVisibleSelection'
+import { getHeaderSortState } from './helpers/getHeaderSortState'
+import { SortableHeaderCellPresenter } from './presenters/SortableHeaderCellPresenter'
 import { StudentListToolbarPresenter } from './presenters/StudentListToolbarPresenter'
 import { StudentBatchActionsContainer } from './containers/StudentBatchActionsContainer'
 import {
   CHECKBOX_CELL_STYLE,
   ACTIONS_CELL_STYLE,
-  SortIcon,
+  VISITS_CELL_STYLE,
   StudentListLayout
 } from './StudentListContainer.styles'
 import type { StudentListContainerProps } from './types/StudentListContainerProps'
 import type { StudentSortField, StudentViewModel } from '@student/types'
 
-const SORTABLE_FIELDS: readonly StudentSortField[] = ['nom', 'prenom', 'classe', 'ine']
+const SORTABLE_FIELDS: readonly StudentSortField[] = [
+  'nom',
+  'prenom',
+  'classe',
+  'ine',
+  'visitCount'
+]
+
+const VISITS_FIELD: StudentSortField = 'visitCount'
 
 export function StudentListContainer({ onEditStudent, onAddStudent }: StudentListContainerProps) {
   const { t: tCommon } = useTranslation('common')
@@ -31,7 +42,7 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
   const { filteredStudents, searchTerm, setSearchTerm, sortConfig, setSortConfig, isLoading } =
     useStudentListData()
 
-  const { selectedIds, selectedCount, toggle, selectAll, clearSelection } = useStudentSelection()
+  const { selectedIds, toggle, selectAll, clearSelection } = useStudentSelection()
   const { toast, show, dismiss } = useToast()
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
   const { mutate: deleteStudent } = useDeleteStudent({
@@ -39,6 +50,11 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
       show(tStudent('deleteSuccess'))
     }
   })
+
+  const visibleSelectedIds = intersectVisibleSelection(
+    selectedIds,
+    filteredStudents.map((student) => student.id)
+  )
 
   function handleSelectAll() {
     selectAll(filteredStudents.map((student) => student.id))
@@ -88,25 +104,25 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
     ))
   }
 
-  function buildHeaderNodes(): ReactNode[] {
-    const sortNodes: ReactNode[] = SORTABLE_FIELDS.map((field) => (
-      <th
+  function buildSortHeaderNode(field: StudentSortField): ReactNode {
+    return (
+      <SortableHeaderCellPresenter
         key={field}
-        onClick={() => {
+        label={tStudent(`fields.${field}`)}
+        style={field === VISITS_FIELD ? VISITS_CELL_STYLE : undefined}
+        sortState={getHeaderSortState(sortConfig, field)}
+        onSort={() => {
           setSortConfig(buildNextSortConfig(sortConfig, field))
         }}
-      >
-        {tStudent(`fields.${field}`)}
-        <SortIcon name="unfold_more" />
-      </th>
-    ))
+      />
+    )
+  }
+
+  function buildHeaderNodes(): ReactNode[] {
+    const sortNodes: ReactNode[] = SORTABLE_FIELDS.map(buildSortHeaderNode)
     return [
       <th key="checkbox" style={CHECKBOX_CELL_STYLE} />,
       ...sortNodes,
-      <th key="visits">
-        {tStudent('fields.visits')}
-        <SortIcon name="unfold_more" />
-      </th>,
       <th key="actions" style={ACTIONS_CELL_STYLE}>
         {tStudent('fields.actions')}
       </th>
@@ -127,8 +143,8 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
       />
 
       <StudentBatchActionsContainer
-        selectedIds={selectedIds}
-        selectedCount={selectedCount}
+        selectedIds={visibleSelectedIds}
+        selectedCount={visibleSelectedIds.length}
         totalCount={filteredStudents.length}
         onSelectAll={handleSelectAll}
         onClearSelection={clearSelection}
@@ -139,6 +155,9 @@ export function StudentListContainer({ onEditStudent, onAddStudent }: StudentLis
         headerNodes={buildHeaderNodes()}
         rowNodes={buildRowNodes(filteredStudents)}
         countLabel={tStudent('count', { count: filteredStudents.length })}
+        emptyMessage={
+          searchTerm === '' ? null : tStudent('emptySearch', { term: searchTerm.trim() })
+        }
       />
 
       <ConfirmDialog

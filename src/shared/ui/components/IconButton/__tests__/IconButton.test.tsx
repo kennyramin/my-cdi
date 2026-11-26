@@ -4,6 +4,11 @@ import userEvent from '@testing-library/user-event'
 import { IconButton } from '../IconButton'
 
 describe('IconButton', () => {
+  it('requires an aria-label', () => {
+    // @ts-expect-error aria-label is required: icon-only buttons need an accessible name
+    render(<IconButton iconName="close" />)
+  })
+
   it('renders a button with the icon name in its content', () => {
     render(<IconButton iconName="close" aria-label="close" />)
     const btn = screen.getByRole('button', { name: /close/i })
