@@ -1,6 +1,16 @@
 import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
+import type { Plugin } from 'vite'
+import { relaxContentSecurityPolicyForDevServer } from './src/shared/lib/contentSecurityPolicy'
+
+const FONT_FILE_PATTERN = /\.woff2?$/
+
+const devContentSecurityPolicyPlugin: Plugin = {
+  name: 'my-cdi:dev-content-security-policy',
+  apply: 'serve',
+  transformIndexHtml: { order: 'pre', handler: relaxContentSecurityPolicyForDevServer }
+}
 
 export default defineConfig({
   main: {
@@ -53,7 +63,11 @@ export default defineConfig({
         babel: {
           plugins: [['babel-plugin-react-compiler', { target: '19' }]]
         }
-      })
-    ]
+      }),
+      devContentSecurityPolicyPlugin
+    ],
+    build: {
+      assetsInlineLimit: (filePath) => (FONT_FILE_PATTERN.test(filePath) ? false : undefined)
+    }
   }
 })

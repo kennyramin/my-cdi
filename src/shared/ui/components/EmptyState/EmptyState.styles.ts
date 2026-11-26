@@ -1,3 +1,4 @@
+import type { ElementType } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { styled } from '@mui/material/styles'
@@ -33,7 +34,7 @@ export const Root = styled(Box, {
 
 export const MessageText = styled(Typography, {
   shouldForwardProp: shouldForwardStyledProp
-})(({ theme }) => ({
+})<{ component?: ElementType }>(({ theme }) => ({
   marginBottom: theme.spacing(MESSAGE_MB_SPACING)
 }))
 

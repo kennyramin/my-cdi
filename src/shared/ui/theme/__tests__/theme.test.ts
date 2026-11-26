@@ -1,9 +1,17 @@
 import { describe, it, expect } from 'vitest'
 import { alpha } from '@mui/material/styles'
-import { createAppTheme, theme } from '../theme'
+import { contrastRatio } from '@ui/helpers/contrastRatio'
+import {
+  CHECKBOX_FOCUS_VISIBLE_SELECTOR,
+  createAppTheme,
+  FOCUS_VISIBLE_SELECTOR,
+  theme
+} from '../theme'
 import { THEME_ACCENTS, THEME_MODES, DEFAULT_THEME_PREFERENCE, THEME_BACKGROUNDS } from '@types'
 
 const ACCENT_GLOW_ALPHA = 0.35
+const WCAG_AA_NORMAL_TEXT_RATIO = 4.5
+const WCAG_NON_TEXT_RATIO = 3
 
 type NeutralSlot = 'sidebar' | 'surface' | 'background.paper' | 'divider' | 'dividerStrong'
 
@@ -74,7 +82,7 @@ describe('createAppTheme', () => {
     expect(purpleDark.palette.background.paper).toBe('#1e293b')
     expect(purpleDark.palette.text.primary).toBe('#e2e8f0')
     expect(purpleDark.palette.text.secondary).toBe('#94a3b8')
-    expect(purpleDark.palette.text.disabled).toBe('#64748b')
+    expect(purpleDark.palette.text.disabled).toBe('#8392a8')
     expect(purpleDark.palette.divider).toBe('#334155')
     expect(purpleDark.palette.dividerStrong).toBe('#475569')
     expect(purpleDark.shadows[1]).toBe('0 2px 12px rgba(0, 0, 0, 0.3)')
@@ -171,6 +179,44 @@ describe('createAppTheme', () => {
     }
   })
 
+  it('defines one focus-ring-colored focus-visible ring in CssBaseline for every combination', () => {
+    for (const preference of ALL_PREFERENCES) {
+      const appTheme = createAppTheme(preference)
+      const serialized = JSON.stringify(appTheme.components?.MuiCssBaseline)
+      expect(serialized).toContain(FOCUS_VISIBLE_SELECTOR)
+      expect(serialized).toContain(`"outline":"2px solid ${appTheme.palette.focusRing}"`)
+      expect(serialized).toContain('"outlineOffset":"2px"')
+    }
+  })
+
+  it('draws the same ring on a keyboard-focused checkbox, whose input is visually hidden', () => {
+    for (const preference of ALL_PREFERENCES) {
+      const appTheme = createAppTheme(preference)
+      const serialized = JSON.stringify(appTheme.components?.MuiCssBaseline)
+      expect(serialized).toContain(
+        `"${CHECKBOX_FOCUS_VISIBLE_SELECTOR}":{"outline":"2px solid ${appTheme.palette.focusRing}","outlineOffset":"2px"}`
+      )
+    }
+  })
+
+  it('keeps the focus ring at 3:1 or more (WCAG 1.4.11) on every backdrop of every combination', () => {
+    for (const preference of ALL_PREFERENCES) {
+      const { palette } = createAppTheme(preference)
+      const backdrops = {
+        default: palette.background.default,
+        paper: palette.background.paper,
+        surface: palette.surface,
+        sidebar: palette.sidebar
+      }
+      for (const [backdropName, backdropColor] of Object.entries(backdrops)) {
+        const label = `${preference.accent}/${preference.mode} ring on ${backdropName}`
+        expect(contrastRatio(palette.focusRing, backdropColor), label).toBeGreaterThanOrEqual(
+          WCAG_NON_TEXT_RATIO
+        )
+      }
+    }
+  })
+
   it('adapts shadows to the mode and the accent', () => {
     const dark = createAppTheme({ accent: 'purple', mode: 'dark' })
     const light = createAppTheme({ accent: 'purple', mode: 'light' })
@@ -180,5 +226,26 @@ describe('createAppTheme', () => {
     expect(light.shadows[3]).toBe(
       `0 2px 8px ${alpha(light.palette.primary.main, ACCENT_GLOW_ALPHA)}`
     )
+  })
+
+  it('meets WCAG AA (4.5:1) for secondary and dim text in every combination', () => {
+    for (const preference of ALL_PREFERENCES) {
+      const { palette } = createAppTheme(preference)
+      const texts = { secondary: palette.text.secondary, dim: palette.text.disabled }
+      const backdrops = {
+        default: palette.background.default,
+        paper: palette.background.paper,
+        surface: palette.surface,
+        sidebar: palette.sidebar
+      }
+      for (const [textName, textColor] of Object.entries(texts)) {
+        for (const [backdropName, backdropColor] of Object.entries(backdrops)) {
+          const label = `${preference.accent}/${preference.mode} ${textName} on ${backdropName}`
+          expect(contrastRatio(textColor, backdropColor), label).toBeGreaterThanOrEqual(
+            WCAG_AA_NORMAL_TEXT_RATIO
+          )
+        }
+      }
+    }
   })
 })

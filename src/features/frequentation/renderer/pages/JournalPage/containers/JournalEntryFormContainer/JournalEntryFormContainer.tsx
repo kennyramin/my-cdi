@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Controller } from 'react-hook-form'
 import dayjs from 'dayjs'
-import { Card } from '@ui/components/Card'
 import { Button } from '@ui/components/Button'
 import { Icon } from '@ui/components/Icon'
 import { Toast } from '@ui/components/Toast'
@@ -18,9 +17,17 @@ import type { AutocompleteOption } from '@ui/components/Autocomplete'
 import { TimeRowPresenter } from './presenters/TimeRowPresenter'
 import { periodFromTime } from './presenters/TimeRowPresenter/helpers/periodFromTime'
 
-import { EntryForm, SectionLabel } from './JournalEntryFormContainer.styles'
+import {
+  EntryForm,
+  FutureDateHelperText,
+  SUBMIT_BAR_ATTRIBUTE,
+  SectionLabel,
+  FormCard,
+  SubmitBar
+} from './JournalEntryFormContainer.styles'
 
 const TIME_FORMAT = 'HH:mm'
+const FUTURE_DATE_HELPER_ID = 'journal-future-date-helper'
 
 interface StudentChip {
   id: number
@@ -51,12 +58,13 @@ export function JournalEntryFormContainer({
     handleStudentSelect,
     handleStudentRemove,
     isStudentLoading,
+    isFutureDate,
     isSubmitting,
     toast,
     dismissToast
   } = useJournalEntryForm({ selectedDate, onSubmitted })
 
-  const isDisabled = isSubmitting || !form.formState.isValid
+  const isDisabled = isSubmitting || !form.formState.isValid || isFutureDate
 
   function buildStudentChips(selectedIds: number[]): StudentChip[] {
     return studentOptions
@@ -85,7 +93,7 @@ export function JournalEntryFormContainer({
   }
 
   return (
-    <Card>
+    <FormCard>
       <SectionLabel variant="overline">{t('form.newEntry')}</SectionLabel>
       <Controller
         control={form.control}
@@ -139,17 +147,25 @@ export function JournalEntryFormContainer({
             />
           )}
         />
-        <Button
-          type="submit"
-          variant="primary"
-          fullWidth
-          disabled={isDisabled}
-          iconLeft={<Icon name="check_circle" />}
-        >
-          {t('form.submit')}
-        </Button>
+        <SubmitBar {...{ [SUBMIT_BAR_ATTRIBUTE]: '' }}>
+          <Button
+            type="submit"
+            variant="primary"
+            fullWidth
+            disabled={isDisabled}
+            aria-describedby={isFutureDate ? FUTURE_DATE_HELPER_ID : undefined}
+            iconLeft={<Icon name="check_circle" />}
+          >
+            {t('form.submit')}
+          </Button>
+          {isFutureDate && (
+            <FutureDateHelperText id={FUTURE_DATE_HELPER_ID} variant="caption" role="status">
+              {t('form.futureNotAllowed')}
+            </FutureDateHelperText>
+          )}
+        </SubmitBar>
       </EntryForm>
       <Toast toast={toast} onClose={dismissToast} />
-    </Card>
+    </FormCard>
   )
 }

@@ -6,9 +6,9 @@ export const StatsKpiGrid = styled(Box, {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
   display: 'grid',
-  gridTemplateColumns: 'repeat(4, 1fr)',
+  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
   gap: theme.spacing(2),
   [theme.breakpoints.down('lg')]: {
-    gridTemplateColumns: 'repeat(2, 1fr)'
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))'
   }
 }))

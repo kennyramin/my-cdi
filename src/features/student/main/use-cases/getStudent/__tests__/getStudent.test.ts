@@ -6,6 +6,7 @@ import { ErrorCode } from '@lib/errors'
 
 const STUDENT_ID = 1
 const NONEXISTENT_ID = 9999
+const VISIT_COUNT = 7
 
 const SAMPLE_ENTITY: StudentEntity = {
   id: STUDENT_ID,
@@ -26,6 +27,8 @@ function createMockGateway(overrides: Partial<StudentGateway> = {}): StudentGate
     delete: vi.fn().mockResolvedValue(true),
     getByClass: vi.fn().mockResolvedValue([]),
     getByIds: vi.fn().mockResolvedValue([]),
+    getAllWithVisitCount: vi.fn().mockResolvedValue([]),
+    countVisitsByStudentId: vi.fn().mockResolvedValue(0),
     ...overrides
   }
 }
@@ -39,6 +42,18 @@ describe('getStudent', () => {
       expect(result.data.id).toBe(STUDENT_ID)
       expect(result.data.fullName).toBe('Jean Dupont')
     }
+  })
+
+  it('includes the visit count of the student', async () => {
+    const gateway = createMockGateway({
+      countVisitsByStudentId: vi.fn().mockResolvedValue(VISIT_COUNT)
+    })
+    const result = await getStudent({ gateway }, { id: STUDENT_ID })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.visitCount).toBe(VISIT_COUNT)
+    }
+    expect(gateway.countVisitsByStudentId).toHaveBeenCalledWith(STUDENT_ID)
   })
 
   it('returns error when student not found', async () => {

@@ -36,15 +36,12 @@ function renderRow(props: Partial<Parameters<typeof JournalEntryRowPresenter>[0]
   )
 }
 
-function findRow(): Element {
-  const row = document.querySelector('[role="row"]')
-  if (!row) {
-    throw new Error('Row not found')
-  }
-  return row
-}
-
 describe('JournalEntryRowPresenter', () => {
+  it('does not use the invalid row role', () => {
+    renderRow()
+    expect(document.querySelector('[role="row"]')).toBeNull()
+  })
+
   it('renders student name, class, time, and activity label', () => {
     renderRow()
     expect(screen.getByText('Jean Dupont')).toBeInTheDocument()
@@ -68,7 +65,7 @@ describe('JournalEntryRowPresenter', () => {
   it('clicking the row triggers onRowClick', () => {
     const onRowClick = vi.fn()
     renderRow({ onRowClick })
-    fireEvent.click(findRow())
+    fireEvent.click(screen.getByRole('listitem'))
     expect(onRowClick).toHaveBeenCalledTimes(1)
   })
 

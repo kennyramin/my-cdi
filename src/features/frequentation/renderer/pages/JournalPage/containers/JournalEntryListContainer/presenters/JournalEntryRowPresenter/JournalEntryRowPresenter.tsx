@@ -49,7 +49,7 @@ export function JournalEntryRowPresenter({
   const { t } = useTranslation('frequentation')
 
   return (
-    <Row role="row" onClick={onRowClick} $isSelected={selected}>
+    <Row onClick={onRowClick} $isSelected={selected}>
       <Avatar initials={initials} colorSeed={avatarColorSeed} />
       <RowMain>
         <StudentName>

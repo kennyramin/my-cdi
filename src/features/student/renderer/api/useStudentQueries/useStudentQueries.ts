@@ -7,10 +7,15 @@ import type { StudentViewModel } from '@student/types'
 
 const STUDENT_LIST_DEFAULT_FILTERS = {}
 
-export function useStudentList() {
+interface StudentListOptions {
+  refetchOnMount?: 'always'
+}
+
+export function useStudentList({ refetchOnMount }: StudentListOptions = {}) {
   const { t } = useTranslation('common')
   return useQuery({
     queryKey: [...studentKeys.lists()],
+    refetchOnMount,
     queryFn: async (): Promise<StudentViewModel[]> => {
       const result = await window.electronAPI.student.list(STUDENT_LIST_DEFAULT_FILTERS)
       if (!result.success) {

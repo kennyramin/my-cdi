@@ -2,7 +2,10 @@ import type { StudentResponseDto } from '@student-shared'
 import type { StudentEntity } from '@student/entities/student'
 import { computeStudentFields } from '@student/entities/student/helpers/computeStudentFields'
 
-export function formatStudentResponse(entity: StudentEntity): StudentResponseDto {
+export function formatStudentResponse(
+  entity: StudentEntity,
+  visitCount: number
+): StudentResponseDto {
   const { fullName } = computeStudentFields(entity)
   return {
     id: entity.id,
@@ -12,6 +15,7 @@ export function formatStudentResponse(entity: StudentEntity): StudentResponseDto
     ine: entity.ine,
     fullName,
     createdAt: entity.createdAt,
-    updatedAt: entity.updatedAt
+    updatedAt: entity.updatedAt,
+    visitCount
   }
 }

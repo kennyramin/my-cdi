@@ -1,10 +1,13 @@
-import { eq, inArray } from 'drizzle-orm'
+import { count, eq, getTableColumns, inArray } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type { StudentGateway } from './student.gateway'
-import type { StudentEntity } from '@student/entities/student'
+import type { StudentEntity, StudentWithVisitCountEntity } from '@student/entities/student'
 import { studentTable } from '@student/entities/student'
+import { frequentationTable } from '@frequentation/entities/frequentation'
 import type { CreateStudentDto, UpdateStudentDto } from '@student-shared'
 import { mapStudentRow } from './helpers/mapStudentRow'
+
+const NO_VISITS = 0
 
 export class StudentGatewayDrizzle implements StudentGateway {
   constructor(private db: BetterSQLite3Database<Record<string, unknown>>) {}
@@ -85,5 +88,23 @@ export class StudentGatewayDrizzle implements StudentGateway {
     }
     const rows = await this.db.select().from(studentTable).where(inArray(studentTable.id, ids))
     return rows.map(mapStudentRow)
+  }
+
+  async getAllWithVisitCount(classe?: string): Promise<StudentWithVisitCountEntity[]> {
+    const rows = await this.db
+      .select({ ...getTableColumns(studentTable), visitCount: count(frequentationTable.id) })
+      .from(studentTable)
+      .leftJoin(frequentationTable, eq(frequentationTable.studentId, studentTable.id))
+      .where(classe === undefined ? undefined : eq(studentTable.classe, classe))
+      .groupBy(studentTable.id)
+    return rows.map(({ visitCount, ...student }) => ({ ...mapStudentRow(student), visitCount }))
+  }
+
+  async countVisitsByStudentId(studentId: number): Promise<number> {
+    const rows = await this.db
+      .select({ value: count() })
+      .from(frequentationTable)
+      .where(eq(frequentationTable.studentId, studentId))
+    return rows[0]?.value ?? NO_VISITS
   }
 }

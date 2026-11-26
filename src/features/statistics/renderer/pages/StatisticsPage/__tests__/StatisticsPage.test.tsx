@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@mui/material/styles'
 import { theme } from '@ui/theme'
@@ -25,10 +25,11 @@ function createWrapper() {
 }
 
 describe('StatisticsPage', () => {
+  const getStats = vi.fn()
   beforeEach(() => {
     vi.stubGlobal('electronAPI', {
       statistics: {
-        getStats: vi.fn().mockResolvedValue({
+        getStats: getStats.mockResolvedValue({
           success: true,
           data: {
             totalVisits: SAMPLE_TOTAL,
@@ -54,8 +55,75 @@ describe('StatisticsPage', () => {
     await waitFor(() => expect(screen.getByText('Visites totales')).toBeInTheDocument())
     expect(screen.getByText('Moyenne / jour')).toBeInTheDocument()
     expect(screen.getByText('Ce mois')).toBeInTheDocument()
-    expect(screen.getByText('Fréquentation par jour')).toBeInTheDocument()
+    expect(screen.getByText('Fréquentation par jour de la semaine')).toBeInTheDocument()
+    expect(screen.getByText('Fréquentation par classe')).toBeInTheDocument()
     expect(screen.getByText('Activités')).toBeInTheDocument()
     expect(screen.getByText('Évolution sur la période')).toBeInTheDocument()
+  })
+
+  it('keeps the custom inputs mounted while the new range loads', async () => {
+    render(<StatisticsPage />, { wrapper: createWrapper() })
+    await waitFor(() => expect(screen.getByText('Visites totales')).toBeInTheDocument())
+    fireEvent.click(screen.getByText('Personnalisé'))
+    fireEvent.change(screen.getByLabelText('Date de début'), { target: { value: '2026-11-10' } })
+    expect(screen.getByLabelText('Date de début')).toHaveValue('2026-11-10')
+    expect(screen.queryByText('Chargement…')).toBeNull()
+    await waitFor(() =>
+      expect(getStats).toHaveBeenLastCalledWith(
+        expect.objectContaining({ startDate: '2026-11-10' })
+      )
+    )
+  })
+
+  function trendLabels() {
+    const svg = screen.getByRole('img', { name: 'Évolution sur la période' })
+    return [...svg.querySelectorAll('text')].map((node) => node.textContent)
+  }
+
+  function staleArea(container: HTMLElement) {
+    return container.querySelector('[data-stale="true"][aria-busy="true"]')
+  }
+
+  it('keeps the last valid range labels and marks content stale for an inverted range', async () => {
+    const { container } = render(<StatisticsPage />, { wrapper: createWrapper() })
+    await waitFor(() => expect(screen.getByText('Visites totales')).toBeInTheDocument())
+    const labelsBefore = trendLabels()
+    expect(staleArea(container)).toBeNull()
+    fireEvent.click(screen.getByText('Personnalisé'))
+    fireEvent.change(screen.getByLabelText('Date de début'), { target: { value: '2026-11-20' } })
+    fireEvent.change(screen.getByLabelText('Date de fin'), { target: { value: '2026-11-10' } })
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(trendLabels()).toEqual(labelsBefore)
+    expect(staleArea(container)).not.toBeNull()
+  })
+
+  it('does not draw the new range labels over old dots while a preset is pending', async () => {
+    const { container } = render(<StatisticsPage />, { wrapper: createWrapper() })
+    await waitFor(() => expect(screen.getByText('Visites totales')).toBeInTheDocument())
+    const labelsBefore = trendLabels()
+    let resolveWeek: (value: unknown) => void = () => undefined
+    getStats.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveWeek = resolve
+      })
+    )
+    fireEvent.click(screen.getByText('Cette semaine'))
+    expect(trendLabels()).toEqual(labelsBefore)
+    expect(staleArea(container)).not.toBeNull()
+    await act(async () => {
+      resolveWeek({
+        success: true,
+        data: {
+          totalVisits: 1,
+          averagePerDay: 1,
+          morningRate: 0,
+          afternoonRate: 0,
+          dailyCounts: [],
+          activityCounts: [],
+          classCounts: []
+        }
+      })
+    })
+    await waitFor(() => expect(staleArea(container)).toBeNull())
   })
 })

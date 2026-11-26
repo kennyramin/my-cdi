@@ -1,10 +1,10 @@
 import ButtonBase from '@mui/material/ButtonBase'
 import Typography from '@mui/material/Typography'
 import { MobileTimePicker } from '@mui/x-date-pickers/MobileTimePicker'
-import { alpha, styled } from '@mui/material/styles'
+import { styled } from '@mui/material/styles'
 import { shouldForwardStyledProp } from '@ui/helpers/shouldForwardStyledProp'
 import { Icon } from '@ui/components/Icon'
-import { FONT_WEIGHTS, MONO_FONT_FAMILY, RADII, TINT_ALPHAS, TYPE_SCALE } from '@ui/theme'
+import { FONT_WEIGHTS, MONO_FONT_FAMILY, RADII, TYPE_SCALE } from '@ui/theme'
 
 export const TIME_ICON_FONT_SIZE_PX = TYPE_SCALE.h6
 
@@ -34,11 +34,7 @@ export const TimeButton = styled(ButtonBase, {
   paddingInline: theme.spacing(0.5),
   paddingBlock: theme.spacing(0.25),
   transition: theme.transitions.create('background-color'),
-  '&:hover': { backgroundColor: theme.palette.surface },
-  '&:focus-visible': {
-    outline: `2px solid ${alpha(theme.palette.primary.main, TINT_ALPHAS.border)}`,
-    outlineOffset: '2px'
-  }
+  '&:hover': { backgroundColor: theme.palette.surface }
 }))
 
 export const TimeDisplay = styled('span', {

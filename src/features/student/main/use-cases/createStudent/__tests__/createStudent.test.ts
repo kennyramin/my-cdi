@@ -22,6 +22,8 @@ function createMockGateway(overrides: Partial<StudentGateway> = {}): StudentGate
     delete: vi.fn().mockResolvedValue(false),
     getByClass: vi.fn().mockResolvedValue([]),
     getByIds: vi.fn().mockResolvedValue([]),
+    getAllWithVisitCount: vi.fn().mockResolvedValue([]),
+    countVisitsByStudentId: vi.fn().mockResolvedValue(0),
     ...overrides
   }
 }
@@ -39,6 +41,19 @@ describe('createStudent', () => {
       expect(result.data.nom).toBe('Dupont')
       expect(result.data.fullName).toBe('Jean Dupont')
     }
+  })
+
+  it('returns visitCount 0 without querying visits', async () => {
+    const gateway = createMockGateway()
+    const result = await createStudent(
+      { gateway },
+      { nom: 'Dupont', prenom: 'Jean', classe: '3B', ine: '0123456789A' }
+    )
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.visitCount).toBe(0)
+    }
+    expect(gateway.countVisitsByStudentId).not.toHaveBeenCalled()
   })
 
   it('rejects duplicate INE', async () => {

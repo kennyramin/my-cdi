@@ -11,13 +11,31 @@
     "month": "This month",
     "quarter": "This quarter",
     "semester": "This semester",
-    "year": "This year",
+    "schoolYear": "School year",
     "custom": "Custom"
   },
   "charts": {
-    "weekly": "Attendance by day",
+    "weekly": "Visits by weekday",
+    "classes": "Visits by class",
+    "classesEmpty": "No visits in this period",
     "activities": "Activities",
     "trend": "Trend over period",
-    "visits": "visits"
+    "visits": "visits",
+    "dotTooltip_one": "{{date}}: {{count}} visit",
+    "dotTooltip_other": "{{date}}: {{count}} visits",
+    "trendSummary": "From {{start}} to {{end}}: {{visits}} over {{days}}, peak {{max}} on {{maxDate}}",
+    "trendSummaryEmpty": "From {{start}} to {{end}}: no visits",
+    "visitsCount_one": "{{count}} visit",
+    "visitsCount_other": "{{count}} visits",
+    "activeDays_one": "{{count}} day with visits",
+    "activeDays_other": "{{count}} days with visits"
+  },
+  "customRange": {
+    "start": "Start date",
+    "end": "End date",
+    "errors": {
+      "incomplete": "Fill in both dates",
+      "endBeforeStart": "The end date must be on or after the start date"
+    }
   }
 }
