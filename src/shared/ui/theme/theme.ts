@@ -10,6 +10,15 @@ import {
 
 export const MONO_FONT_FAMILY = '"JetBrains Mono", ui-monospace, monospace'
 
+const FOCUS_RING_WIDTH_PX = 2
+const FOCUS_RING_OFFSET_PX = 2
+
+/** `body` prefix lifts specificity above single-class MUI resets; text inputs keep their focused border. */
+export const FOCUS_VISIBLE_SELECTOR = 'body :focus-visible:not(input):not(textarea)'
+
+/** The checkbox's real input is visually hidden, so `:not(input)` skips it: ring its root instead. */
+export const CHECKBOX_FOCUS_VISIBLE_SELECTOR = 'body .MuiCheckbox-root.Mui-focusVisible'
+
 const SANS_FONT_FAMILY = '"Inter", system-ui, -apple-system, sans-serif'
 
 interface AccentColors {
@@ -17,28 +26,90 @@ interface AccentColors {
   light: string
   contrastText: string
   soft: string
+  /** Keyboard-focus ring and selection outline: >= 3:1 (WCAG 1.4.11) on every backdrop of its palette. */
+  ring: string
 }
 
 export const ACCENT_COLORS: Record<ThemeAccent, Record<ThemeMode, AccentColors>> = {
   purple: {
-    dark: { main: '#7c4dff', light: '#916fff', contrastText: '#ffffff', soft: '#c084fc' },
-    light: { main: '#7c4dff', light: '#916fff', contrastText: '#ffffff', soft: '#8b5cf6' }
+    dark: {
+      main: '#7c4dff',
+      light: '#916fff',
+      contrastText: '#ffffff',
+      soft: '#c084fc',
+      ring: '#916fff'
+    },
+    light: {
+      main: '#7c4dff',
+      light: '#916fff',
+      contrastText: '#ffffff',
+      soft: '#8b5cf6',
+      ring: '#7c4dff'
+    }
   },
   pink: {
-    dark: { main: '#ec4899', light: '#f472b6', contrastText: '#ffffff', soft: '#f9a8d4' },
-    light: { main: '#ec4899', light: '#f472b6', contrastText: '#ffffff', soft: '#db2777' }
+    dark: {
+      main: '#ec4899',
+      light: '#f472b6',
+      contrastText: '#ffffff',
+      soft: '#f9a8d4',
+      ring: '#f472b6'
+    },
+    light: {
+      main: '#ec4899',
+      light: '#f472b6',
+      contrastText: '#ffffff',
+      soft: '#db2777',
+      ring: '#db2777'
+    }
   },
   blue: {
-    dark: { main: '#3b82f6', light: '#60a5fa', contrastText: '#ffffff', soft: '#93c5fd' },
-    light: { main: '#3b82f6', light: '#60a5fa', contrastText: '#ffffff', soft: '#1d4ed8' }
+    dark: {
+      main: '#3b82f6',
+      light: '#60a5fa',
+      contrastText: '#ffffff',
+      soft: '#93c5fd',
+      ring: '#60a5fa'
+    },
+    light: {
+      main: '#3b82f6',
+      light: '#60a5fa',
+      contrastText: '#ffffff',
+      soft: '#1d4ed8',
+      ring: '#1d4ed8'
+    }
   },
   red: {
-    dark: { main: '#ef4444', light: '#f87171', contrastText: '#ffffff', soft: '#fca5a5' },
-    light: { main: '#ef4444', light: '#f87171', contrastText: '#ffffff', soft: '#b91c1c' }
+    dark: {
+      main: '#ef4444',
+      light: '#f87171',
+      contrastText: '#ffffff',
+      soft: '#fca5a5',
+      ring: '#f87171'
+    },
+    light: {
+      main: '#ef4444',
+      light: '#f87171',
+      contrastText: '#ffffff',
+      soft: '#b91c1c',
+      ring: '#b91c1c'
+    }
   },
   yellow: {
-    dark: { main: '#f59e0b', light: '#fbbf24', contrastText: '#1e293b', soft: '#fcd34d' },
-    light: { main: '#f59e0b', light: '#fbbf24', contrastText: '#1e293b', soft: '#b45309' }
+    dark: {
+      main: '#f59e0b',
+      light: '#fbbf24',
+      contrastText: '#1e293b',
+      soft: '#fcd34d',
+      ring: '#fbbf24'
+    },
+    light: {
+      main: '#f59e0b',
+      light: '#fbbf24',
+      contrastText: '#1e293b',
+      soft: '#b45309',
+      ring: '#b45309'
+    }
   }
 }
 
@@ -74,7 +145,7 @@ const THEME_PALETTES: Record<ThemeAccent, Record<ThemeMode, ThemePaletteTokens>>
       card: '#1e293b',
       title: '#e2e8f0',
       text: '#94a3b8',
-      textDim: '#64748b',
+      textDim: '#8392a8',
       border: '#334155',
       borderStrong: '#475569',
       info: '#60a5fa',
@@ -90,7 +161,7 @@ const THEME_PALETTES: Record<ThemeAccent, Record<ThemeMode, ThemePaletteTokens>>
       card: '#ffffff',
       title: '#0f172a',
       text: '#475569',
-      textDim: '#64748b',
+      textDim: '#59687e',
       border: '#cbd5e1',
       borderStrong: '#94a3b8',
       info: '#2563eb',
@@ -108,7 +179,7 @@ const THEME_PALETTES: Record<ThemeAccent, Record<ThemeMode, ThemePaletteTokens>>
       card: '#40203a',
       title: '#f2e2ec',
       text: '#b593a8',
-      textDim: '#8a6480',
+      textDim: '#ac899f',
       border: '#6d3d5c',
       borderStrong: '#8a557a',
       info: '#60a5fa',
@@ -124,7 +195,7 @@ const THEME_PALETTES: Record<ThemeAccent, Record<ThemeMode, ThemePaletteTokens>>
       card: '#ffffff',
       title: '#2a1224',
       text: '#6d4a5e',
-      textDim: '#93707f',
+      textDim: '#805d6f',
       border: '#ecd2df',
       borderStrong: '#d3a6ba',
       info: '#2563eb',
@@ -142,7 +213,7 @@ const THEME_PALETTES: Record<ThemeAccent, Record<ThemeMode, ThemePaletteTokens>>
       card: '#1c2b45',
       title: '#e0e7f2',
       text: '#8fa0bd',
-      textDim: '#64789a',
+      textDim: '#8294b3',
       border: '#33456a',
       borderStrong: '#475d8a',
       info: '#60a5fa',
@@ -158,7 +229,7 @@ const THEME_PALETTES: Record<ThemeAccent, Record<ThemeMode, ThemePaletteTokens>>
       card: '#ffffff',
       title: '#0c1526',
       text: '#4a5a75',
-      textDim: '#64789a',
+      textDim: '#566887',
       border: '#ccd8ea',
       borderStrong: '#93a8c8',
       info: '#2563eb',
@@ -176,7 +247,7 @@ const THEME_PALETTES: Record<ThemeAccent, Record<ThemeMode, ThemePaletteTokens>>
       card: '#43211c',
       title: '#f2e2df',
       text: '#b59189',
-      textDim: '#8a645c',
+      textDim: '#af8b83',
       border: '#6d3a31',
       borderStrong: '#8a5146',
       info: '#60a5fa',
@@ -192,7 +263,7 @@ const THEME_PALETTES: Record<ThemeAccent, Record<ThemeMode, ThemePaletteTokens>>
       card: '#ffffff',
       title: '#27110f',
       text: '#70504a',
-      textDim: '#967067',
+      textDim: '#825f58',
       border: '#ecd4ce',
       borderStrong: '#d6a79d',
       info: '#2563eb',
@@ -210,7 +281,7 @@ const THEME_PALETTES: Record<ThemeAccent, Record<ThemeMode, ThemePaletteTokens>>
       card: '#423818',
       title: '#f0e9d8',
       text: '#b0a485',
-      textDim: '#857a5e',
+      textDim: '#afa384',
       border: '#6b5f38',
       borderStrong: '#887a4d',
       info: '#60a5fa',
@@ -226,7 +297,7 @@ const THEME_PALETTES: Record<ThemeAccent, Record<ThemeMode, ThemePaletteTokens>>
       card: '#ffffff',
       title: '#241d0d',
       text: '#6b6148',
-      textDim: '#8f8464',
+      textDim: '#73694e',
       border: '#e9dfc6',
       borderStrong: '#ccbd95',
       info: '#2563eb',
@@ -329,6 +400,8 @@ declare module '@mui/material/styles' {
     surface: string
     /** Emphasised border for interactive outlines. */
     dividerStrong: string
+    /** Keyboard-focus ring colour, >= 3:1 on every surface of the palette. */
+    focusRing: string
     /** Per-activity accent colors, shared by chips, tiles and charts. */
     activity: Record<ActivityTone, string>
   }
@@ -337,6 +410,7 @@ declare module '@mui/material/styles' {
     sidebar?: string
     surface?: string
     dividerStrong?: string
+    focusRing?: string
     activity?: Record<ActivityTone, string>
   }
 }
@@ -376,6 +450,7 @@ function buildPaletteOptions(accent: ThemeAccent, mode: ThemeMode): PaletteOptio
     sidebar: paletteTokens.sidebar,
     surface: paletteTokens.surface,
     dividerStrong: paletteTokens.borderStrong,
+    focusRing: accentColors.ring,
     activity: {
       computer: paletteTokens.info,
       work: paletteTokens.success,
@@ -397,6 +472,10 @@ export function createAppTheme(preference: ThemePreference): Theme {
   }
   const paletteTokens = THEME_PALETTES[preference.accent][preference.mode]
   const accentColors = ACCENT_COLORS[preference.accent][preference.mode]
+  const focusRing = {
+    outline: `${FOCUS_RING_WIDTH_PX}px solid ${accentColors.ring}`,
+    outlineOffset: `${FOCUS_RING_OFFSET_PX}px`
+  }
   const appTheme = createTheme({
     palette: buildPaletteOptions(preference.accent, preference.mode),
     typography: {
@@ -508,6 +587,8 @@ export function createAppTheme(preference: ThemePreference): Theme {
             font: 'inherit',
             color: 'inherit'
           },
+          [FOCUS_VISIBLE_SELECTOR]: focusRing,
+          [CHECKBOX_FOCUS_VISIBLE_SELECTOR]: focusRing,
           '*::-webkit-scrollbar': {
             width: SCROLLBAR_WIDTH_PX
           },

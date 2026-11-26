@@ -54,7 +54,22 @@ describe('StudentBatchActionsContainer', () => {
 
     expect(screen.getByText('Tout sélectionner')).toBeInTheDocument()
     expect(screen.getByText('Supprimer la sélection')).toBeInTheDocument()
-    expect(screen.getByText(/sélectionné/)).toBeInTheDocument()
+    expect(screen.getByText('2 élèves sélectionnés')).toBeInTheDocument()
+  })
+
+  it('uses the singular selected label for one student', () => {
+    renderWithClient(
+      <StudentBatchActionsContainer
+        selectedIds={[STUDENT_ID_FIRST]}
+        selectedCount={1}
+        totalCount={TOTAL_COUNT}
+        onSelectAll={vi.fn()}
+        onClearSelection={vi.fn()}
+        onAfterDelete={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('1 élève sélectionné')).toBeInTheDocument()
   })
 
   it('disables delete button when nothing selected', () => {

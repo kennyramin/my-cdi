@@ -4,5 +4,6 @@ export type IconButtonTone = 'default' | 'danger'
 
 export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   iconName: string
+  'aria-label': string
   tone?: IconButtonTone
 }

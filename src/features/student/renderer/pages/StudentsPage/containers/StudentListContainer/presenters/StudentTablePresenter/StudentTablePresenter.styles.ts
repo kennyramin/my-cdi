@@ -3,6 +3,10 @@ import { alpha, styled } from '@mui/material/styles'
 import { shouldForwardStyledProp } from '@ui/helpers/shouldForwardStyledProp'
 import { FONT_WEIGHTS, TINT_ALPHAS } from '@ui/theme'
 
+// Nom, Prénom, Classe and INE columns: keep them on one line and ellipsize.
+const FIRST_TRUNCATED_COLUMN = 2
+const LAST_TRUNCATED_COLUMN = 5
+
 export const TableRoot = styled(Box, {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
@@ -14,7 +18,8 @@ export const TableRoot = styled(Box, {
   boxShadow: theme.shadows[1],
   '& table': {
     width: '100%',
-    borderCollapse: 'collapse'
+    borderCollapse: 'collapse',
+    tableLayout: 'fixed'
   },
   '& th': {
     textAlign: 'left',
@@ -27,17 +32,18 @@ export const TableRoot = styled(Box, {
     backgroundColor: theme.palette.surface,
     borderBottom: `1px solid ${theme.palette.divider}`,
     whiteSpace: 'nowrap',
-    userSelect: 'none',
-    cursor: 'pointer',
-    '&:hover': {
-      color: theme.palette.text.secondary
-    }
+    userSelect: 'none'
   },
   '& td': {
     padding: theme.spacing(1.5, 2),
     fontSize: theme.typography.body1.fontSize,
     borderBottom: `1px solid ${theme.palette.divider}`,
     verticalAlign: 'middle'
+  },
+  [`& td:nth-of-type(n+${FIRST_TRUNCATED_COLUMN}):nth-of-type(-n+${LAST_TRUNCATED_COLUMN})`]: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
   },
   '& tr:last-child td': {
     borderBottom: 'none'
@@ -57,12 +63,27 @@ export const TableRoot = styled(Box, {
   }
 }))
 
+export const TableScroll = styled('div', {
+  shouldForwardProp: shouldForwardStyledProp
+})({
+  overflowX: 'auto'
+})
+
 export const TableElement = styled('table', {
   shouldForwardProp: shouldForwardStyledProp
 })({
   width: '100%',
-  borderCollapse: 'collapse'
+  borderCollapse: 'collapse',
+  tableLayout: 'fixed'
 })
+
+export const EmptyCell = styled('td', {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  textAlign: 'center',
+  color: theme.palette.text.secondary,
+  paddingBlock: theme.spacing(4)
+}))
 
 export const TableFooter = styled(Box, {
   shouldForwardProp: shouldForwardStyledProp

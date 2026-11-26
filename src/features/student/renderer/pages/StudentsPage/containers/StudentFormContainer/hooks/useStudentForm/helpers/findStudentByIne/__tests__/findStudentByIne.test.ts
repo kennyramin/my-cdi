@@ -15,7 +15,8 @@ function buildStudent(overrides: Partial<StudentViewModel>): StudentViewModel {
     displayName: 'Jean Dupont',
     classLabel: '6A',
     createdAt: CREATED_AT,
-    updatedAt: CREATED_AT
+    updatedAt: CREATED_AT,
+    visitCount: 0
   }
   return { ...defaults, ...overrides }
 }

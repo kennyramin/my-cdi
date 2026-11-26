@@ -31,16 +31,25 @@ describe('Icon', () => {
     expect(span.style.fontSize).toBe(`${FONT_SIZE_PX}px`)
   })
 
-  it('sets aria-label when provided and removes aria-hidden', () => {
-    render(<Icon name="edit" ariaLabel="modifier" />)
-    const labeled = screen.getByLabelText('modifier')
-    expect(labeled).toBeInTheDocument()
-    expect(labeled.getAttribute('aria-hidden')).toBeNull()
-  })
-
-  it('marks the span as aria-hidden by default', () => {
-    const { container } = render(<Icon name="edit" />)
+  it('is always aria-hidden and never carries an aria-label', () => {
+    const { container } = render(<Icon name="search" />)
     const span = container.querySelector('span')
     expect(span?.getAttribute('aria-hidden')).toBe('true')
+    expect(span?.hasAttribute('aria-label')).toBe(false)
+  })
+
+  it('does not leak the ligature into the accessible name of its parent', () => {
+    render(
+      <button aria-label="Rechercher">
+        <Icon name="search" />
+      </button>
+    )
+    expect(screen.getByRole('button', { name: 'Rechercher' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /search/ })).toBeNull()
+  })
+
+  it('does not accept an ariaLabel prop', () => {
+    // @ts-expect-error ariaLabel was removed: ligature icons are decorative
+    render(<Icon name="edit" ariaLabel="modifier" />)
   })
 })

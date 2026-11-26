@@ -14,4 +14,10 @@ describe('HeaderPresenter', () => {
     render(<HeaderPresenter title="Journal" subtitle="x" time="08:30" />)
     expect(screen.getByRole('banner')).toBeInTheDocument()
   })
+
+  it('renders the page title as the level-1 heading', () => {
+    render(<HeaderPresenter title="Journal" subtitle="x" time="08:30" />)
+    expect(screen.getByRole('heading', { level: 1, name: 'Journal' })).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+  })
 })

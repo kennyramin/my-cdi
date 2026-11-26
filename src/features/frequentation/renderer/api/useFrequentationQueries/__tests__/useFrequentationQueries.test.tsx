@@ -47,6 +47,25 @@ describe('useJournalEntries', () => {
     })
   })
 
+  it('refetches on remount even when cached data is never stale', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } }
+    })
+    function Wrapper({ children }: { children: ReactNode }) {
+      return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    }
+    const range = { startDate: '2026-04-01', endDate: '2026-04-01' }
+
+    const first = renderHook(() => useJournalEntries(range), { wrapper: Wrapper })
+    await waitFor(() => expect(first.result.current.isSuccess).toBe(true))
+    first.unmount()
+
+    renderHook(() => useJournalEntries(range), { wrapper: Wrapper })
+    await waitFor(() =>
+      expect(window.electronAPI.frequentation.getJournalEntries).toHaveBeenCalledTimes(2)
+    )
+  })
+
   it('fetches journal entries by date range', async () => {
     const { result } = renderHook(
       () => useJournalEntries({ startDate: '2026-04-01', endDate: '2026-04-01' }),

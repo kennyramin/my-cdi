@@ -17,7 +17,9 @@ export function formatImportError(
 ): string {
   switch (error.type) {
     case 'MISSING_COLUMNS':
-      return translate('csvImport.error.missingColumns', { columns: error.columns.join(', ') })
+      return translate('csvImport.error.missingColumns', {
+        columns: error.columns.map((column) => translate(`csvImport.columns.${column}`)).join(', ')
+      })
     case 'ROW_VALIDATION':
       return translate('csvImport.error.rowValidation', {
         rowNumber: error.rowNumber,
