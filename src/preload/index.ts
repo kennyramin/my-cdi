@@ -5,7 +5,8 @@ import {
   FREQUENTATION_CHANNELS,
   STATISTICS_CHANNELS,
   SETTINGS_CHANNELS,
-  BACKUP_CHANNELS
+  BACKUP_CHANNELS,
+  EXPORT_CHANNELS
 } from '@shared/ipc/channels'
 import { UPDATER_CHANNELS, type UpdaterChannel } from '@shared/ipc/updaterChannels'
 import { parseThemePreferenceFromArgv } from '@lib/themePreference'
@@ -56,6 +57,9 @@ const electronAPI = {
     restore: (input: unknown) => invoke(BACKUP_CHANNELS.RESTORE, input),
     getStatus: () => invoke(BACKUP_CHANNELS.GET_STATUS, undefined),
     deleteAutomatic: () => invoke(BACKUP_CHANNELS.DELETE_AUTOMATIC, undefined)
+  },
+  export: {
+    run: (input: unknown) => invoke(EXPORT_CHANNELS.RUN, input)
   },
   getInitialThemePreference: () => parseThemePreferenceFromArgv(process.argv),
   getAppVersion: async (): Promise<string> => {

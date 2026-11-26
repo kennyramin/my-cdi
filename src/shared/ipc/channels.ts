@@ -39,6 +39,10 @@ export const BACKUP_CHANNELS = {
   DELETE_AUTOMATIC: 'backup.deleteAutomatic'
 } as const
 
+export const EXPORT_CHANNELS = {
+  RUN: 'export.run'
+} as const
+
 export type AppChannel = (typeof APP_CHANNELS)[keyof typeof APP_CHANNELS]
 export type StudentChannel = (typeof STUDENT_CHANNELS)[keyof typeof STUDENT_CHANNELS]
 export type FrequentationChannel =
@@ -46,3 +50,4 @@ export type FrequentationChannel =
 export type StatisticsChannel = (typeof STATISTICS_CHANNELS)[keyof typeof STATISTICS_CHANNELS]
 export type SettingsChannel = (typeof SETTINGS_CHANNELS)[keyof typeof SETTINGS_CHANNELS]
 export type BackupChannel = (typeof BACKUP_CHANNELS)[keyof typeof BACKUP_CHANNELS]
+export type ExportChannel = (typeof EXPORT_CHANNELS)[keyof typeof EXPORT_CHANNELS]

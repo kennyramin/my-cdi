@@ -64,4 +64,10 @@ describe('resolveIpcErrorMessage', () => {
       expect(resolveIpcErrorMessage(result, (key) => `t:${key}`)).not.toBe(result.error)
     }
   })
+
+  it('maps EXPORT_WRITE_FAILED to errors.exportWriteFailed', () => {
+    expect(
+      resolveIpcErrorMessage({ error: 'raw', code: ErrorCode.EXPORT_WRITE_FAILED }, (key) => key)
+    ).toBe('errors.exportWriteFailed')
+  })
 })

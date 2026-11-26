@@ -28,6 +28,7 @@ import type {
   RestoreInput,
   RestoreResult
 } from '@backup-shared'
+import type { ExportRequestDto, ExportResultDto } from '@export-shared'
 import type { ThemePreferenceResponseDto, UpdateThemePreferenceDto } from '@settings-shared'
 import type { ThemePreference } from '@types'
 import type {
@@ -93,12 +94,17 @@ export interface BackupApi {
   deleteAutomatic: () => Promise<IpcResult<DeleteAutomaticResultDto>>
 }
 
+export interface ExportApi {
+  run: (input: ExportRequestDto) => Promise<IpcResult<ExportResultDto>>
+}
+
 export interface ElectronAPI {
   student: StudentApi
   frequentation: FrequentationApi
   statistics: StatisticsApi
   settings: SettingsApi
   backup: BackupApi
+  export: ExportApi
   getAppVersion: () => Promise<string>
   getInitialThemePreference: () => ThemePreference
   updater: UpdaterAPI

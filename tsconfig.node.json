@@ -25,6 +25,8 @@
       "@settings-shared": ["./src/features/settings/shared"],
       "@backup/*": ["./src/features/backup/main/*"],
       "@backup-shared": ["./src/features/backup/shared"],
+      "@export/*": ["./src/features/export/main/*"],
+      "@export-shared": ["./src/features/export/shared"],
       "@student-shared": ["./src/features/student/shared"],
       "@frequentation-shared": ["./src/features/frequentation/shared"],
       "@statistics-shared": ["./src/features/statistics/shared"],
