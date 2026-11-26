@@ -83,6 +83,21 @@ describe('useExportDialog', () => {
     expect(run).toHaveBeenCalledWith({ kind: 'journal', period: PERIOD, includeNames: false })
   })
 
+  it('students submit is a no-op until acknowledged, then sends the acknowledged request', async () => {
+    const { result } = setup({ scope: 'students' })
+    expect(result.current.canSubmit).toBe(false)
+    await act(async () => result.current.submit())
+    expect(run).not.toHaveBeenCalled()
+    act(() => result.current.onAcknowledgeChange(null, true))
+    act(() => result.current.submit())
+    await waitFor(() => expect(run).toHaveBeenCalledTimes(1))
+    expect(run).toHaveBeenCalledWith({
+      kind: 'students',
+      includeNames: true,
+      acknowledgedPersonalData: true
+    })
+  })
+
   it('submit with names checked sends includeNames: true', async () => {
     const { result } = setup()
     act(() => result.current.onIncludeNamesChange(null, true))

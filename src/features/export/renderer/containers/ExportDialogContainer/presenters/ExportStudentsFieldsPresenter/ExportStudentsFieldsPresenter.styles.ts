@@ -3,6 +3,8 @@ import Typography from '@mui/material/Typography'
 import { styled } from '@mui/material/styles'
 import { shouldForwardStyledProp } from '@ui/helpers/shouldForwardStyledProp'
 
+export const STUDENTS_DESCRIPTION_ID = 'export-students-description'
+
 export const DescriptionText = styled(Typography, {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({

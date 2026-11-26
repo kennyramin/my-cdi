@@ -1,6 +1,10 @@
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@mui/material/Checkbox'
-import { AcknowledgeField, DescriptionText } from './ExportStudentsFieldsPresenter.styles'
+import {
+  AcknowledgeField,
+  DescriptionText,
+  STUDENTS_DESCRIPTION_ID
+} from './ExportStudentsFieldsPresenter.styles'
 
 interface ExportStudentsFieldsPresenterProps {
   acknowledged: boolean
@@ -17,10 +21,17 @@ export function ExportStudentsFieldsPresenter({
 
   return (
     <>
-      <DescriptionText variant="body1">{t('students.description')}</DescriptionText>
+      <DescriptionText variant="body1" id={STUDENTS_DESCRIPTION_ID}>
+        {t('students.description')}
+      </DescriptionText>
       <AcknowledgeField
         control={
-          <Checkbox checked={acknowledged} onChange={onAcknowledgeChange} disabled={isPending} />
+          <Checkbox
+            checked={acknowledged}
+            onChange={onAcknowledgeChange}
+            disabled={isPending}
+            slotProps={{ input: { 'aria-describedby': STUDENTS_DESCRIPTION_ID } }}
+          />
         }
         label={t('students.acknowledge')}
       />

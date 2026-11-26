@@ -4,6 +4,7 @@ import { Icon } from '@ui/components/Icon'
 import { Toast } from '@ui/components/Toast'
 import { useToast } from '@ui/hooks/useToast'
 import { ExportDialogContainer } from '../ExportDialogContainer'
+import type { ExportScopeProps } from '../ExportDialogContainer'
 import { useExportButton } from './hooks/useExportButton'
 import type { ExportButtonContainerProps } from './types/ExportButtonContainerProps'
 
@@ -13,25 +14,10 @@ export function ExportButtonContainer(props: ExportButtonContainerProps) {
   const { hasBeenOpened, session, isOpen, triggerRef, openDialog, closeDialog } = useExportButton()
 
   const isStatistics = props.scope === 'statistics'
-  const dialogNode =
-    props.scope === 'statistics' ? (
-      <ExportDialogContainer
-        key={session}
-        open={isOpen}
-        scope="statistics"
-        period={props.period}
-        onClose={closeDialog}
-        onResult={show}
-      />
-    ) : (
-      <ExportDialogContainer
-        key={session}
-        open={isOpen}
-        scope="students"
-        onClose={closeDialog}
-        onResult={show}
-      />
-    )
+  const scopeProps: ExportScopeProps =
+    props.scope === 'statistics'
+      ? { scope: 'statistics', period: props.period }
+      : { scope: 'students' }
 
   return (
     <>
@@ -45,7 +31,15 @@ export function ExportButtonContainer(props: ExportButtonContainerProps) {
       >
         {t(isStatistics ? 'button.statistics' : 'button.students')}
       </Button>
-      {hasBeenOpened ? dialogNode : null}
+      {hasBeenOpened ? (
+        <ExportDialogContainer
+          key={session}
+          open={isOpen}
+          onClose={closeDialog}
+          onResult={show}
+          {...scopeProps}
+        />
+      ) : null}
       <Toast toast={toast} onClose={dismiss} />
     </>
   )
