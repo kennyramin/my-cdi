@@ -553,6 +553,16 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 - **Retention**: there is no automatic purge. Identified visits live as long as the student record; anonymized visits are kept forever.
 - **Secure deletion**: the connection sets `PRAGMA secure_delete = ON` and anonymization checkpoints the WAL (`TRUNCATE`) after commit, so a removed name, first name or INE is zeroed in the live database file (and its `-wal`).
 
+### Duplicate Visit Warning & Editing an Entry
+
+A visit is a **duplicate** when another visit of the **same student** on the **same local day** starts less than `DUPLICATE_WINDOW_SECONDS` (1800 s, i.e. 30 minutes) away; 30:00 exactly is not a duplicate, 29:59 is. Distances are never computed across days (`localSameDayDistanceSeconds`, minutes and seconds of the wall-clock strings; inputs are validated upstream). Anonymized visits (no `student_id`) never match, and the entry being edited never matches itself. Candidates of the same batch are not compared with each other, only with stored visits.
+
+- **Contract**: `frequentation.create`, `createBatch` and `update` accept an optional `allowDuplicates` (strict boolean). Without it, a request that would create a duplicate writes **nothing** and answers the success payload `{ created: 0, duplicates: DuplicateWarningDto[] }` (type guard `isDuplicatesFound`, which requires `created === 0` and an array). Callers discriminate it before treating the answer as a success; the renderer mutations do not invalidate queries on it. With `allowDuplicates: true` the write happens unconditionally.
+- **Transactional gateway**: the check and the write are one operation. `createManyChecked(items, { allowDuplicates })` and `updateChecked(id, dto, { allowDuplicates })` run in a single `better-sqlite3` transaction opened with `behavior: 'immediate'`, so two concurrent requests for the same visit cannot both pass the check: exactly one is written, the others get the warning. The result is `{ duplicates } | { written }`. Use cases never do check-then-insert across two gateway calls. Batch warnings are built per student by `buildDuplicateWarnings` (student names resolved in one `getByIds`, `ANONYMIZED_STUDENT_LABEL` as fallback).
+- **Renderer flow**: the journal form keeps its values while `DuplicateWarningDialogPresenter` is open (it lists one line per existing visit: name, time, activity). "Annuler" or Escape closes it and **explicitly refocuses the submit button via a ref** (the clicked button is disabled while the request runs, so the browser drops focus to `<body>` and the modal has nothing to restore). "Enregistrer quand même" resends the same payload once with `allowDuplicates: true`; a ref-based guard makes a double click send once. Batches where some items failed report the failure (toast) instead of a plain success.
+- **Editing**: the edit dialog edits date, time, student and activity. It sends **only changed fields** (`startsAt` only when date or time changed, `studentId` only when the student changed; `activity` is always sent), refuses a future date/time both in the form (disabled save + explanation) and in the use case, rejects an unknown id or student, and re-checks duplicates (the warning opens over the edit dialog; cancelling refocuses the dialog's save button). Changing the student refreshes the class snapshot (`student_classe`). The student of an anonymized visit is locked (the field is disabled with an explanation, no `studentId` is ever sent, and the use case refuses it). An empty update payload is refused as "nothing to update".
+- **Verification**: `npm run check:duplicates` (Electron + Playwright, same prerequisites as `check:layout`; `AXE_SOURCE` optionally points at an `axe.min.js` for the dialog accessibility pass) drives the real app: warning, cancel focus, single write on double click, 31 min / other day, batch, concurrent creation, edit of time/student/duplicate/future/anonymized, light and dark at 800x600. It aligns `better-sqlite3` back to the Node ABI when it ends.
+
 ### Anonymization
 
 A leaver is removed with `anonymizeStudents` (IPC `student.anonymize`, also reused by the CSV removal flow):
@@ -840,6 +850,8 @@ Every artifact lives as close as possible to its consumer. Only hoist when share
 `vitest.config.ts` loads `shared/test/setup.ts` which imports `@testing-library/jest-dom/vitest` matchers.
 
 `vitest.config.ts` sets `process.env.TZ = 'Europe/Paris'` so the suite runs in the users' timezone.
+
+`npm run check:duplicates`, `check:anonymize` and `check:backup` are the same kind of real-app checks for the duplicate warning, anonymization and backups.
 
 `npm run check:layout` (Electron + Playwright, not part of vitest; needs `PLAYWRIGHT_MODULE` pointing at a Playwright install) checks overflow, the sticky journal submit bar and keyboard-focus visibility on the built app. It leaves `better-sqlite3` on the Electron ABI, so run `npm test` (which realigns) or `npm run rebuild:tests` before using vitest again.
 
