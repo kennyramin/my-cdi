@@ -8,9 +8,9 @@ describe('createFrequentationBatchSchema', () => {
   it('validates a valid batch', () => {
     const input = {
       frequentations: [
-        { startsAt: '2026-01-15T09:00:00.000Z', activity: 'work', studentId: 1 },
+        { startsAt: '2026-01-15T09:00:00', activity: 'work', studentId: 1 },
         {
-          startsAt: '2026-01-15T10:00:00.000Z',
+          startsAt: '2026-01-15T10:00:00',
           activity: 'reading',
           studentId: SECOND_STUDENT_ID
         }
@@ -29,7 +29,7 @@ describe('createFrequentationBatchSchema', () => {
 
   it('rejects batch with too many items', () => {
     const items = Array.from({ length: OVER_MAX_SIZE }, (_, i) => ({
-      startsAt: '2026-01-15T09:00:00.000Z',
+      startsAt: '2026-01-15T09:00:00',
       activity: 'work',
       studentId: i + 1
     }))
@@ -41,8 +41,18 @@ describe('createFrequentationBatchSchema', () => {
 
   it('rejects item with invalid activity', () => {
     const result = createFrequentationBatchSchema.safeParse({
-      frequentations: [{ startsAt: '2026-01-15T09:00:00.000Z', activity: 'invalid', studentId: 1 }]
+      frequentations: [{ startsAt: '2026-01-15T09:00:00', activity: 'invalid', studentId: 1 }]
     })
     expect(result.success).toBe(false)
   })
+
+  it.each(['2026-01-15 09:00:00', '2026-01-15T09:00:00Z', '2026-01-15T09:00:00.000Z'])(
+    'rejects non local wall-clock startsAt %s',
+    (startsAt) => {
+      const result = createFrequentationBatchSchema.safeParse({
+        frequentations: [{ startsAt, activity: 'work', studentId: 1 }]
+      })
+      expect(result.success).toBe(false)
+    }
+  )
 })

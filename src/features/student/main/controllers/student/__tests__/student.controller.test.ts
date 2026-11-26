@@ -50,7 +50,9 @@ function createGatewayStub(): StudentGateway {
     getById: vi.fn().mockResolvedValue(SAMPLE_ENTITY),
     getAll: vi.fn().mockResolvedValue([]),
     getByClass: vi.fn().mockResolvedValue([]),
-    getByIds: vi.fn().mockResolvedValue([])
+    getByIds: vi.fn().mockResolvedValue([]),
+    getAllWithVisitCount: vi.fn().mockResolvedValue([]),
+    countVisitsByStudentId: vi.fn().mockResolvedValue(0)
   }
 }
 

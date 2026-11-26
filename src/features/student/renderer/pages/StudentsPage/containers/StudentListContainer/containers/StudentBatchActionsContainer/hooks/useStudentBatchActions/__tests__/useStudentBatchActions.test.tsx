@@ -86,4 +86,24 @@ describe('useStudentBatchActions', () => {
     })
     expect(result.current.showConfirm).toBe(false)
   })
+
+  it('warns that the visit history is deleted too (plural)', () => {
+    const { result } = renderHook(
+      () => useStudentBatchActions({ ...baseOptions, selectedIds: [1, 2], selectedCount: 2 }),
+      { wrapper }
+    )
+    expect(result.current.confirmMessage).toBe(
+      'Supprimer 2 élèves supprimera aussi tout leur historique de fréquentation. Cette action est irréversible.'
+    )
+  })
+
+  it('warns that the visit history is deleted too (singular)', () => {
+    const { result } = renderHook(
+      () => useStudentBatchActions({ ...baseOptions, selectedIds: [1], selectedCount: 1 }),
+      { wrapper }
+    )
+    expect(result.current.confirmMessage).toBe(
+      'Supprimer 1 élève supprimera aussi tout son historique de fréquentation. Cette action est irréversible.'
+    )
+  })
 })

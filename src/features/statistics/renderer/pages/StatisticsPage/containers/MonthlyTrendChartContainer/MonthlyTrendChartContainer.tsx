@@ -6,25 +6,39 @@ import {
   DASH_PATTERN,
   DOT_RADIUS,
   GRADIENT_OPACITY_TOP,
+  X_LABEL_BASELINE_OFFSET,
   STROKE_WIDTH,
   Y_LABEL_FONT_SIZE,
   Y_LABEL_TEXT_OFFSET,
   ChartArea,
-  ChartSvg
+  ChartSummary,
+  ChartSvg,
+  TREND_SUMMARY_ID
 } from './MonthlyTrendChartContainer.styles'
-import { Y_LABEL_OFFSET_X } from './helpers/buildTrendPath'
+import { DEFAULT_TREND_DIMENSIONS, Y_LABEL_OFFSET_X } from './helpers/buildTrendPath'
 import { useMonthlyTrendChart } from './hooks/useMonthlyTrendChart'
 import type { MonthlyTrendChartContainerProps } from './types/MonthlyTrendChartContainerProps'
 
-export function MonthlyTrendChartContainer({ dailyCounts }: MonthlyTrendChartContainerProps) {
+export function MonthlyTrendChartContainer({
+  dailyCounts,
+  range
+}: MonthlyTrendChartContainerProps) {
   const { t } = useTranslation('statistics')
   const theme = useTheme()
-  const { trend, paddingLeft, innerRight } = useMonthlyTrendChart(dailyCounts)
+  const { chartRef, trend, paddingLeft, innerRight, summary } = useMonthlyTrendChart(
+    dailyCounts,
+    range
+  )
 
   return (
     <ChartCardPresenter titleIcon="show_chart" title={t('charts.trend')}>
-      <ChartArea>
-        <ChartSvg viewBox={trend.viewBox} preserveAspectRatio="none" aria-label={t('charts.trend')}>
+      <ChartArea ref={chartRef}>
+        <ChartSvg
+          viewBox={trend.viewBox}
+          role="img"
+          aria-label={t('charts.trend')}
+          aria-describedby={TREND_SUMMARY_ID}
+        >
           <defs>
             <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
               <stop
@@ -36,7 +50,7 @@ export function MonthlyTrendChartContainer({ dailyCounts }: MonthlyTrendChartCon
             </linearGradient>
           </defs>
           {trend.yLabels.map((label) => (
-            <g key={label.label}>
+            <g key={label.id}>
               <line
                 x1={paddingLeft}
                 y1={label.y}
@@ -54,9 +68,22 @@ export function MonthlyTrendChartContainer({ dailyCounts }: MonthlyTrendChartCon
                 fontFamily={MONO_FONT_FAMILY}
                 fontSize={Y_LABEL_FONT_SIZE}
               >
-                {label.label}
+                {label.value}
               </text>
             </g>
+          ))}
+          {trend.xLabels.map((label) => (
+            <text
+              key={label.id}
+              x={label.x}
+              y={DEFAULT_TREND_DIMENSIONS.height - X_LABEL_BASELINE_OFFSET}
+              textAnchor={label.anchor}
+              fill={theme.palette.text.disabled}
+              fontFamily={MONO_FONT_FAMILY}
+              fontSize={Y_LABEL_FONT_SIZE}
+            >
+              {label.label}
+            </text>
           ))}
           {trend.areaPath ? <path d={trend.areaPath} fill="url(#trendGrad)" /> : null}
           {trend.path ? (
@@ -71,16 +98,19 @@ export function MonthlyTrendChartContainer({ dailyCounts }: MonthlyTrendChartCon
           ) : null}
           {trend.dots.map((dot) => (
             <circle
-              key={`${dot.cx}-${dot.cy}`}
+              key={dot.date}
               cx={dot.cx}
               cy={dot.cy}
               r={DOT_RADIUS}
               fill={theme.palette.primary.main}
               stroke={theme.palette.background.paper}
               strokeWidth={STROKE_WIDTH}
-            />
+            >
+              <title>{t('charts.dotTooltip', { date: dot.dayLabel, count: dot.count })}</title>
+            </circle>
           ))}
         </ChartSvg>
+        <ChartSummary id={TREND_SUMMARY_ID}>{summary}</ChartSummary>
       </ChartArea>
     </ChartCardPresenter>
   )

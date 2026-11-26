@@ -38,6 +38,8 @@ export const studentEntitySchema = z.object({
 
 export type StudentEntity = z.infer<typeof studentEntitySchema>
 
+export type StudentWithVisitCountEntity = StudentEntity & { visitCount: number }
+
 export type InsertStudentEntity = typeof studentTable.$inferInsert
 
 export type SelectStudentEntity = typeof studentTable.$inferSelect

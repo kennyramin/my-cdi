@@ -5,6 +5,10 @@ import { frequentationKeys } from '../frequentationKeys'
 import type { JournalEntryDto, FrequentationResponseDto } from '@frequentation-shared'
 import type { DateRangeFilter } from '@frequentation/types'
 
+// Route components unmount on navigation; deleting a student cascades to their
+// visits, so the journal must refetch on remount even when cached data is fresh.
+const JOURNAL_REFETCH_ON_MOUNT = 'always'
+
 export function useJournalEntries(dateRange: DateRangeFilter) {
   const { t } = useTranslation('common')
   return useQuery({
@@ -16,7 +20,8 @@ export function useJournalEntries(dateRange: DateRangeFilter) {
       }
       return result.data
     },
-    enabled: Boolean(dateRange.startDate && dateRange.endDate)
+    enabled: Boolean(dateRange.startDate && dateRange.endDate),
+    refetchOnMount: JOURNAL_REFETCH_ON_MOUNT
   })
 }
 

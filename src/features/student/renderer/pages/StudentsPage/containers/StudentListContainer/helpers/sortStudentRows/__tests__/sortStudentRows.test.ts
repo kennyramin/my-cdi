@@ -6,6 +6,7 @@ const ID_FIRST = 1
 const ID_SECOND = 2
 const ID_THIRD = 3
 const INDEX_LAST = 2
+const VISIT_COUNTS = [10, 9, 0]
 
 const STUDENTS: StudentViewModel[] = [
   {
@@ -17,6 +18,7 @@ const STUDENTS: StudentViewModel[] = [
     fullName: 'Jean Dupont',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
+    visitCount: 0,
     displayName: 'Jean Dupont',
     classLabel: '3ème A'
   },
@@ -29,6 +31,7 @@ const STUDENTS: StudentViewModel[] = [
     fullName: 'Marie Martin',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
+    visitCount: 0,
     displayName: 'Marie Martin',
     classLabel: '3ème B'
   },
@@ -41,6 +44,7 @@ const STUDENTS: StudentViewModel[] = [
     fullName: 'Luc Bernard',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
+    visitCount: 0,
     displayName: 'Luc Bernard',
     classLabel: '4ème C'
   }
@@ -80,6 +84,34 @@ describe('sortStudentRows', () => {
     expect(result[0]?.ine).toBe('111A')
   })
 
+  it('sorts visitCount numerically', () => {
+    const rows = STUDENTS.map((student, index) => ({
+      ...student,
+      visitCount: VISIT_COUNTS[index] ?? 0
+    }))
+    const asc = sortStudentRows(rows, { field: 'visitCount', direction: 'asc' })
+    const desc = sortStudentRows(rows, { field: 'visitCount', direction: 'desc' })
+    expect(asc.map((row) => row.visitCount)).toEqual([...VISIT_COUNTS].reverse())
+    expect(desc.map((row) => row.visitCount)).toEqual(VISIT_COUNTS)
+  })
+
+  it('breaks visitCount ties by nom then prenom', () => {
+    const names = [
+      { nom: 'Martin', prenom: 'Zoé' },
+      { nom: 'Martin', prenom: 'Alice' },
+      { nom: 'Bernard', prenom: 'Luc' }
+    ]
+    const tied = STUDENTS.map((student, index) => ({
+      ...student,
+      ...names[index],
+      visitCount: 4
+    }))
+    const desc = sortStudentRows(tied, { field: 'visitCount', direction: 'desc' })
+    expect(desc.map((row) => row.id)).toEqual([ID_THIRD, ID_SECOND, ID_FIRST])
+    const asc = sortStudentRows(tied, { field: 'visitCount', direction: 'asc' })
+    expect(asc.map((row) => row.id)).toEqual([ID_THIRD, ID_SECOND, ID_FIRST])
+  })
+
   it('does not mutate the original array', () => {
     const original = [...STUDENTS]
     const config: StudentSortConfig = { field: 'nom', direction: 'asc' }
@@ -98,6 +130,7 @@ describe('sortStudentRows', () => {
         fullName: 'A A',
         createdAt: '2026-01-01T00:00:00Z',
         updatedAt: '2026-01-01T00:00:00Z',
+        visitCount: 0,
         displayName: 'A A',
         classLabel: 'A'
       },
@@ -110,6 +143,7 @@ describe('sortStudentRows', () => {
         fullName: 'B A',
         createdAt: '2026-01-01T00:00:00Z',
         updatedAt: '2026-01-01T00:00:00Z',
+        visitCount: 0,
         displayName: 'B A',
         classLabel: 'A'
       }
