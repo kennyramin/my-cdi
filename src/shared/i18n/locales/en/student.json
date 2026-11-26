@@ -25,13 +25,15 @@
   "deleteSuccess": "Student deleted",
   "anonymize": {
     "rowAction": "Remove student",
+    "rowActionNamed": "Remove student {{name}}",
     "batchAction": "Remove selection",
     "title_one": "Remove {{count}} student?",
     "title_other": "Remove {{count}} students?",
     "message": "The last name, first name and INE will be permanently deleted. Visits and class are kept, with no link to any person. This action cannot be undone.",
+    "messageNoVisits": "The last name, first name and INE will be permanently deleted. This action cannot be undone.",
     "noVisitsNote_one": "{{count}} student with no visits will simply be deleted.",
     "noVisitsNote_other": "{{count}} students with no visits will simply be deleted.",
-    "backupNote": "A safety backup copy is made just before. It, like earlier backups (manual or automatic), still contains the real identities. Automatic backups are deleted after 30 days.",
+    "backupNote": "A safety backup is made just before. That copy, like earlier backups (manual or automatic), still contains the real identities. Automatic copies are deleted after about 30 days.",
     "confirm": "Remove",
     "success": "Done: {{anonymized}} anonymized, {{deletedWithoutVisits}} deleted without visits."
   },

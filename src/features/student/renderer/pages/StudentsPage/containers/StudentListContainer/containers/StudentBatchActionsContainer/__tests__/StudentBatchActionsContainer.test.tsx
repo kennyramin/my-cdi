@@ -186,4 +186,50 @@ describe('StudentBatchActionsContainer', () => {
     expect(screen.getByText('Retirer 2 élèves ?')).toBeInTheDocument()
     expect(onAfterAnonymize).not.toHaveBeenCalled()
   })
+
+  it('shows the no-visits note when withoutVisitsCount > 0', () => {
+    renderWithClient(
+      <StudentBatchActionsContainer
+        selectedIds={SELECTED_IDS_PAIR}
+        selectedCount={SELECTED_COUNT}
+        totalCount={TOTAL_COUNT}
+        onSelectAll={vi.fn()}
+        onClearSelection={vi.fn()}
+        onAfterDelete={vi.fn()}
+        withoutVisitsCount={1}
+        onAfterAnonymize={vi.fn()}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer la sélection' }))
+    expect(screen.getByText('1 élève sans visite sera simplement supprimé.')).toBeInTheDocument()
+  })
+
+  it('disables the batch buttons and ignores Escape while anonymizing, so no second call', async () => {
+    const anonymize = vi.fn(() => new Promise(() => {}))
+    vi.stubGlobal('electronAPI', { student: { anonymize, delete: vi.fn() } })
+    renderWithClient(
+      <StudentBatchActionsContainer
+        selectedIds={SELECTED_IDS_PAIR}
+        selectedCount={SELECTED_COUNT}
+        totalCount={TOTAL_COUNT}
+        onSelectAll={vi.fn()}
+        onClearSelection={vi.fn()}
+        onAfterDelete={vi.fn()}
+        withoutVisitsCount={0}
+        onAfterAnonymize={vi.fn()}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer la sélection' }))
+    const confirm = screen.getByRole('button', { name: 'Retirer' })
+    fireEvent.click(confirm)
+    await waitFor(() => expect(confirm).toBeDisabled())
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    fireEvent.click(confirm)
+    expect(anonymize).toHaveBeenCalledTimes(1)
+    expect(
+      screen.getByRole('button', { name: 'Retirer la sélection', hidden: true })
+    ).toBeDisabled()
+  })
 })

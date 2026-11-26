@@ -186,7 +186,7 @@ describe('StudentListContainer', () => {
     })
 
     const row = await screen.findByRole('row', { name: /Léa/ })
-    await user.click(within(row).getByRole('button', { name: "Retirer l'élève" }))
+    await user.click(within(row).getByRole('button', { name: "Retirer l'élève Léa Martin" }))
 
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Retirer 1 élève ?')).toBeInTheDocument()
@@ -203,7 +203,7 @@ describe('StudentListContainer', () => {
     })
 
     const row = await screen.findByRole('row', { name: /Léa/ })
-    await user.click(within(row).getByRole('button', { name: "Retirer l'élève" }))
+    await user.click(within(row).getByRole('button', { name: "Retirer l'élève Léa Martin" }))
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Retirer' }))
 
@@ -251,5 +251,26 @@ describe('StudentListContainer', () => {
 
     expect(await screen.findByText('Confirmer la suppression')).toBeInTheDocument()
     expect(anonymizeMock).not.toHaveBeenCalled()
+  })
+
+  it('row dialog cannot be closed or relaunched while anonymizing', async () => {
+    anonymizeMock.mockReturnValue(new Promise(() => {}))
+    const user = userEvent.setup()
+    render(<StudentListContainer onEditStudent={vi.fn()} onAddStudent={vi.fn()} />, {
+      wrapper: createWrapper()
+    })
+
+    const row = await screen.findByRole('row', { name: /Léa/ })
+    await user.click(within(row).getByRole('button', { name: "Retirer l'élève Léa Martin" }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Retirer' }))
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'Retirer' })).toBeDisabled()
+    })
+
+    await user.keyboard('{Escape}')
+    await user.click(within(dialog).getByRole('button', { name: 'Fermer' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(anonymizeMock).toHaveBeenCalledTimes(1)
   })
 })

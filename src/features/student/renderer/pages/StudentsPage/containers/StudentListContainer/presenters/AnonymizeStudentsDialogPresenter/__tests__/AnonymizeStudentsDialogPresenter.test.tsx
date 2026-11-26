@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from '@mui/material/styles'
 import '@shared/i18n/config'
@@ -30,6 +30,14 @@ function renderDialog(overrides: Partial<AnonymizeStudentsDialogPresenterProps> 
   return props
 }
 
+function getBackdrop(): Element {
+  const backdrop = document.querySelector('.MuiBackdrop-root')
+  if (backdrop === null) {
+    throw new Error('Backdrop not found')
+  }
+  return backdrop
+}
+
 describe('AnonymizeStudentsDialogPresenter', () => {
   it('shows title, irreversible message and backup note', () => {
     renderDialog()
@@ -37,7 +45,7 @@ describe('AnonymizeStudentsDialogPresenter', () => {
     expect(screen.getByText(/supprimés définitivement/)).toBeInTheDocument()
     expect(screen.getByText(/irréversible/)).toBeInTheDocument()
     expect(screen.getByText(/copie de sécurité/)).toBeInTheDocument()
-    expect(screen.getByText(/supprimées après 30 jours/)).toBeInTheDocument()
+    expect(screen.getByText(/environ 30 jours/)).toBeInTheDocument()
   })
 
   it('mentions what is kept: visits and class', () => {
@@ -75,5 +83,33 @@ describe('AnonymizeStudentsDialogPresenter', () => {
     renderDialog({ isPending: true })
     expect(screen.getByRole('button', { name: 'Retirer' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Annuler' })).toBeDisabled()
+  })
+
+  it('does not claim visits are kept when no selected student has visits', () => {
+    renderDialog({ count: TWO_STUDENTS, withoutVisitsCount: TWO_STUDENTS })
+    expect(screen.queryByText(/visites et la classe sont conservées/)).toBeNull()
+    expect(screen.getByText(/irréversible/)).toBeInTheDocument()
+  })
+
+  it('puts the initial focus on Annuler, not on the destructive button', () => {
+    renderDialog()
+    expect(screen.getByRole('button', { name: 'Annuler' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Retirer' })).not.toHaveFocus()
+  })
+
+  it('closes on Escape, backdrop and the X button when idle', () => {
+    const props = renderDialog()
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    fireEvent.click(getBackdrop())
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer' }))
+    expect(props.onClose).toHaveBeenCalledTimes(3)
+  })
+
+  it('ignores Escape, backdrop and the X button while pending', () => {
+    const props = renderDialog({ isPending: true })
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    fireEvent.click(getBackdrop())
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer' }))
+    expect(props.onClose).not.toHaveBeenCalled()
   })
 })

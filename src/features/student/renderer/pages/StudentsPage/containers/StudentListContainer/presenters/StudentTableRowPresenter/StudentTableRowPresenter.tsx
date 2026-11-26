@@ -67,7 +67,7 @@ export function StudentTableRowPresenter({
           <IconButton iconName="edit" aria-label={t('app.edit')} onClick={onEditClick} />
           <IconButton
             iconName="person_remove"
-            aria-label={tStudent('anonymize.rowAction')}
+            aria-label={tStudent('anonymize.rowActionNamed', { name: student.displayName })}
             onClick={onAnonymizeClick}
           />
           <IconButton

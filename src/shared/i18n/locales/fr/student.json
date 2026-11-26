@@ -25,13 +25,15 @@
   "deleteSuccess": "Élève supprimé",
   "anonymize": {
     "rowAction": "Retirer l'élève",
+    "rowActionNamed": "Retirer l'élève {{name}}",
     "batchAction": "Retirer la sélection",
     "title_one": "Retirer {{count}} élève ?",
     "title_other": "Retirer {{count}} élèves ?",
     "message": "Le nom, le prénom et l'INE seront supprimés définitivement. Les visites et la classe sont conservées, sans aucun lien avec une personne. Cette action est irréversible.",
+    "messageNoVisits": "Le nom, le prénom et l'INE seront supprimés définitivement. Cette action est irréversible.",
     "noVisitsNote_one": "{{count}} élève sans visite sera simplement supprimé.",
     "noVisitsNote_other": "{{count}} élèves sans visite seront simplement supprimés.",
-    "backupNote": "Une copie de sécurité est faite juste avant. Elle, comme les sauvegardes (manuelles ou automatiques) précédentes, contient encore les identités réelles. Les sauvegardes automatiques sont supprimées après 30 jours.",
+    "backupNote": "Une copie de sécurité est faite juste avant. Cette copie, comme les sauvegardes précédentes (manuelles ou automatiques), contient encore les identités réelles. Les copies automatiques sont supprimées après environ 30 jours.",
     "confirm": "Retirer",
     "success": "Retrait terminé : {{anonymized}} anonymisé(s), {{deletedWithoutVisits}} supprimé(s) sans visite."
   },

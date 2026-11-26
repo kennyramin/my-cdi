@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { waitFor } from '@testing-library/react'
 import { renderHook, act } from '@testing-library/react'
 import { useStudentBatchActions } from '../useStudentBatchActions'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -106,5 +107,37 @@ describe('useStudentBatchActions', () => {
     expect(result.current.confirmMessage).toBe(
       'Supprimer 1 élève supprimera aussi tout son historique de fréquentation. Cette action est irréversible.'
     )
+  })
+
+  it('anonymize path: opens for the selected ids, calls onAfterAnonymize and closes', async () => {
+    const data = { anonymized: 3, deletedWithoutVisits: 0, ignored: 0 }
+    const anonymize = vi.fn().mockResolvedValue({ success: true, data })
+    vi.stubGlobal('electronAPI', { student: { anonymize } })
+    const onAfterAnonymize = vi.fn()
+    const { result } = renderHook(
+      () => useStudentBatchActions({ ...baseOptions, onAfterAnonymize }),
+      { wrapper }
+    )
+    act(() => {
+      result.current.handleAnonymizeClick()
+    })
+    expect(result.current.anonymize.isOpen).toBe(true)
+    act(() => {
+      result.current.anonymize.confirm()
+    })
+    await waitFor(() => expect(onAfterAnonymize).toHaveBeenCalledWith(data))
+    expect(anonymize).toHaveBeenCalledWith({ ids: [1, 2, 3] })
+    expect(result.current.anonymize.isOpen).toBe(false)
+  })
+
+  it('anonymize path: does nothing without selection', () => {
+    const { result } = renderHook(
+      () => useStudentBatchActions({ ...baseOptions, selectedIds: [], selectedCount: 0 }),
+      { wrapper }
+    )
+    act(() => {
+      result.current.handleAnonymizeClick()
+    })
+    expect(result.current.anonymize.isOpen).toBe(false)
   })
 })

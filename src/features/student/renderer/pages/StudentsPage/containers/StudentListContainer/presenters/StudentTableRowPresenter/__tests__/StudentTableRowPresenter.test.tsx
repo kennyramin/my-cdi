@@ -74,7 +74,7 @@ describe('StudentTableRowPresenter', () => {
 
   it('has both Retirer and Supprimer buttons with distinct aria-labels', () => {
     renderRow(buildStudent(VISIT_COUNT))
-    expect(screen.getByRole('button', { name: "Retirer l'élève" })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: "Retirer l'élève Jean Dupont" })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Supprimer' })).toBeInTheDocument()
   })
 
@@ -82,7 +82,7 @@ describe('StudentTableRowPresenter', () => {
     const onAnonymizeClick = vi.fn()
     const onDeleteClick = vi.fn()
     renderRow(buildStudent(VISIT_COUNT), { onAnonymizeClick, onDeleteClick })
-    fireEvent.click(screen.getByRole('button', { name: "Retirer l'élève" }))
+    fireEvent.click(screen.getByRole('button', { name: "Retirer l'élève Jean Dupont" }))
     expect(onAnonymizeClick).toHaveBeenCalledTimes(1)
     expect(onDeleteClick).not.toHaveBeenCalled()
   })

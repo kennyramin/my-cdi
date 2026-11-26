@@ -26,24 +26,33 @@ export function AnonymizeStudentsDialogPresenter({
 }: AnonymizeStudentsDialogPresenterProps) {
   const { t: tCommon } = useTranslation('common')
   const { t } = useTranslation('student')
+  const keepsVisits = withoutVisitsCount < count
+
+  function handleClose() {
+    if (!isPending) {
+      onClose()
+    }
+  }
 
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title={t('anonymize.title', { count })}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} disabled={isPending}>
+          <Button variant="secondary" onClick={onClose} disabled={isPending} autoFocus>
             {tCommon('app.cancel')}
           </Button>
-          <Button variant="danger" onClick={onConfirm} disabled={isPending} autoFocus>
+          <Button variant="danger" onClick={onConfirm} disabled={isPending}>
             {t('anonymize.confirm')}
           </Button>
         </>
       }
     >
-      <MessageText variant="body1">{t('anonymize.message')}</MessageText>
+      <MessageText variant="body1">
+        {t(keepsVisits ? 'anonymize.message' : 'anonymize.messageNoVisits')}
+      </MessageText>
       {withoutVisitsCount > NONE ? (
         <MessageText variant="body1">
           {t('anonymize.noVisitsNote', { count: withoutVisitsCount })}

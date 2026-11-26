@@ -23,17 +23,23 @@ export function useAnonymizeDialog({ onSuccess }: UseAnonymizeDialogOptions) {
   })
 
   function openFor(ids: number[]) {
+    if (isPending) {
+      return
+    }
     reset()
     setPendingIds(ids)
   }
 
   function confirm() {
-    if (pendingIds !== null) {
+    if (pendingIds !== null && !isPending) {
       anonymize(pendingIds)
     }
   }
 
   function close() {
+    if (isPending) {
+      return
+    }
     reset()
     setPendingIds(null)
   }
