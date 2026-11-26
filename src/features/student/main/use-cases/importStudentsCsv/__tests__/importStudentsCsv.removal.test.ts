@@ -5,10 +5,12 @@ import { migrateTestDatabase } from '@shared/db/testing/migrateTestDatabase'
 import { StudentGatewayDrizzle } from '@student/gateways/student'
 import { ErrorCode } from '@lib/errors'
 import { importStudentsCsv } from '../importStudentsCsv'
+import { previewCsvRemoval } from '../../previewCsvRemoval'
 
 const HEADER = 'nom;prenom;classe;ine'
 const TEN = 10
 const ELEVEN = 11
+const NOT_A_STRING = 4242
 const SEED_FIVE = 5
 
 interface CountRow {
@@ -169,16 +171,20 @@ describe('importStudentsCsv with removeAbsent', () => {
   it("backup taken with 'anonymization' before the transaction, only when toRemove > 0", async () => {
     seed('A')
     seed('B')
-    const order: string[] = []
+    const observed: { inTransaction: boolean; students: number; renamed: number }[] = []
     backup.mockImplementation(() => {
-      order.push(sqlite.inTransaction ? 'backup-in-tx' : 'backup')
+      observed.push({
+        inTransaction: sqlite.inTransaction,
+        students: count('students'),
+        renamed: count('students', "nom = 'Renamed'")
+      })
       return Promise.resolve('/backup.db')
     })
     await run(fileKeeping('A', 'B'), { removeAbsent: true })
     expect(backup).not.toHaveBeenCalled()
-    await run(fileKeeping('A'), { removeAbsent: true })
+    await run(`${HEADER}\nRenamed;Prenom;3B;A`, { removeAbsent: true })
     expect(backup).toHaveBeenCalledWith('anonymization')
-    expect(order).toEqual(['backup'])
+    expect(observed).toEqual([{ inTransaction: false, students: 2, renamed: 0 }])
   })
 
   it('backup failure aborts with BACKUP_WRITE_FAILED, nothing changed', async () => {
@@ -247,5 +253,109 @@ describe('importStudentsCsv with removeAbsent', () => {
     expect(result.success && result.data.updated).toBe(1)
     expect(result.success && result.data.created).toBe(0)
     expect(count('students')).toBe(1)
+  })
+
+  describe('destructive path guards', () => {
+    function expectUntouched(expected: number): void {
+      expect(count('students')).toBe(expected)
+      expect(count('frequentation', 'student_id IS NULL')).toBe(0)
+      expect(backup).not.toHaveBeenCalled()
+    }
+
+    it('a column-shifted row leaves every student untouched', async () => {
+      seed('I1')
+      seed('I2')
+      seed('I3')
+      seed('I4')
+      const csv = `${HEADER}\nA;B;3B;I1\nDup;ont;Jean;3B;I2\nC;D;3B;I3\nE;F;3B;I4`
+      const result = await run(csv, { removeAbsent: true })
+      expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+      expectUntouched(4)
+    })
+
+    it('a header mismatch (MISSING_COLUMNS) is refused', async () => {
+      seed('A')
+      seed('B')
+      const result = await run('nom;prenom\nX;Y', { removeAbsent: true })
+      expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+      expectUntouched(2)
+    })
+
+    it('an unterminated quote is refused', async () => {
+      seed('A')
+      seed('B')
+      const result = await run(`${HEADER}\nA;B;3B;A\n"B;B;3B;B`, { removeAbsent: true })
+      expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+      expectUntouched(2)
+    })
+
+    it('a duplicate INE in the file does not block and still removes absent students', async () => {
+      seed('A')
+      seed('B')
+      const result = await run(`${HEADER}\nA;B;3B;A\nA2;B2;3B;A`, { removeAbsent: true })
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.errorDetails.map((error) => error.type)).toEqual(['DUPLICATE_INE'])
+      }
+      expect(count('students', "ine = 'B'")).toBe(0)
+      expect(count('students', "ine = 'A'")).toBe(1)
+    })
+
+    it("a wholly wrong file (last year's list) requires the typed confirmation", async () => {
+      seed('A')
+      seed('B')
+      seed('C')
+      seed('D')
+      const lastYear = fileKeeping('OLD1', 'OLD2')
+      const refused = await run(lastYear, { removeAbsent: true })
+      expect(refused).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+      expect(count('students')).toBe(4)
+      expect(count('students', "ine LIKE 'OLD%'")).toBe(0)
+      expect(backup).not.toHaveBeenCalled()
+    })
+
+    it('a header-only file is refused', async () => {
+      seed('A')
+      const result = await run(`${HEADER}\n\n`, { removeAbsent: true })
+      expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+      expectUntouched(1)
+    })
+
+    it('the preview count equals the executed count', async () => {
+      for (let index = 0; index < ELEVEN; index += 1) {
+        seed(`S${index}`)
+      }
+      const csv = fileKeeping('S0', 'S1', 'NEW')
+      const preview = await previewCsvRemoval({ gateway }, { csv })
+      expect(preview.success).toBe(true)
+      const toRemove = preview.success ? preview.data.toRemove : -1
+      const result = await run(csv, {
+        removeAbsent: true,
+        removalConfirmation: `RETIRER ${toRemove}`
+      })
+      expect(
+        result.success && (result.data.anonymized ?? 0) + (result.data.deletedWithoutVisits ?? 0)
+      ).toBe(toRemove)
+      expect(count('students')).toBe(ELEVEN - toRemove + 1)
+    })
+
+    it('malformed payload fields are refused', async () => {
+      seed('A')
+      const deps = { gateway, createAutomaticBackup: backup }
+      const csv = fileKeeping('A')
+      const payloads: unknown[] = [
+        { csv, removeAbsent: true, removalConfirmation: 12 },
+        { csv, removeAbsent: 'true' },
+        { csv, onDuplicateIne: 'nope' },
+        { csv: NOT_A_STRING },
+        {},
+        null
+      ]
+      for (const payload of payloads) {
+        const result = await importStudentsCsv(deps, payload)
+        expect(result).toMatchObject({ success: false, code: ErrorCode.VALIDATION_ERROR })
+      }
+      expectUntouched(1)
+    })
   })
 })

@@ -63,6 +63,8 @@
     "too_small": "{{field}} is required",
     "too_big": "{{field}} is too long",
     "invalid_quotes": "{{field}} contains an unclosed quote",
+    "invalid_field_count": "{{field}} has the wrong number of columns (extra or missing delimiter)",
+    "invalid_csv": "{{field}} is unreadable",
     "invalid_type": "{{field}} is not valid"
   }
 }

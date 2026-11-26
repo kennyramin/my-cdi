@@ -63,6 +63,8 @@
     "too_small": "{{field}} est obligatoire",
     "too_big": "{{field}} est trop long",
     "invalid_quotes": "{{field}} contient un guillemet non fermé",
+    "invalid_field_count": "{{field}} contient un nombre de colonnes incorrect (délimiteur en trop ou manquant)",
+    "invalid_csv": "{{field}} est illisible",
     "invalid_type": "{{field}} n'est pas valide"
   }
 }

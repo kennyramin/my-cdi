@@ -1,10 +1,13 @@
+import { z } from 'zod'
 import { ErrorCode } from '@lib/errors'
 import type { UseCaseResult } from '@lib/use-case'
 import type { StudentEntity } from '@student/entities/student'
 import type { StudentGateway } from '@student/gateways/student'
-import type { CsvRemovalPreview, PreviewCsvRemovalPayload } from '@student-shared'
+import type { CsvRemovalPreview } from '@student-shared'
 import { parseStudentCsv } from '../importStudentsCsv/helpers/parseStudentCsv'
 import { planCsvRemoval } from '../importStudentsCsv/helpers/planCsvRemoval'
+
+const previewSchema = z.object({ csv: z.string() })
 
 const SAMPLE_SIZE = 20
 const SORT_LOCALE = 'fr'
@@ -15,8 +18,14 @@ interface PreviewCsvRemovalDeps {
 
 export async function previewCsvRemoval(
   deps: PreviewCsvRemovalDeps,
-  input: PreviewCsvRemovalPayload
+  // Untrusted IPC payload: validated at runtime below
+  input: unknown
 ): Promise<UseCaseResult<CsvRemovalPreview>> {
+  const payload = previewSchema.safeParse(input)
+  if (!payload.success) {
+    return { success: false, error: 'Invalid preview payload', code: ErrorCode.VALIDATION_ERROR }
+  }
+
   let existing: StudentEntity[]
   try {
     existing = await deps.gateway.getAll()
@@ -24,7 +33,7 @@ export async function previewCsvRemoval(
     return { success: false, error: 'Failed to read students', code: ErrorCode.DATABASE_ERROR }
   }
 
-  const { blockedReason, toRemove } = planCsvRemoval(existing, parseStudentCsv(input.csv))
+  const { blockedReason, toRemove } = planCsvRemoval(existing, parseStudentCsv(payload.data.csv))
   const sample = [...toRemove]
     .sort(
       (a, b) =>

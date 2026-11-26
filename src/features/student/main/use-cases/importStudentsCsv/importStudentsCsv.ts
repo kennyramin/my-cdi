@@ -10,8 +10,17 @@ import type {
   CsvImportResult,
   ImportStudentsCsvPayload
 } from '@student-shared'
+import { z } from 'zod'
+import log from 'electron-log/main'
 import { ErrorCode } from '@lib/errors'
 import type { UseCaseResult } from '@lib/use-case'
+
+const importStudentsCsvSchema = z.object({
+  csv: z.string(),
+  onDuplicateIne: z.enum(['skip', 'replace']).optional(),
+  removeAbsent: z.boolean().optional(),
+  removalConfirmation: z.string().optional()
+})
 
 const ANONYMIZATION_BACKUP_REASON = 'anonymization'
 const DEFAULT_DUPLICATE_POLICY: CsvDuplicateInePolicy = 'skip'
@@ -41,6 +50,18 @@ function failure(
 }
 
 export async function importStudentsCsv(
+  deps: ImportStudentsCsvDeps,
+  // Untrusted IPC payload: validated at runtime below
+  input: unknown
+): Promise<UseCaseResult<CsvImportResult>> {
+  const payload = importStudentsCsvSchema.safeParse(input)
+  if (!payload.success) {
+    return failure('Invalid import payload', ErrorCode.VALIDATION_ERROR)
+  }
+  return runImport(deps, payload.data)
+}
+
+async function runImport(
   deps: ImportStudentsCsvDeps,
   input: ImportStudentsCsvPayload
 ): Promise<UseCaseResult<CsvImportResult>> {
@@ -164,7 +185,13 @@ export async function importStudentsCsv(
       }
       return deps.gateway.anonymizeByIds(removeIds)
     })
-  } catch {
+  } catch (error) {
+    // Counts only: no student data in the logs
+    log.error('CSV import rolled back', {
+      rows: rows.length,
+      removals: removeIds.length,
+      cause: error instanceof Error ? error.message : 'Unknown error'
+    })
     return failure('Failed to import students', ErrorCode.DATABASE_ERROR)
   }
 
