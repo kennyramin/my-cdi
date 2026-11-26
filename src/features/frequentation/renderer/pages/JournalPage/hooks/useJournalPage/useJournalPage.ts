@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import dayjs from 'dayjs'
+import { useToast } from '@ui/hooks/useToast'
 import { useUpdateFrequentation } from '@frequentation/api/useFrequentationMutations'
 import { useActivityLabels } from '@frequentation/hooks/useActivityLabels'
 import { buildActivityOptions } from '@frequentation/helpers/buildActivityOptions'
@@ -22,24 +23,33 @@ export function useJournalPage() {
   const [pendingDuplicates, setPendingDuplicates] = useState<DuplicateWarningDto[]>([])
 
   const { allActivities, getLabel } = useActivityLabels()
-  const { mutate: updateMutate } = useUpdateFrequentation()
+  const { mutate: updateMutate, isPending } = useUpdateFrequentation()
+  const { toast, show, dismiss } = useToast()
+  // Synchronous guards: a double activation before re-render must send once,
+  // and a late response must not resurrect a closed edit dialog.
+  const inFlightRef = useRef(false)
+  const editingIdRef = useRef<number | null>(null)
   const activityOptions = buildActivityOptions(allActivities, getLabel)
 
   function startEditing(entry: JournalEntryViewModel) {
+    editingIdRef.current = entry.id
     setEditingEntryState(entry)
     setEditingActivity(entry.activity)
   }
 
   function closeEditDialog() {
+    editingIdRef.current = null
     setEditingEntryState(null)
     setEditingActivity(null)
     setPendingDuplicates([])
   }
 
   function sendEdit(allowDuplicates: boolean) {
-    if (!editingEntry || !editingActivity) {
+    if (!editingEntry || !editingActivity || inFlightRef.current) {
       return
     }
+    const entryId = editingEntry.id
+    inFlightRef.current = true
     updateMutate(
       {
         id: editingEntry.id,
@@ -47,7 +57,18 @@ export function useJournalPage() {
         ...(allowDuplicates && { allowDuplicates })
       },
       {
+        onSettled: () => {
+          inFlightRef.current = false
+        },
+        onError: (error: Error) => {
+          if (editingIdRef.current === entryId) {
+            show(error.message, 'error')
+          }
+        },
         onSuccess: (data) => {
+          if (editingIdRef.current !== entryId) {
+            return
+          }
           if (isDuplicatesFound(data)) {
             setPendingDuplicates(data.duplicates)
             return
@@ -84,6 +105,9 @@ export function useJournalPage() {
     getLabel,
     pendingDuplicates,
     confirmDuplicates,
-    cancelDuplicates
+    cancelDuplicates,
+    isSaving: isPending,
+    toast,
+    dismissToast: dismiss
   } as const
 }

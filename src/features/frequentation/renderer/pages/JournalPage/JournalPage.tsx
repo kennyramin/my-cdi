@@ -1,3 +1,4 @@
+import { Toast } from '@ui/components/Toast'
 import { CalendarContainer } from './containers/CalendarContainer'
 import { JournalEntryFormContainer } from './containers/JournalEntryFormContainer'
 import { JournalEntryListContainer } from './containers/JournalEntryListContainer'
@@ -24,7 +25,10 @@ export function JournalPage() {
     getLabel,
     pendingDuplicates,
     confirmDuplicates,
-    cancelDuplicates
+    cancelDuplicates,
+    isSaving,
+    toast,
+    dismissToast
   } = useJournalPage()
 
   const formColumnRef = useSubmitBarHeight<HTMLDivElement>()
@@ -46,6 +50,7 @@ export function JournalPage() {
           )}
           onSubmit={submitEdit}
           onClose={closeEditDialog}
+          saving={isSaving}
           entry={{
             ...getEntryAvatar(editingEntry),
             displayName: editingEntry.student.displayName,
@@ -58,7 +63,9 @@ export function JournalPage() {
         onConfirm={confirmDuplicates}
         onCancel={cancelDuplicates}
         getActivityLabel={getLabel}
+        busy={isSaving}
       />
+      <Toast toast={toast} onClose={dismissToast} />
     </PageGrid>
   )
 }

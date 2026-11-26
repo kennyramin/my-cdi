@@ -4,6 +4,7 @@ import type { DuplicateWarningDto } from '@frequentation-shared'
 const TIME_START = 11
 const TIME_END = 16
 
+// existingStartsAt is a local ISO string (YYYY-MM-DDTHH:mm:ss, no zone): slice, never parse as Date.
 export function formatDuplicateLine(
   dto: DuplicateWarningDto,
   activityLabel: string,

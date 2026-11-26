@@ -160,5 +160,68 @@ describe('useJournalPage', () => {
         allowDuplicates: true
       })
     })
+
+    it('a double confirm sends exactly one resend', async () => {
+      stubDuplicates()
+      const { result } = renderHook(() => useJournalPage(), { wrapper })
+      act(() => result.current.startEditing(sampleEntry))
+      act(() => result.current.submitEdit())
+      await waitFor(() => expect(result.current.pendingDuplicates).toHaveLength(1))
+      act(() => {
+        result.current.confirmDuplicates()
+        result.current.confirmDuplicates()
+      })
+      await waitFor(() => expect(result.current.editingEntry).toBeNull())
+      const update = vi.mocked(window.electronAPI.frequentation.update)
+      expect(update).toHaveBeenCalledTimes(2)
+      expect(update.mock.calls[0][0]).toEqual({ id: SAMPLE_ID, activity: ActivityType.WORK })
+      expect(update.mock.calls[1][0]).toEqual({
+        id: SAMPLE_ID,
+        activity: ActivityType.WORK,
+        allowDuplicates: true
+      })
+    })
+
+    it('ignores a duplicates result when the edit dialog was closed meanwhile', async () => {
+      let release: (value: unknown) => void = () => undefined
+      vi.stubGlobal('electronAPI', {
+        frequentation: {
+          getJournalEntries: vi.fn().mockResolvedValue({ success: true, data: [] }),
+          update: vi.fn().mockReturnValue(
+            new Promise((resolve) => {
+              release = resolve
+            })
+          )
+        }
+      })
+      const { result } = renderHook(() => useJournalPage(), { wrapper })
+      act(() => result.current.startEditing(sampleEntry))
+      act(() => result.current.submitEdit())
+      act(() => result.current.closeEditDialog())
+      await act(async () => {
+        release({ success: true, data: { created: 0, duplicates } })
+      })
+      expect(result.current.pendingDuplicates).toEqual([])
+    })
+
+    it('shows an error toast and keeps the edit dialog when the resend fails', async () => {
+      vi.stubGlobal('electronAPI', {
+        frequentation: {
+          getJournalEntries: vi.fn().mockResolvedValue({ success: true, data: [] }),
+          update: vi
+            .fn()
+            .mockResolvedValueOnce({ success: true, data: { created: 0, duplicates } })
+            .mockResolvedValue({ success: false, error: 'boom' })
+        }
+      })
+      const { result } = renderHook(() => useJournalPage(), { wrapper })
+      act(() => result.current.startEditing(sampleEntry))
+      act(() => result.current.submitEdit())
+      await waitFor(() => expect(result.current.pendingDuplicates).toHaveLength(1))
+      act(() => result.current.confirmDuplicates())
+      await waitFor(() => expect(result.current.toast?.severity).toBe('error'))
+      expect(result.current.editingEntry).not.toBeNull()
+      expect(result.current.isSaving).toBe(false)
+    })
   })
 })

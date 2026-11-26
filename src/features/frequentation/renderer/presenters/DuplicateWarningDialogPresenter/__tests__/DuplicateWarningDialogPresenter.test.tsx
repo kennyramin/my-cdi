@@ -32,7 +32,8 @@ const EN_LABELS: Partial<Record<ActivityType, string>> = {
 
 function setup(
   duplicates: DuplicateWarningDto[],
-  labels: Partial<Record<ActivityType, string>> = LABELS
+  labels: Partial<Record<ActivityType, string>> = LABELS,
+  busy = false
 ) {
   const onConfirm = vi.fn()
   const onCancel = vi.fn()
@@ -44,6 +45,7 @@ function setup(
           duplicates={list}
           onConfirm={onConfirm}
           onCancel={onCancel}
+          busy={busy}
           getActivityLabel={(a) => labels[a] ?? a}
         />
       </ThemeProvider>
@@ -126,5 +128,17 @@ describe('DuplicateWarningDialogPresenter', () => {
     expect(dialog.contains(document.activeElement)).toBe(true)
     rerender([])
     await vi.waitFor(() => expect(opener).toHaveFocus())
+  })
+
+  it('keeps the last list while closing and never shows a zero count', () => {
+    const { rerender } = setup([FIRST])
+    rerender([])
+    expect(screen.queryByText(/^0 /)).not.toBeInTheDocument()
+    expect(screen.getByText('Léa Martin — déjà enregistrée à 14:02 (Lecture)')).toBeInTheDocument()
+  })
+
+  it('disables the confirm button while busy', () => {
+    setup([FIRST], LABELS, true)
+    expect(screen.getByRole('button', { name: 'Enregistrer quand même' })).toBeDisabled()
   })
 })

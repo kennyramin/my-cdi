@@ -19,6 +19,7 @@ interface JournalEntryEditDialogPresenterProps {
   tileNodes: ReactNode[]
   onSubmit: () => void
   onClose: () => void
+  saving?: boolean
   entry?: EditDialogEntryViewModel
 }
 
@@ -27,6 +28,7 @@ export function JournalEntryEditDialogPresenter({
   tileNodes,
   onSubmit,
   onClose,
+  saving = false,
   entry
 }: JournalEntryEditDialogPresenterProps) {
   const { t } = useTranslation('frequentation')
@@ -42,7 +44,7 @@ export function JournalEntryEditDialogPresenter({
           <Button variant="secondary" onClick={onClose}>
             {t('form.cancel')}
           </Button>
-          <Button variant="primary" onClick={onSubmit}>
+          <Button variant="primary" onClick={onSubmit} disabled={saving}>
             {t('edit.save')}
           </Button>
         </>

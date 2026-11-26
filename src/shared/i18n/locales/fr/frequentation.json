@@ -59,8 +59,8 @@
   },
   "duplicate": {
     "title": "Présence déjà enregistrée",
-    "intro_one": "{{count}} élève a déjà une présence à moins de 30 minutes :",
-    "intro_other": "{{count}} élèves ont déjà une présence à moins de 30 minutes :",
+    "intro_one": "{{count}} élève a déjà une présence à moins de {{minutes}} minutes :",
+    "intro_other": "{{count}} élèves ont déjà une présence à moins de {{minutes}} minutes :",
     "line": "{{name}} — déjà enregistrée à {{time}} ({{activity}})",
     "confirm": "Enregistrer quand même",
     "cancel": "Annuler"
