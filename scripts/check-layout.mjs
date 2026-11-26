@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Electron layout check (not part of vitest). Launches the built app, seeds
 // realistic data and reports horizontal overflow at 800x600 plus the journal
-// "Enregistrer" fold at 1200x800. Exit code 0 = clean, 1 = offenders found.
+// "Enregistrer" fold at 1200x800. Exit code 0 = clean, 1 = offenders found,
+// 2 = cannot run now (too early in the day to seed past visits).
 //
 // Also asserts WCAG 2.4.11 on the journal form (no keyboard-focused control hidden under the sticky
 // submit bar) and that the future-date explanation stays inside the viewport.
@@ -15,6 +16,7 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { buildSeedTimes } from './lib/buildSeedTimes.mjs'
 
 const require = createRequire(import.meta.url)
 const { _electron: electron } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright')
@@ -25,7 +27,8 @@ const SMALL_VIEWPORT = { w: 800, h: 600 }
 const FOLD_VIEWPORT = { w: 1200, h: 800 }
 const STUDENT_COUNT = 60
 const VISIT_COUNT = 30
-const NOON_HOUR = 12
+const MIN_VISIT_COUNT = 5
+const EXIT_CODE_CANNOT_RUN = 2
 const INE_LENGTH = 11
 const ERROR_EXCERPT = 300
 const SUBPIXEL_TOLERANCE = 1
@@ -49,11 +52,10 @@ const report = (pageName, size, path, reason) => {
   offenders.push(`${pageName}@${size.w}x${size.h}: ${path} ${reason}`)
 }
 
-const seed = async (page) => {
+const seed = async (page, seedTimes) => {
   await page.evaluate(
     async (cfg) => {
       const api = window.electronAPI
-      const pad = (n) => String(n).padStart(2, '0')
       const ids = []
       for (let i = 0; i < cfg.studentCount; i++) {
         const res = await api.student.create({
@@ -70,18 +72,11 @@ const seed = async (page) => {
         }
         ids.push(res.data.id)
       }
-      const now = new Date()
-      const day = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-      const frequentations = []
-      for (let i = 0; i < cfg.visitCount; i++) {
-        const morning = i % 2 === 0
-        const hour = morning ? 8 + (i % 4) : cfg.noonHour + 1 + (i % 4)
-        frequentations.push({
-          startsAt: `${day}T${pad(hour)}:${pad(i % 60)}:00`,
-          activity: cfg.activities[i % cfg.activities.length],
-          studentId: ids[i % ids.length]
-        })
-      }
+      const frequentations = cfg.seedTimes.map((startsAt, i) => ({
+        startsAt,
+        activity: cfg.activities[i % cfg.activities.length],
+        studentId: ids[i % ids.length]
+      }))
       const batch = await api.frequentation.createBatch({ frequentations })
       if (!batch.success) {
         throw new Error(
@@ -93,8 +88,7 @@ const seed = async (page) => {
     {
       errorExcerpt: ERROR_EXCERPT,
       studentCount: STUDENT_COUNT,
-      visitCount: VISIT_COUNT,
-      noonHour: NOON_HOUR,
+      seedTimes,
       ineLength: INE_LENGTH,
       activities: ACTIVITIES
     }
@@ -429,6 +423,15 @@ const checkFold = async (page) => {
   await checkFutureHelperVisible(page, FOLD_VIEWPORT)
 }
 
+// The main process refuses visits dated in the future, so only past times of today are seeded.
+const seedTimes = buildSeedTimes(new Date(), VISIT_COUNT)
+if (seedTimes.length < MIN_VISIT_COUNT) {
+  console.error(
+    'check:layout: trop tôt dans la journée pour créer des visites passées (il faut au moins 00:06 heure locale)'
+  )
+  process.exit(EXIT_CODE_CANNOT_RUN)
+}
+
 const dir = mkdtempSync(join(tmpdir(), 'my-cdi-layout-'))
 let app
 try {
@@ -438,7 +441,7 @@ try {
   })
   const page = await app.firstWindow()
   await page.waitForSelector('main', { timeout: READY_TIMEOUT_MS })
-  await seed(page)
+  await seed(page, seedTimes)
   await resize(app, page, SMALL_VIEWPORT)
   await checkOverflow(page)
   await checkJournalSmall(page)

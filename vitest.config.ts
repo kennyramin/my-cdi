@@ -9,7 +9,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/shared/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'scripts/**/__tests__/*.test.mjs'],
     alias: [
       { find: '@student-shared', replacement: resolve('src/features/student/shared') },
       { find: '@frequentation-shared', replacement: resolve('src/features/frequentation/shared') },
