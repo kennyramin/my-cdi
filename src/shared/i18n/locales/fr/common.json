@@ -69,6 +69,7 @@
       "restore": "Restaurer une sauvegarde…",
       "deleteAutomatic": "Supprimer les sauvegardes automatiques ({{count}})",
       "privacy": "Les fichiers de sauvegarde contiennent les noms des élèves et ne sont pas chiffrés : conservez-les en lieu sûr.",
+      "anonymizationNote": "Les sauvegardes réalisées avant une anonymisation contiennent encore les identités réelles. Les sauvegardes automatiques sont supprimées après 30 jours.",
       "backupSuccess": "Sauvegarde enregistrée",
       "restoreDialog": {
         "title": "Restaurer cette sauvegarde ?",

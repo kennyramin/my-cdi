@@ -145,7 +145,8 @@ window.electronAPI.frequentation.list(input)
 - **Zod schemas** live alongside Drizzle schema for validation
 - **Migrations** managed by Drizzle Kit, output in `drizzle/`
 - **Schema registry** at `shared/db/schema.ts` re-exports all feature schemas
-- **Auto-cleanup**: frequentations older than 2 years are deleted on startup
+- **No automatic purge**: see §17 Retention
+- **Migration 0004** rebuilds `frequentation` with the SQLite create-new / copy / drop / rename pattern, without `PRAGMA foreign_keys` (a no-op inside the migration transaction); orphan rows get a `NULL` `student_id` so the foreign-key check cannot abort startup
 
 ```
 shared/db/
@@ -548,9 +549,20 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 - **Storage**: visit start times stored as local wall-clock strings `YYYY-MM-DDTHH:mm:ss` (no timezone suffix) in SQLite; time-of-day stored as `HH:mm` strings.
 - **Display**: `formatDate` (`DD/MM/YYYY`) and `formatDateTime` (`DD/MM/YYYY HH:mm`) via `dayjs` with French locale.
 - **UI**: MUI X Date Pickers wrapped in `LocalizationProvider` with `AdapterDayjs` and `adapterLocale="fr"`.
-- **Legacy rows**: legacy `Z`/offset values are normalised once at startup (settings key `migrations.startsAtLocal.done`, automatic backup first).
-- **Retention**: identified visits live as long as the student record; anonymized visits are kept forever (see §17 Anonymization).
-- **Secure deletion**: the connection sets `PRAGMA secure_delete = ON` and anonymization checkpoints the WAL (`TRUNCATE`) after commit, so a removed name, first name or INE is zeroed in the live database file. Limitation: the automatic `anonymization` safety backup taken just before is a full copy of the database and still contains that personal data until it is pruned (30 days / 10 copies); manual backups made earlier are likewise untouched.
+- **Legacy rows**: legacy `Z`/offset values are normalised once at startup (settings key `migrations.startsAtLocal.done`, automatic backup first). The conversion uses the machine timezone at first launch; values that are not valid dates (including rollovers such as `2026-02-30T…Z`) are left untouched and counted as unparseable.
+- **Retention**: there is no automatic purge. Identified visits live as long as the student record; anonymized visits are kept forever.
+- **Secure deletion**: the connection sets `PRAGMA secure_delete = ON` and anonymization checkpoints the WAL (`TRUNCATE`) after commit, so a removed name, first name or INE is zeroed in the live database file (and its `-wal`).
+
+### Anonymization
+
+A leaver is removed with `anonymizeStudents` (IPC `student.anonymize`, also reused by the CSV removal flow):
+
+- **Kept**: every visit (`frequentation` row) with its date, activity and a snapshot of the student's class (`student_classe`). `frequentation.student_id` is nullable and becomes `NULL`. Statistics and the Journal keep counting the visit; the Journal shows it as "Élève anonymisé" with the class.
+- **Removed**: the `students` row (surname, first name, INE, current class). A student without visits is simply deleted (nothing to keep).
+- **Class snapshot rule**: the class of a visit is `COALESCE(frequentation.student_classe, students.classe, 'unknown')`. The snapshot is written when the visit is created and refreshed when its student changes; migration 0004 backfills it from the live class.
+- **Backup first**: an automatic `anonymization` backup is taken before anything is written; if it fails nothing is changed. Everything else runs in a single transaction (all or nothing).
+- **Secure deletion** applies to the live database as described above. Limitation: that safety backup, and every earlier manual or automatic backup, is a full copy that still contains the real identities until it is pruned (automatic copies after 30 days or 10 copies); the Settings "Données" card says so.
+- **Irreversible**: the UI uses a confirmation dialog (not closable while the operation is pending) that states this and the backup note.
 
 ---
 
@@ -568,8 +580,15 @@ No `findByXxx` or `listXxx`. Every gateway returns `Entity | null` for single re
 - `parseStudentCsv` (PapaParse) parses with `header: true`, validates required columns, caps rows at `MAX_CSV_IMPORT_ROWS`
 - `csvRowSchema` (Zod) validates each row
 - Deduplicates against existing DB rows (`ine` match) and within-file duplicates
-- Gateway creates each student
-- Returns `CsvImportResult` `{ created, errors, errorMessages }`
+- Gateway creates or updates each student; the whole import runs in a single transaction
+- Returns `CsvImportResult` `{ created, updated, errors, errorDetails, anonymized?, deletedWithoutVisits? }`
+
+**Removal of absent students (optional, "Retirer les élèves absents")**
+
+- the `previewCsvRemoval` use-case returns the students that would be removed, split into anonymized (with visits) and deleted (without), without writing anything
+- Removal is blocked when the file has any malformed row (quote errors, column-count mismatch), a missing column, a duplicate INE or no data rows; students present in the file are never removed
+- Confirmation: when 10 or more students, or more than half of them, would be removed, the user must type `RETIRER n`; the main process re-checks it (a missing or wrong confirmation is a `VALIDATION_ERROR`)
+- Apply: automatic `anonymization` backup first, then removal and import in the single transaction; duplicates with existing INE are updated (`replace` policy)
 
 **Key decision:** File contents are read in the renderer and passed as a string over IPC; the main process never touches the filesystem directly.
 

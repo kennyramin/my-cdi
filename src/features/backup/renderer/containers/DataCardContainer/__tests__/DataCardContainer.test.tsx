@@ -117,6 +117,17 @@ describe('DataCardContainer', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows the anonymization note below the privacy sentence', async () => {
+    stubBackup()
+    renderCard()
+
+    const note = await screen.findByText(
+      'Les sauvegardes réalisées avant une anonymisation contiennent encore les identités réelles. Les sauvegardes automatiques sont supprimées après 30 jours.'
+    )
+    const privacy = screen.getByText(/Les fichiers de sauvegarde contiennent/)
+    expect(privacy.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('backs up, shows a success toast and refetches the status', async () => {
     const backup = stubBackup()
     renderCard()

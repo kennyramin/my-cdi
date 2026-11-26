@@ -68,6 +68,7 @@
       "restore": "Restore a backup…",
       "deleteAutomatic": "Delete automatic backups ({{count}})",
       "privacy": "Backup files contain student names and are not encrypted: keep them somewhere safe.",
+      "anonymizationNote": "Backups taken before an anonymization still contain the real identities. Automatic backups are deleted after 30 days.",
       "backupSuccess": "Backup saved",
       "restoreDialog": {
         "title": "Restore this backup?",

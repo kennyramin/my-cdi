@@ -58,6 +58,7 @@ export function DataCardPresenter({
         </Button>
       </ActionRow>
       <PrivacyNote>{t('settings.data.privacy')}</PrivacyNote>
+      <PrivacyNote>{t('settings.data.anonymizationNote')}</PrivacyNote>
     </DataLayout>
   )
 }
