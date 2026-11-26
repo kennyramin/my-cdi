@@ -77,11 +77,6 @@ export class StudentGatewayDrizzle implements StudentGateway {
     return true
   }
 
-  async getByClass(classe: string): Promise<StudentEntity[]> {
-    const rows = await this.db.select().from(studentTable).where(eq(studentTable.classe, classe))
-    return rows.map(mapStudentRow)
-  }
-
   async getByIds(ids: number[]): Promise<StudentEntity[]> {
     if (ids.length === 0) {
       return []

@@ -26,7 +26,6 @@ function createMockGateway(overrides: Partial<StudentGateway> = {}): StudentGate
     getAll: vi.fn().mockResolvedValue([]),
     update: vi.fn().mockResolvedValue(UPDATED_ENTITY),
     delete: vi.fn().mockResolvedValue(false),
-    getByClass: vi.fn().mockResolvedValue([]),
     getByIds: vi.fn().mockResolvedValue([]),
     getAllWithVisitCount: vi.fn().mockResolvedValue([]),
     countVisitsByStudentId: vi.fn().mockResolvedValue(0),

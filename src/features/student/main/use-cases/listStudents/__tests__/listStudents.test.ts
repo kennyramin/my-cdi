@@ -36,7 +36,6 @@ function createMockGateway(overrides: Partial<StudentGateway> = {}): StudentGate
     getAll: vi.fn().mockResolvedValue([STUDENT_A, STUDENT_B]),
     update: vi.fn().mockResolvedValue(STUDENT_A),
     delete: vi.fn().mockResolvedValue(true),
-    getByClass: vi.fn().mockResolvedValue([STUDENT_A]),
     getByIds: vi.fn().mockResolvedValue([]),
     getAllWithVisitCount: vi.fn().mockResolvedValue([
       { ...STUDENT_A, visitCount: STUDENT_A_VISITS },
@@ -71,7 +70,6 @@ describe('listStudents', () => {
     }
     expect(gateway.getAllWithVisitCount).toHaveBeenCalledWith('3B')
     expect(gateway.getAll).not.toHaveBeenCalled()
-    expect(gateway.getByClass).not.toHaveBeenCalled()
   })
 
   it('treats an empty classe as no filter', async () => {

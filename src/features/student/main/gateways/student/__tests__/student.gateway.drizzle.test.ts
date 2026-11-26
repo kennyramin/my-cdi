@@ -159,21 +159,6 @@ describe('StudentGatewayDrizzle', () => {
     })
   })
 
-  describe('getByClass', () => {
-    it('returns students of a specific class', async () => {
-      await gateway.create({ nom: 'A', prenom: 'B', classe: '3B', ine: 'INE1' })
-      await gateway.create({ nom: 'C', prenom: 'D', classe: '3A', ine: 'INE2' })
-      const result = await gateway.getByClass('3B')
-      expect(result).toHaveLength(EXPECTED_ONE_STUDENT)
-      expect(result[0]?.classe).toBe('3B')
-    })
-
-    it('returns empty array for class with no students', async () => {
-      const result = await gateway.getByClass('ZZZ')
-      expect(result).toHaveLength(0)
-    })
-  })
-
   describe('getByIds', () => {
     it('returns students matching given ids', async () => {
       const s1 = await gateway.create({ nom: 'A', prenom: 'B', classe: '3B', ine: 'INE1' })

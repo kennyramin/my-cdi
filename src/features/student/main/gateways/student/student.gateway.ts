@@ -7,7 +7,6 @@ export interface StudentGateway {
   getAll(): Promise<StudentEntity[]>
   update(id: number, dto: UpdateStudentDto): Promise<StudentEntity | null>
   delete(id: number): Promise<boolean>
-  getByClass(classe: string): Promise<StudentEntity[]>
   getByIds(ids: number[]): Promise<StudentEntity[]>
   getAllWithVisitCount(classe?: string): Promise<StudentWithVisitCountEntity[]>
   countVisitsByStudentId(studentId: number): Promise<number>
