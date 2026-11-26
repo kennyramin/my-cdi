@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
+import TextField from '@mui/material/TextField'
 import { styled } from '@mui/material/styles'
 import { shouldForwardStyledProp } from '@ui/helpers/shouldForwardStyledProp'
 import { Icon } from '@ui/components/Icon'
@@ -129,4 +130,50 @@ export const HintSmall = styled('small', {
   display: 'block',
   marginTop: theme.spacing(0.5),
   fontSize: theme.typography.body2.fontSize
+}))
+
+export const RemovalSection = styled(Box, {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  marginBottom: theme.spacing(2)
+}))
+
+export const RemovalNote = styled(Typography, {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  color: theme.palette.text.disabled,
+  marginLeft: theme.spacing(4),
+  marginBottom: theme.spacing(1)
+}))
+
+export const RemovalPreviewHeading = styled(Typography, {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  color: theme.palette.text.secondary,
+  fontWeight: FONT_WEIGHTS.semibold,
+  marginBottom: theme.spacing(0.5)
+}))
+
+export const RemovalNameList = styled('ul', {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  margin: 0,
+  paddingLeft: theme.spacing(3),
+  color: theme.palette.text.secondary,
+  fontSize: theme.typography.body2.fontSize,
+  maxHeight: `${ERROR_LINES_MAX_HEIGHT_PX}px`,
+  overflowY: 'auto'
+}))
+
+export const RemovalMoreText = styled(Typography, {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  color: theme.palette.text.disabled,
+  marginTop: theme.spacing(0.5)
+}))
+
+export const RemovalConfirmField = styled(TextField, {
+  shouldForwardProp: shouldForwardStyledProp
+})(({ theme }) => ({
+  marginTop: theme.spacing(1.5)
 }))

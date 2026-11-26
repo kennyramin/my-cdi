@@ -8,7 +8,8 @@ import type {
   AnonymizeStudentsResult,
   CreateStudentDto,
   UpdateStudentDto,
-  ImportStudentsCsvPayload
+  ImportStudentsCsvPayload,
+  PreviewCsvRemovalPayload
 } from '@student-shared'
 
 interface DeleteStudentInput {
@@ -93,6 +94,19 @@ export function useImportStudentsCsv() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.all })
       queryClient.invalidateQueries({ queryKey: statisticsKeys.all })
+    }
+  })
+}
+
+export function usePreviewCsvRemoval() {
+  const { t } = useTranslation('common')
+  return useMutation({
+    mutationFn: async (input: PreviewCsvRemovalPayload) => {
+      const result = await window.electronAPI.student.previewCsvRemoval(input)
+      if (!result.success) {
+        throw new Error(resolveIpcErrorMessage(result, t))
+      }
+      return result.data
     }
   })
 }

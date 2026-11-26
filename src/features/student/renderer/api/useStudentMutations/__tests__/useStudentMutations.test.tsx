@@ -7,7 +7,8 @@ import {
   useUpdateStudent,
   useDeleteStudent,
   useImportStudentsCsv,
-  useAnonymizeStudents
+  useAnonymizeStudents,
+  usePreviewCsvRemoval
 } from '../useStudentMutations'
 import type { CreateStudentDto, UpdateStudentDto } from '@student-shared'
 import { statisticsKeys } from '@statistics/api/statisticsKeys'
@@ -248,5 +249,39 @@ describe('useAnonymizeStudents', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true))
     expect(result.current.error?.message).toBe('errors.backup.writeFailed')
+  })
+})
+
+describe('usePreviewCsvRemoval', () => {
+  const PREVIEW = { toRemove: 1, total: 2, sample: ['Jean Dupont'] }
+
+  it('sends the csv and returns the preview without invalidating anything', async () => {
+    const previewCsvRemoval = vi.fn().mockResolvedValue({ success: true, data: PREVIEW })
+    vi.stubGlobal('electronAPI', { student: { previewCsvRemoval } })
+    const { wrapper, invalidateSpy } = createInvalidationSpiedWrapper()
+    const { result } = renderHook(() => usePreviewCsvRemoval(), { wrapper })
+
+    act(() => {
+      result.current.mutate({ csv: 'a;b' })
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(previewCsvRemoval).toHaveBeenCalledWith({ csv: 'a;b' })
+    expect(result.current.data).toEqual(PREVIEW)
+    expect(invalidateSpy).not.toHaveBeenCalled()
+  })
+
+  it('turns an ipc failure into an error', async () => {
+    vi.stubGlobal('electronAPI', {
+      student: { previewCsvRemoval: vi.fn().mockResolvedValue({ success: false, error: 'boom' }) }
+    })
+    const { result } = renderHook(() => usePreviewCsvRemoval(), { wrapper: createWrapper() })
+
+    act(() => {
+      result.current.mutate({ csv: 'a;b' })
+    })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.error?.message).toBe('boom')
   })
 })

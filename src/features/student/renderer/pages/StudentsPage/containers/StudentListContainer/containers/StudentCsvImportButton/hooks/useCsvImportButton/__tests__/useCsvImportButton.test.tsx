@@ -6,6 +6,7 @@ import { useCsvImportButton } from '../useCsvImportButton'
 
 const CSV_CONTENT = 'Nom de famille;Prenom 1;INE;Division\nDupont;Jean;123A;3ème A\n'
 const FILE_NAME = 'eleves.csv'
+const TOTAL_STUDENTS = 100
 
 type CsvImportButtonState = ReturnType<typeof useCsvImportButton>
 
@@ -270,5 +271,284 @@ describe('useCsvImportButton', () => {
     await waitFor(() => expect(latest(states).error).toBe('boom'))
     expect(latest(states).result).toBeNull()
     expect(latest(states).isModalOpen).toBe(true)
+  })
+})
+
+describe('useCsvImportButton removal of absent students', () => {
+  const SAMPLE_NAMES = ['Anne Martin', 'Jean Dupont']
+  const IMPORT_OK = {
+    success: true,
+    data: {
+      created: 0,
+      updated: 1,
+      errors: 0,
+      errorDetails: [],
+      anonymized: 1,
+      deletedWithoutVisits: 0
+    }
+  }
+
+  function stubApi(preview: unknown, importCsv: unknown = vi.fn().mockResolvedValue(IMPORT_OK)) {
+    const previewCsvRemoval = vi.fn().mockResolvedValue({ success: true, data: preview })
+    vi.stubGlobal('electronAPI', { student: { importCsv, previewCsvRemoval } })
+    return { previewCsvRemoval, importCsv }
+  }
+
+  async function openWithFile(states: CsvImportButtonState[], selectFile: () => unknown) {
+    act(() => {
+      latest(states).openModal()
+    })
+    selectFile()
+  }
+
+  async function checkRemoval(states: CsvImportButtonState[]) {
+    await act(async () => {
+      latest(states).handleToggleRemoveAbsent()
+    })
+  }
+
+  it('is OFF by default with no preview', () => {
+    stubApi({ toRemove: 0, total: 0, sample: [] })
+    const { states } = setup()
+    expect(latest(states).removeAbsent).toBe(false)
+    expect(latest(states).removalPreview).toBeNull()
+    expect(latest(states).confirmationText).toBe('')
+  })
+
+  it('turns updateExisting on and restores the previous choice when unchecked', async () => {
+    stubApi({ toRemove: 0, total: 1, sample: [] })
+    const { states } = setup()
+    expect(latest(states).updateExisting).toBe(false)
+    await checkRemoval(states)
+    expect(latest(states).updateExisting).toBe(true)
+    await checkRemoval(states)
+    expect(latest(states).removeAbsent).toBe(false)
+    expect(latest(states).updateExisting).toBe(false)
+  })
+
+  it('keeps updateExisting on when the user had enabled it before', async () => {
+    stubApi({ toRemove: 0, total: 1, sample: [] })
+    const { states } = setup()
+    act(() => {
+      latest(states).handleToggleUpdateExisting()
+    })
+    await checkRemoval(states)
+    await checkRemoval(states)
+    expect(latest(states).updateExisting).toBe(true)
+  })
+
+  it('requests the preview with the decoded csv when a file is chosen after checking', async () => {
+    const { previewCsvRemoval } = stubApi({ toRemove: 2, total: 5, sample: SAMPLE_NAMES })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    await checkRemoval(states)
+    await waitFor(() => expect(previewCsvRemoval).toHaveBeenCalledWith({ csv: CSV_CONTENT }))
+    await waitFor(() => expect(latest(states).removalPreview?.toRemove).toBe(2))
+    expect(latest(states).removalPreview?.sample).toEqual(SAMPLE_NAMES)
+  })
+
+  it('requests the preview when the file is chosen while already checked', async () => {
+    const { previewCsvRemoval } = stubApi({ toRemove: 2, total: 5, sample: SAMPLE_NAMES })
+    const { states, selectFile } = setup()
+    await checkRemoval(states)
+    expect(previewCsvRemoval).not.toHaveBeenCalled()
+    await act(async () => {
+      selectFile()
+    })
+    await waitFor(() => expect(previewCsvRemoval).toHaveBeenCalledWith({ csv: CSV_CONTENT }))
+    await waitFor(() => expect(latest(states).removalPreview).not.toBeNull())
+  })
+
+  it('does not request a preview while the option is off', async () => {
+    const { previewCsvRemoval } = stubApi({ toRemove: 0, total: 0, sample: [] })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    expect(previewCsvRemoval).not.toHaveBeenCalled()
+  })
+
+  it('blocks submit for a blocked preview', async () => {
+    stubApi({ toRemove: 0, total: 5, sample: [], blockedReason: 'rowErrors' })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    await checkRemoval(states)
+    await waitFor(() => expect(latest(states).removalPreview).not.toBeNull())
+    expect(latest(states).canSubmit).toBe(false)
+  })
+
+  it('blocks submit for an empty file', async () => {
+    stubApi({ toRemove: 0, total: 5, sample: [], blockedReason: 'emptyFile' })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    await checkRemoval(states)
+    await waitFor(() => expect(latest(states).removalPreview).not.toBeNull())
+    expect(latest(states).canSubmit).toBe(false)
+  })
+
+  it('keeps submit disabled until the preview has loaded', async () => {
+    stubApi({ toRemove: 1, total: 5, sample: ['Jean Dupont'] })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    expect(latest(states).canSubmit).toBe(true)
+    await checkRemoval(states)
+    expect(latest(states).canSubmit).toBe(false)
+    await waitFor(() => expect(latest(states).canSubmit).toBe(true))
+  })
+
+  it('keeps submit disabled and surfaces the error when the preview fails', async () => {
+    vi.stubGlobal('electronAPI', {
+      student: {
+        importCsv: vi.fn(),
+        previewCsvRemoval: vi.fn().mockResolvedValue({ success: false, error: 'boom' })
+      }
+    })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    await checkRemoval(states)
+    await waitFor(() => expect(latest(states).previewError).toBe('boom'))
+    expect(latest(states).canSubmit).toBe(false)
+  })
+
+  it('allows submit when there is nothing to remove', async () => {
+    stubApi({ toRemove: 0, total: 5, sample: [] })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    await checkRemoval(states)
+    await waitFor(() => expect(latest(states).removalPreview).not.toBeNull())
+    expect(latest(states).needsConfirmation).toBe(false)
+    expect(latest(states).canSubmit).toBe(true)
+  })
+
+  it('requires the exact typed phrase over the threshold, case and spaces tolerated', async () => {
+    stubApi({ toRemove: 12, total: TOTAL_STUDENTS, sample: SAMPLE_NAMES })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    await checkRemoval(states)
+    await waitFor(() => expect(latest(states).removalPreview).not.toBeNull())
+    expect(latest(states).needsConfirmation).toBe(true)
+    expect(latest(states).confirmationPhrase).toBe('RETIRER 12')
+    expect(latest(states).canSubmit).toBe(false)
+
+    act(() => {
+      latest(states).handleConfirmationChange('retirer 1')
+    })
+    expect(latest(states).canSubmit).toBe(false)
+
+    act(() => {
+      latest(states).handleConfirmationChange('  retirer 12 ')
+    })
+    expect(latest(states).canSubmit).toBe(true)
+  })
+
+  it('does not need a confirmation below the threshold', async () => {
+    stubApi({ toRemove: 2, total: TOTAL_STUDENTS, sample: SAMPLE_NAMES })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    await checkRemoval(states)
+    await waitFor(() => expect(latest(states).removalPreview).not.toBeNull())
+    expect(latest(states).needsConfirmation).toBe(false)
+    expect(latest(states).canSubmit).toBe(true)
+  })
+
+  it('sends removeAbsent and the typed confirmation on submit', async () => {
+    const { importCsv } = stubApi({ toRemove: 12, total: TOTAL_STUDENTS, sample: SAMPLE_NAMES })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    await checkRemoval(states)
+    await waitFor(() => expect(latest(states).removalPreview).not.toBeNull())
+    act(() => {
+      latest(states).handleConfirmationChange('retirer 12')
+    })
+
+    await act(async () => {
+      latest(states).handleSubmit()
+    })
+    await waitFor(() =>
+      expect(importCsv).toHaveBeenCalledWith({
+        csv: CSV_CONTENT,
+        onDuplicateIne: 'replace',
+        removeAbsent: true,
+        removalConfirmation: 'retirer 12'
+      })
+    )
+  })
+
+  it('sends neither field when the option is unchecked', async () => {
+    const { importCsv } = stubApi({ toRemove: 2, total: 5, sample: SAMPLE_NAMES })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    await checkRemoval(states)
+    await checkRemoval(states)
+
+    await act(async () => {
+      latest(states).handleSubmit()
+    })
+    await waitFor(() =>
+      expect(importCsv).toHaveBeenCalledWith({ csv: CSV_CONTENT, onDuplicateIne: 'skip' })
+    )
+  })
+
+  it('shows the removal counts in the success toast', async () => {
+    stubApi({ toRemove: 1, total: 5, sample: ['Jean Dupont'] })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    await checkRemoval(states)
+    await waitFor(() => expect(latest(states).removalPreview).not.toBeNull())
+
+    await act(async () => {
+      latest(states).handleSubmit()
+    })
+    await waitFor(() => expect(latest(states).toast).not.toBeNull())
+    expect(String(latest(states).toast?.message)).toContain('removalSummary')
+  })
+
+  it('keeps the modal open and shows the error when the main process refuses', async () => {
+    stubApi(
+      { toRemove: 1, total: 5, sample: ['Jean Dupont'] },
+      vi.fn().mockResolvedValue({ success: false, error: 'refused' })
+    )
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    await checkRemoval(states)
+    await waitFor(() => expect(latest(states).removalPreview).not.toBeNull())
+
+    await act(async () => {
+      latest(states).handleSubmit()
+    })
+    await waitFor(() => expect(latest(states).error).toBe('refused'))
+    expect(latest(states).isModalOpen).toBe(true)
+  })
+
+  it('re-requests the preview and clears the typed confirmation when the file changes', async () => {
+    const { previewCsvRemoval } = stubApi({
+      toRemove: 12,
+      total: TOTAL_STUDENTS,
+      sample: SAMPLE_NAMES
+    })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    await checkRemoval(states)
+    await waitFor(() => expect(latest(states).removalPreview).not.toBeNull())
+    act(() => {
+      latest(states).handleConfirmationChange('RETIRER 12')
+    })
+    expect(previewCsvRemoval).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      selectFile()
+    })
+    await waitFor(() => expect(previewCsvRemoval).toHaveBeenCalledTimes(2))
+    expect(latest(states).confirmationText).toBe('')
+  })
+
+  it('resets the option to OFF when the modal is closed', async () => {
+    stubApi({ toRemove: 0, total: 5, sample: [] })
+    const { states, selectFile } = setup()
+    await openWithFile(states, selectFile)
+    await checkRemoval(states)
+    act(() => {
+      latest(states).closeModal()
+    })
+    expect(latest(states).removeAbsent).toBe(false)
+    expect(latest(states).removalPreview).toBeNull()
   })
 })

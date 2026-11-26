@@ -6,7 +6,7 @@ import { Button } from '@ui/components/Button'
 import { Modal } from '@ui/components/Modal'
 import { Icon } from '@ui/components/Icon'
 import { Toast } from '@ui/components/Toast'
-import type { CsvImportResult } from '@student-shared'
+import type { CsvImportResult, CsvRemovalPreview } from '@student-shared'
 import type { ToastContent } from '@ui/components/Toast'
 import {
   VISUALLY_HIDDEN_STYLE,
@@ -24,6 +24,7 @@ import {
   ResultAlert,
   SelectedFileName
 } from './StudentCsvImportButtonPresenter.styles'
+import { RemovalSectionPresenter } from './RemovalSectionPresenter'
 
 const CSV_ACCEPT = '.csv'
 
@@ -38,6 +39,14 @@ interface StudentCsvImportButtonPresenterProps {
   toast: ToastContent | null
   canDownloadReport: boolean
   updateExisting: boolean
+  removeAbsent: boolean
+  removalPreview: CsvRemovalPreview | null
+  isPreviewPending: boolean
+  previewError: string | null
+  confirmationText: string
+  confirmationPhrase: string
+  needsConfirmation: boolean
+  canSubmit: boolean
   openModal: () => void
   closeModal: () => void
   handleFileChange: (event: ChangeEvent<HTMLInputElement>) => void
@@ -45,6 +54,8 @@ interface StudentCsvImportButtonPresenterProps {
   handleDropzoneKeyDown: (event: KeyboardEvent) => void
   handleSubmit: () => void
   handleToggleUpdateExisting: () => void
+  handleToggleRemoveAbsent: () => void
+  handleConfirmationChange: (value: string) => void
   handleDownloadReport: () => void
   dismissToast: () => void
 }
@@ -64,6 +75,13 @@ export function StudentCsvImportButtonPresenter(props: StudentCsvImportButtonPre
     toast,
     canDownloadReport,
     updateExisting,
+    removeAbsent,
+    removalPreview,
+    previewError,
+    confirmationText,
+    confirmationPhrase,
+    needsConfirmation,
+    canSubmit,
     openModal,
     closeModal,
     handleFileChange,
@@ -71,6 +89,8 @@ export function StudentCsvImportButtonPresenter(props: StudentCsvImportButtonPre
     handleDropzoneKeyDown,
     handleSubmit,
     handleToggleUpdateExisting,
+    handleToggleRemoveAbsent,
+    handleConfirmationChange,
     handleDownloadReport,
     dismissToast
   } = props
@@ -101,9 +121,9 @@ export function StudentCsvImportButtonPresenter(props: StudentCsvImportButtonPre
               variant="primary"
               iconLeft={<Icon name="upload_file" style={TRIGGER_ICON_STYLE} />}
               onClick={handleSubmit}
-              disabled={!pendingFile || isPending}
+              disabled={!canSubmit}
             >
-              {t('csvImport.submit')}
+              {t(removeAbsent ? 'csvImport.submitAndRemove' : 'csvImport.submit')}
             </Button>
           </>
         }
@@ -132,8 +152,26 @@ export function StudentCsvImportButtonPresenter(props: StudentCsvImportButtonPre
         />
 
         <FormControlLabel
-          control={<Checkbox checked={updateExisting} onChange={handleToggleUpdateExisting} />}
+          control={
+            <Checkbox
+              checked={updateExisting}
+              onChange={handleToggleUpdateExisting}
+              disabled={removeAbsent}
+            />
+          }
           label={t('csvImport.updateExisting')}
+        />
+
+        <RemovalSectionPresenter
+          removeAbsent={removeAbsent}
+          removalPreview={removalPreview}
+          previewError={previewError}
+          confirmationText={confirmationText}
+          confirmationPhrase={confirmationPhrase}
+          needsConfirmation={needsConfirmation}
+          isPending={isPending}
+          onToggle={handleToggleRemoveAbsent}
+          onConfirmationChange={handleConfirmationChange}
         />
 
         {error ? <ResultAlert severity="error">{error}</ResultAlert> : null}
@@ -145,6 +183,12 @@ export function StudentCsvImportButtonPresenter(props: StudentCsvImportButtonPre
               updated: result.updated,
               errors: result.errors
             })}
+            {result.anonymized !== undefined
+              ? ` · ${t('csvImport.removalSummary', {
+                  anonymized: result.anonymized,
+                  deletedWithoutVisits: result.deletedWithoutVisits ?? 0
+                })}`
+              : ''}
           </ResultAlert>
         ) : null}
 
