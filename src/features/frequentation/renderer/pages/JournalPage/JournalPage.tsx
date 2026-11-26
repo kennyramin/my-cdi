@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { CalendarContainer } from './containers/CalendarContainer'
 import { JournalEntryFormContainer } from './containers/JournalEntryFormContainer'
 import { JournalEntryListContainer } from './containers/JournalEntryListContainer'
@@ -42,6 +43,14 @@ export function JournalPage() {
   } = useJournalPage()
 
   const formColumnRef = useSubmitBarHeight<HTMLDivElement>()
+  const editSaveButtonRef = useRef<HTMLButtonElement | null>(null)
+
+  // The clicked save button is disabled while the request runs, so the browser drops focus to
+  // <body>: hand it back explicitly when the warning is cancelled or dismissed.
+  function handleCancelEditDuplicates() {
+    cancelEditDuplicates()
+    editSaveButtonRef.current?.focus()
+  }
 
   return (
     <PageGrid>
@@ -55,6 +64,7 @@ export function JournalPage() {
       {editingEntry && editDraft && editingActivity ? (
         <JournalEntryEditDialogPresenter
           open
+          saveButtonRef={editSaveButtonRef}
           tileNodes={buildActivityTileNodes(
             buildActivityTiles(activityOptions, editingActivity, setEditingActivity)
           )}
@@ -88,7 +98,7 @@ export function JournalPage() {
       <DuplicateWarningDialogPresenter
         duplicates={pendingEditDuplicates}
         onConfirm={confirmEditDuplicates}
-        onCancel={cancelEditDuplicates}
+        onCancel={handleCancelEditDuplicates}
         getActivityLabel={getLabel}
         busy={isSaving}
       />

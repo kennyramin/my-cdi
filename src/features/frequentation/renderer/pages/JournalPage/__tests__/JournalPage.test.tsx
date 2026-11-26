@@ -211,6 +211,32 @@ describe('JournalPage', () => {
       ).toBe(true)
     })
 
+    it('puts focus back on the Enregistrer button of the edit dialog when the warning is cancelled', async () => {
+      const user = userEvent.setup()
+      const update = vi.fn().mockImplementation(async () => {
+        // Chromium drops focus when the clicked button becomes disabled while the request runs.
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur()
+        }
+        return { success: true, data: { created: 0, duplicates } }
+      })
+      stub(update)
+      render(withQuery(<JournalPage />))
+      await user.click(await screen.findByText('Alice Martin'))
+      const editDialog = await screen.findByRole('dialog', { name: "Modifier l'entrée" })
+      fireEvent.change(within(editDialog).getByLabelText('Heure'), { target: { value: '00:15' } })
+      const save = within(editDialog).getByRole('button', { name: 'Enregistrer' })
+      await user.click(save)
+      const warning = await screen.findByRole('dialog', { name: 'Présence déjà enregistrée' })
+      await user.click(within(warning).getByRole('button', { name: 'Annuler' }))
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'Présence déjà enregistrée' })
+        ).not.toBeInTheDocument()
+      )
+      await waitFor(() => expect(document.activeElement).toBe(save))
+    })
+
     it('disables saving and explains why for a future time', async () => {
       const user = userEvent.setup()
       stub(vi.fn())

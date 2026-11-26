@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { Modal } from '@ui/components/Modal'
 import { Button } from '@ui/components/Button'
 import { Avatar } from '@ui/components/Avatar'
@@ -29,6 +29,7 @@ interface JournalEntryEditDialogPresenterProps {
   errorMessage?: string
   saving?: boolean
   entry?: EditDialogEntryViewModel
+  saveButtonRef?: Ref<HTMLButtonElement>
 }
 
 export function JournalEntryEditDialogPresenter({
@@ -40,7 +41,8 @@ export function JournalEntryEditDialogPresenter({
   canSubmit,
   errorMessage,
   saving = false,
-  entry
+  entry,
+  saveButtonRef
 }: JournalEntryEditDialogPresenterProps) {
   const { t } = useTranslation('frequentation')
 
@@ -55,7 +57,12 @@ export function JournalEntryEditDialogPresenter({
           <Button variant="secondary" onClick={onClose}>
             {t('form.cancel')}
           </Button>
-          <Button variant="primary" onClick={onSubmit} disabled={saving || !canSubmit}>
+          <Button
+            ref={saveButtonRef}
+            variant="primary"
+            onClick={onSubmit}
+            disabled={saving || !canSubmit}
+          >
             {t('edit.save')}
           </Button>
         </>

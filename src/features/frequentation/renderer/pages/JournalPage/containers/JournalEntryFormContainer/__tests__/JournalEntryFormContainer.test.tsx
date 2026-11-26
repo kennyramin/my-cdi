@@ -117,19 +117,25 @@ describe('JournalEntryFormContainer', () => {
   })
 
   describe('duplicate warning', () => {
-    async function submitWithDuplicates(selectedDate: string) {
-      window.electronAPI.frequentation.createBatch = vi.fn().mockResolvedValue({
-        success: true,
-        data: {
-          created: 0,
-          duplicates: [
-            {
-              studentId: FIRST_ID,
-              studentName: 'Jean Dupont',
-              existingStartsAt: `${selectedDate}T10:15:00`,
-              existingActivity: 'WORK'
-            }
-          ]
+    async function submitWithDuplicates(selectedDate: string, loseFocusOnSubmit = false) {
+      window.electronAPI.frequentation.createBatch = vi.fn().mockImplementation(async () => {
+        if (loseFocusOnSubmit && document.activeElement instanceof HTMLElement) {
+          // Chromium drops focus when the clicked button becomes disabled while the request runs.
+          document.activeElement.blur()
+        }
+        return {
+          success: true,
+          data: {
+            created: 0,
+            duplicates: [
+              {
+                studentId: FIRST_ID,
+                studentName: 'Jean Dupont',
+                existingStartsAt: `${selectedDate}T10:15:00`,
+                existingActivity: 'WORK'
+              }
+            ]
+          }
         }
       })
       const user = userEvent.setup()
@@ -157,6 +163,30 @@ describe('JournalEntryFormContainer', () => {
       })
       expect(submit).toBeEnabled()
       expect(window.electronAPI.frequentation.createBatch).toHaveBeenCalledOnce()
+    })
+
+    it('refocuses the submit button on cancel even when focus was lost while sending', async () => {
+      const { user, submit } = await submitWithDuplicates('2026-04-01', true)
+      await screen.findByRole('dialog')
+      await user.click(screen.getByRole('button', { name: 'Annuler' }))
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).toBeNull()
+      })
+      await waitFor(() => {
+        expect(document.activeElement).toBe(submit)
+      })
+    })
+
+    it('refocuses the submit button when the dialog is dismissed with Escape', async () => {
+      const { user, submit } = await submitWithDuplicates('2026-04-01', true)
+      await screen.findByRole('dialog')
+      await user.keyboard('{Escape}')
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).toBeNull()
+      })
+      await waitFor(() => {
+        expect(document.activeElement).toBe(submit)
+      })
     })
   })
 })

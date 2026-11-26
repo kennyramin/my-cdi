@@ -48,6 +48,7 @@ export function JournalEntryFormContainer({
   const { t } = useTranslation('frequentation')
   const [timePickerOpen, setTimePickerOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
+  const submitButtonRef = useRef<HTMLButtonElement | null>(null)
   useTypeToSearch(searchInputRef)
   const {
     form,
@@ -68,6 +69,13 @@ export function JournalEntryFormContainer({
     toast,
     dismissToast
   } = useJournalEntryForm({ selectedDate, onSubmitted })
+
+  // The clicked button is disabled while the request runs, so the browser drops focus to <body>
+  // and the dialog has nothing to restore it to: hand focus back explicitly on cancel/dismiss.
+  function handleCancelDuplicates() {
+    cancelDuplicates()
+    submitButtonRef.current?.focus()
+  }
 
   const isDisabled = isSubmitting || !form.formState.isValid || isFutureDate
 
@@ -154,6 +162,7 @@ export function JournalEntryFormContainer({
         />
         <SubmitBar {...{ [SUBMIT_BAR_ATTRIBUTE]: '' }}>
           <Button
+            ref={submitButtonRef}
             type="submit"
             variant="primary"
             fullWidth
@@ -173,7 +182,7 @@ export function JournalEntryFormContainer({
       <DuplicateWarningDialogPresenter
         duplicates={pendingDuplicates}
         onConfirm={confirmDuplicates}
-        onCancel={cancelDuplicates}
+        onCancel={handleCancelDuplicates}
         getActivityLabel={getActivityLabel}
       />
       <Toast toast={toast} onClose={dismissToast} />
