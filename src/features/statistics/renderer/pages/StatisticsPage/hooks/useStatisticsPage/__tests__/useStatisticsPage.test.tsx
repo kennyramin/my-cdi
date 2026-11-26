@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { ActivityType } from '@types'
 import { useStatisticsPage } from '../useStatisticsPage'
+import '@shared/i18n/config'
 
 const SAMPLE_TOTAL = 12
 const TEST_YEAR = 2026
@@ -164,5 +165,85 @@ describe('useStatisticsPage', () => {
     })
     await waitFor(() => expect(result.current.isStale).toBe(false))
     expect(result.current.dataRange).toEqual(WEEK_RANGE)
+  })
+
+  describe('error handling', () => {
+    const failure = { success: false, error: 'boom' }
+    const sampleStats = {
+      totalVisits: SAMPLE_TOTAL,
+      averagePerDay: 1,
+      morningRate: 0,
+      afternoonRate: 0,
+      dailyCounts: [],
+      activityCounts: [],
+      classCounts: []
+    }
+
+    it('exposes errorMessage and no stats when the first query fails', async () => {
+      vi.mocked(window.electronAPI.statistics.getStats).mockResolvedValue(failure)
+      const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
+      await waitFor(() => expect(result.current.errorMessage).toBe('boom'))
+      expect(result.current.stats).toBeUndefined()
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    it('keeps stats and exposes errorMessage when a refetch fails', async () => {
+      const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
+      await waitFor(() => expect(result.current.stats).toBeDefined())
+      expect(result.current.errorMessage).toBeNull()
+      vi.mocked(window.electronAPI.statistics.getStats).mockResolvedValueOnce(failure)
+      await act(async () => {
+        result.current.retry()
+      })
+      await waitFor(() => expect(result.current.errorMessage).not.toBeNull())
+      expect(result.current.stats?.totalVisits).toBe(SAMPLE_TOTAL)
+    })
+
+    it('falls back to the unknown-error text when the error message is empty', async () => {
+      vi.mocked(window.electronAPI.statistics.getStats).mockResolvedValue({
+        success: false,
+        error: ''
+      })
+      const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
+      await waitFor(() =>
+        expect(result.current.errorMessage).toBe('Une erreur inconnue est survenue')
+      )
+    })
+
+    it('retry refetches and clears the error on success', async () => {
+      const getStats = vi.mocked(window.electronAPI.statistics.getStats)
+      getStats.mockResolvedValueOnce(failure)
+      const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
+      await waitFor(() => expect(result.current.errorMessage).toBe('boom'))
+      getStats.mockResolvedValueOnce({ success: true, data: sampleStats })
+      await act(async () => {
+        result.current.retry()
+      })
+      await waitFor(() => expect(result.current.stats).toBeDefined())
+      expect(result.current.errorMessage).toBeNull()
+      expect(getStats).toHaveBeenCalledTimes(2)
+    })
+
+    it('isRetrying is true while the retry is in flight', async () => {
+      const getStats = vi.mocked(window.electronAPI.statistics.getStats)
+      getStats.mockResolvedValueOnce(failure)
+      const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
+      await waitFor(() => expect(result.current.errorMessage).toBe('boom'))
+      expect(result.current.isRetrying).toBe(false)
+      let resolveRetry: (value: unknown) => void = () => undefined
+      getStats.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveRetry = resolve
+        })
+      )
+      act(() => {
+        result.current.retry()
+      })
+      await waitFor(() => expect(result.current.isRetrying).toBe(true))
+      await act(async () => {
+        resolveRetry({ success: true, data: sampleStats })
+      })
+      await waitFor(() => expect(result.current.isRetrying).toBe(false))
+    })
   })
 })

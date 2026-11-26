@@ -37,5 +37,10 @@
       "incomplete": "Renseignez les deux dates",
       "endBeforeStart": "La date de fin doit être postérieure ou égale à la date de début"
     }
+  },
+  "error": {
+    "title": "Impossible de charger les statistiques",
+    "retry": "Réessayer",
+    "refreshFailed": "Les données affichées n'ont pas pu être actualisées : {{message}}"
   }
 }

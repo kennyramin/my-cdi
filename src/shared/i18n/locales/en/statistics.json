@@ -37,5 +37,10 @@
       "incomplete": "Fill in both dates",
       "endBeforeStart": "The end date must be on or after the start date"
     }
+  },
+  "error": {
+    "title": "Unable to load statistics",
+    "retry": "Retry",
+    "refreshFailed": "The displayed data could not be refreshed: {{message}}"
   }
 }

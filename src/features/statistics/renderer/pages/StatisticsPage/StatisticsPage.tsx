@@ -14,6 +14,8 @@ import { WeeklyBarChartContainer } from './containers/WeeklyBarChartContainer'
 import { ActivityDonutChartContainer } from './containers/ActivityDonutChartContainer'
 import { MonthlyTrendChartContainer } from './containers/MonthlyTrendChartContainer'
 import { ClassBarChartContainer } from './containers/ClassBarChartContainer'
+import { StatisticsErrorPresenter } from '../../presenters/StatisticsErrorPresenter'
+import { StatisticsRefreshErrorPresenter } from '../../presenters/StatisticsRefreshErrorPresenter'
 
 export function StatisticsPage() {
   const {
@@ -25,28 +27,49 @@ export function StatisticsPage() {
     setCustomRange,
     customRangeError,
     stats,
-    isLoading
+    isLoading,
+    errorMessage,
+    retry,
+    isRetrying
   } = useStatisticsPage()
   const { t } = useTranslation('statistics')
-  if (isLoading || !stats) {
+  const periodFilter = (
+    <PeriodFilterContainer
+      value={period}
+      onChange={selectPeriod}
+      customRange={customRange}
+      customRangeError={customRangeError}
+      onCustomRangeChange={setCustomRange}
+    />
+  )
+  if (!stats) {
+    if (isLoading) {
+      return (
+        <StatisticsLoadingShell>
+          <Loader message={t('loading')} />
+        </StatisticsLoadingShell>
+      )
+    }
     return (
-      <StatisticsLoadingShell>
-        <Loader message={t('loading')} />
-      </StatisticsLoadingShell>
+      <StatisticsLayout>
+        {periodFilter}
+        {errorMessage !== null ? (
+          <StatisticsErrorPresenter
+            message={errorMessage}
+            onRetry={retry}
+            isRetrying={isRetrying}
+          />
+        ) : null}
+      </StatisticsLayout>
     )
   }
   return (
     <StatisticsLayout>
+      {errorMessage !== null ? <StatisticsRefreshErrorPresenter message={errorMessage} /> : null}
       <StatisticsContent data-stale={isStale} aria-busy={isStale}>
         <StatsKpiCardsContainer stats={stats} />
       </StatisticsContent>
-      <PeriodFilterContainer
-        value={period}
-        onChange={selectPeriod}
-        customRange={customRange}
-        customRangeError={customRangeError}
-        onCustomRangeChange={setCustomRange}
-      />
+      {periodFilter}
       <StatisticsContent data-stale={isStale} aria-busy={isStale}>
         <StatisticsChartGrid>
           <WeeklyBarChartContainer dailyCounts={stats.dailyCounts} />
