@@ -13,3 +13,9 @@ export interface FileOps {
   rename(from: string, to: string): Promise<void>
   rm(path: string, options?: { force?: boolean }): Promise<void>
 }
+
+export interface BackupDialogs {
+  // null = cancelled
+  pickSavePath(options: { defaultPath: string }): Promise<string | null>
+  pickOpenPath(options: { defaultPath: string }): Promise<string | null>
+}

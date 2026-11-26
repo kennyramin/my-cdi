@@ -29,6 +29,7 @@ import { configureBackupRuntime } from '@backup/runtime'
 import { createAutomaticBackup } from '@backup/use-cases/createAutomaticBackup'
 import { backupBeforeMigration } from '@backup/use-cases/backupBeforeMigration'
 import { initializeModules } from './modules'
+import { createElectronAppLifecycle, createElectronBackupDialogs } from './backupAdapters'
 
 log.initialize()
 
@@ -215,7 +216,12 @@ if (!gotTheLock) {
     }
 
     if (dbInitialized) {
-      initializeModules(ipcMain).catch((error: unknown) => {
+      initializeModules(ipcMain, {
+        dialogs: createElectronBackupDialogs(),
+        lifecycle: createElectronAppLifecycle(),
+        documentsPath: app.getPath('documents'),
+        liveDbPath: DATABASE_PATH
+      }).catch((error: unknown) => {
         const message = error instanceof Error ? error.message : 'Unknown error'
         log.error(`Failed to initialize modules: ${message}`)
       })

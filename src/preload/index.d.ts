@@ -15,6 +15,13 @@ import type {
   JournalEntryDto
 } from '@frequentation-shared'
 import type { PeriodRangeDto, StatsForPeriodDto } from '@statistics-shared'
+import type {
+  BackupCreateResult,
+  BackupStatusDto,
+  DeleteAutomaticResultDto,
+  RestoreInput,
+  RestoreResult
+} from '@backup-shared'
 import type { ThemePreferenceResponseDto, UpdateThemePreferenceDto } from '@settings-shared'
 import type { ThemePreference } from '@types'
 import type {
@@ -69,11 +76,19 @@ export interface UpdaterAPI {
   quitAndInstall: () => Promise<void>
 }
 
+export interface BackupApi {
+  create: () => Promise<IpcResult<BackupCreateResult>>
+  restore: (input: RestoreInput) => Promise<IpcResult<RestoreResult>>
+  getStatus: () => Promise<IpcResult<BackupStatusDto>>
+  deleteAutomatic: () => Promise<IpcResult<DeleteAutomaticResultDto>>
+}
+
 export interface ElectronAPI {
   student: StudentApi
   frequentation: FrequentationApi
   statistics: StatisticsApi
   settings: SettingsApi
+  backup: BackupApi
   getAppVersion: () => Promise<string>
   getInitialThemePreference: () => ThemePreference
   updater: UpdaterAPI
