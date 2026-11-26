@@ -1,8 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
-import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import { AppError, ErrorCode } from '@lib/errors'
 import { createBackup } from '../createBackup'
 
@@ -108,7 +116,11 @@ describe('createBackup', () => {
     })
 
     it('for a ..-normalised path to the same file', async () => {
-      await expectRefused(join(dir, 'sub', '..', 'live.db'))
+      await expectRefused(`${dir}/sub/../live.db`)
+    })
+
+    it('for a relative path to the same file', async () => {
+      await expectRefused(relative(process.cwd(), livePath))
     })
 
     it('for a symlink to the live file', async () => {
@@ -141,17 +153,55 @@ describe('createBackup', () => {
     })
   })
 
-  it('deletes the partial file when the backup fails midway', async () => {
-    const dest = join(dir, 'partial.db')
-    const failing = {
+  it('reports a directory destination as BACKUP_WRITE_FAILED and leaves it untouched', async () => {
+    const dest = join(dir, 'a-folder')
+    mkdirSync(dest)
+    writeFileSync(join(dest, 'keep.txt'), 'x')
+
+    await expectAppError(createBackup(db, dest), ErrorCode.BACKUP_WRITE_FAILED)
+
+    expect(readdirSync(dest)).toEqual(['keep.txt'])
+  })
+
+  describe('when the backup fails midway', () => {
+    const failing = (): Pick<Database.Database, 'backup' | 'name'> => ({
       name: livePath,
       backup: async (path: string) => {
         writeFileSync(path, 'partial')
         throw new Error('SQLITE_FULL')
       }
-    }
+    })
 
-    await expectAppError(createBackup(failing, dest), ErrorCode.BACKUP_WRITE_FAILED)
-    expect(existsSync(dest)).toBe(false)
+    it('leaves no file behind', async () => {
+      const target = join(dir, 'sub-target')
+      mkdirSync(target)
+
+      await expectAppError(
+        createBackup(failing(), join(target, 'partial.db')),
+        ErrorCode.BACKUP_WRITE_FAILED
+      )
+
+      expect(readdirSync(target)).toEqual([])
+    })
+
+    it.each([
+      ['garbage bytes', 'garbage'],
+      ['a valid database', null]
+    ])('keeps an existing destination holding %s intact', async (_label, bytes) => {
+      const target = join(dir, 'sub-target')
+      mkdirSync(target)
+      const dest = join(target, 'existing.db')
+      if (bytes === null) {
+        await createBackup(db, dest)
+      } else {
+        writeFileSync(dest, bytes)
+      }
+      const original = readFileSync(dest)
+
+      await expectAppError(createBackup(failing(), dest), ErrorCode.BACKUP_WRITE_FAILED)
+
+      expect(readFileSync(dest).equals(original)).toBe(true)
+      expect(readdirSync(target)).toEqual(['existing.db'])
+    })
   })
 })
