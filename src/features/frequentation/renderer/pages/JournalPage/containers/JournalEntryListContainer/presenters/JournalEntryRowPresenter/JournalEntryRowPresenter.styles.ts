@@ -1,3 +1,4 @@
+import Checkbox from '@mui/material/Checkbox'
 import Typography from '@mui/material/Typography'
 import { alpha, styled } from '@mui/material/styles'
 import { shouldForwardStyledProp } from '@ui/helpers/shouldForwardStyledProp'
@@ -102,3 +103,9 @@ export const RowActions = styled('div', {
   opacity: 0,
   transition: theme.transitions.create('opacity')
 }))
+
+export const RowCheckbox = styled(Checkbox, {
+  shouldForwardProp: shouldForwardStyledProp
+})({
+  flexShrink: 0
+})

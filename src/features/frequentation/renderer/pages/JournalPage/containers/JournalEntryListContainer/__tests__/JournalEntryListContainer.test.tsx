@@ -147,4 +147,133 @@ describe('JournalEntryListContainer', () => {
     expect(screen.queryByText(/sélectionnée/)).toBeNull()
     expect(screen.getByRole('button', { name: SELECT_ALL })).toBeInTheDocument()
   })
+
+  describe('row checkboxes', () => {
+    const JEAN_BOX = 'Sélectionner Jean Dupont'
+    const MARIE_BOX = 'Sélectionner Marie Martin'
+    const ONE_SELECTED = '1 entrée sélectionnée'
+
+    function renderList(onEditEntry = vi.fn(), selectedDate = '2026-04-01') {
+      return render(
+        withProviders(
+          <JournalEntryListContainer selectedDate={selectedDate} onEditEntry={onEditEntry} />
+        )
+      )
+    }
+
+    it('checking a row checkbox selects that entry and shows the counter', async () => {
+      const user = userEvent.setup()
+      renderList()
+      await user.click(await screen.findByRole('checkbox', { name: MARIE_BOX }))
+      expect(screen.getByText(ONE_SELECTED)).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: MARIE_BOX })).toBeChecked()
+      expect(screen.getByRole('checkbox', { name: JEAN_BOX })).not.toBeChecked()
+    })
+
+    it('unchecking removes the entry from the selection', async () => {
+      const user = userEvent.setup()
+      renderList()
+      const box = await screen.findByRole('checkbox', { name: MARIE_BOX })
+      await user.click(box)
+      await user.click(box)
+      expect(screen.queryByText(/sélectionnée/)).toBeNull()
+    })
+
+    it('plain row click opens edit and never toggles', async () => {
+      const user = userEvent.setup()
+      const onEditEntry = vi.fn()
+      renderList(onEditEntry)
+      await user.click(await screen.findByText('Jean Dupont'))
+      expect(onEditEntry).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }))
+      expect(screen.getByRole('checkbox', { name: JEAN_BOX })).not.toBeChecked()
+      expect(screen.queryByText(/sélectionnée/)).toBeNull()
+    })
+
+    it.each(['Control', 'Meta'])(
+      '%s-click on the row toggles without opening edit',
+      async (modifier) => {
+        const user = userEvent.setup()
+        const onEditEntry = vi.fn()
+        renderList(onEditEntry)
+        const name = await screen.findByText('Jean Dupont')
+        await user.keyboard(`{${modifier}>}`)
+        await user.click(name)
+        await user.keyboard(`{/${modifier}}`)
+        expect(screen.getByRole('checkbox', { name: JEAN_BOX })).toBeChecked()
+        expect(onEditEntry).not.toHaveBeenCalled()
+      }
+    )
+
+    it('Ctrl-click directly on the checkbox toggles exactly once', async () => {
+      const user = userEvent.setup()
+      const onEditEntry = vi.fn()
+      renderList(onEditEntry)
+      const box = await screen.findByRole('checkbox', { name: JEAN_BOX })
+      await user.keyboard('{Control>}')
+      await user.click(box)
+      await user.keyboard('{/Control}')
+      expect(screen.getByText(ONE_SELECTED)).toBeInTheDocument()
+      expect(box).toBeChecked()
+      expect(onEditEntry).not.toHaveBeenCalled()
+    })
+
+    it('Tout sélectionner checks every visible checkbox', async () => {
+      const user = userEvent.setup()
+      renderList()
+      await screen.findByText('Jean Dupont')
+      await user.click(screen.getByRole('button', { name: SELECT_ALL }))
+      screen.getAllByRole('checkbox').forEach((box) => expect(box).toBeChecked())
+    })
+
+    it('Tout sélectionner with a search checks only the visible checkbox', async () => {
+      const user = userEvent.setup()
+      renderList()
+      await screen.findByText('Jean Dupont')
+      await user.type(screen.getByRole('searchbox', { name: 'Rechercher…' }), 'Marie')
+      await user.click(screen.getByRole('button', { name: SELECT_ALL }))
+      expect(screen.queryByRole('checkbox', { name: JEAN_BOX })).toBeNull()
+      expect(screen.getByRole('checkbox', { name: MARIE_BOX })).toBeChecked()
+    })
+
+    it('same-name entries toggle independently', async () => {
+      const user = userEvent.setup()
+      vi.stubGlobal('electronAPI', {
+        frequentation: {
+          getJournalEntries: vi.fn().mockResolvedValue({
+            success: true,
+            data: [
+              buildDto(1, 'Jean', 'Dupont', '2026-04-01T09:00:00'),
+              buildDto(2, 'Marie', 'Martin', '2026-04-01T14:00:00'),
+              buildDto(3, 'Jean', 'Dupont', '2026-04-01T15:00:00')
+            ]
+          }),
+          delete: deleteMock,
+          update: updateMock
+        }
+      })
+      renderList()
+      await screen.findByText('Marie Martin')
+      const boxes = await screen.findAllByRole('checkbox', { name: JEAN_BOX })
+      expect(boxes).toHaveLength(2)
+      await user.click(boxes.at(1) ?? document.body)
+      expect(boxes.at(0)).not.toBeChecked()
+      expect(boxes.at(1)).toBeChecked()
+      await user.click(screen.getByRole('button', { name: 'Supprimer la sélection' }))
+      await user.click(await screen.findByRole('button', { name: 'Confirmer' }))
+      await waitFor(() => expect(deleteMock).toHaveBeenCalledTimes(1))
+      expect(deleteMock).toHaveBeenCalledWith({ id: 3 })
+    })
+
+    it('clears the checked state when selectedDate changes', async () => {
+      const user = userEvent.setup()
+      const { rerender } = renderList()
+      await screen.findByText('Jean Dupont')
+      await user.click(screen.getByRole('button', { name: SELECT_ALL }))
+      rerender(
+        withProviders(<JournalEntryListContainer selectedDate="2026-04-02" onEditEntry={vi.fn()} />)
+      )
+      await screen.findByText('Jean Dupont')
+      screen.getAllByRole('checkbox').forEach((box) => expect(box).not.toBeChecked())
+    })
+  })
 })

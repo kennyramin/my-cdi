@@ -128,6 +128,7 @@ export function JournalEntryListContainer({
       activityTone: getActivityTone(entry.activity),
       activityLabel: entry.activityLabel,
       selected: selectedIds.includes(entry.id),
+      onSelectChange: () => toggle(entry.id),
       onRowClick: (event) => handleRowClick(entry, event),
       onEditClick: (event) => handleRowEditClick(entry, event),
       onDeleteClick: (event) => handleRowDeleteClick(entry, event)
