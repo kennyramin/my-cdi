@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog } from 'electron'
 import type { OpenDialogOptions } from 'electron'
 import type { AppLifecycle, BackupDialogs } from '@backup/ports'
+import { ensureDbExtension } from '@backup/helpers/ensureDbExtension'
 
 const SQLITE_FILTER = { name: 'SQLite', extensions: ['db'] }
 
@@ -16,7 +17,7 @@ export function createElectronBackupDialogs(): BackupDialogs {
       if (result.canceled || !result.filePath) {
         return null
       }
-      return result.filePath
+      return ensureDbExtension(result.filePath)
     },
     async pickOpenPath({ defaultPath }) {
       const options: OpenDialogOptions = {

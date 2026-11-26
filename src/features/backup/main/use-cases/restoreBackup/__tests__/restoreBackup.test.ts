@@ -73,7 +73,7 @@ describe('createRestoreSession', () => {
       dialogs,
       settings: backupSettings(createFakeGateway()),
       liveDbPath,
-      latestMigrationMillis: LATEST_MILLIS,
+      getLatestMigrationMillis: () => LATEST_MILLIS,
       documentsPath: join(dir, 'docs'),
       apply
     })
@@ -169,5 +169,104 @@ describe('createRestoreSession', () => {
     await session.confirm()
 
     expect(apply).toHaveBeenCalledExactlyOnceWith(second)
+  })
+
+  it('cancelling a later select discards the earlier selection', async () => {
+    picked = join(dir, 'a.db')
+    makeValidBackup(picked)
+    await session.select()
+    picked = null
+
+    expect(await session.select()).toEqual({ cancelled: true })
+
+    expect(await rejection(session.confirm())).toMatchObject({ code: ErrorCode.VALIDATION_ERROR })
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  it('an invalid later select discards the earlier selection', async () => {
+    picked = join(dir, 'a.db')
+    makeValidBackup(picked)
+    await session.select()
+    picked = join(dir, 'garbage.db')
+    writeFileSync(picked, 'not a database at all')
+
+    await rejection(session.select())
+
+    expect(await rejection(session.confirm())).toMatchObject({ code: ErrorCode.VALIDATION_ERROR })
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  it('a confirm-time validation failure clears the selection', async () => {
+    picked = join(dir, 'a.db')
+    makeValidBackup(picked)
+    await session.select()
+    writeFileSync(picked, 'corrupted after selection')
+
+    await rejection(session.confirm())
+
+    expect(await rejection(session.confirm())).toMatchObject({ code: ErrorCode.VALIDATION_ERROR })
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  it('a file deleted between select and confirm gives a typed error', async () => {
+    picked = join(dir, 'a.db')
+    makeValidBackup(picked)
+    await session.select()
+    rmSync(picked)
+
+    const error = await rejection(session.confirm())
+
+    expect(error).toBeInstanceOf(AppError)
+    expect(error).toMatchObject({ code: ErrorCode.RESTORE_NOT_A_DATABASE })
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  it('only the latest of overlapping selects sets the selection', async () => {
+    const first = join(dir, 'first.db')
+    const second = join(dir, 'second.db')
+    makeValidBackup(first)
+    makeValidBackup(second)
+    const resolvers: ((path: string) => void)[] = []
+    const overlapping = createRestoreSession({
+      dialogs: {
+        pickSavePath: async () => null,
+        pickOpenPath: () => new Promise<string>((resolve) => resolvers.push(resolve))
+      },
+      settings: backupSettings(createFakeGateway()),
+      liveDbPath,
+      getLatestMigrationMillis: () => LATEST_MILLIS,
+      documentsPath: join(dir, 'docs'),
+      apply
+    })
+
+    const firstSelect = overlapping.select()
+    const secondSelect = overlapping.select()
+    await vi.waitFor(() => expect(resolvers).toHaveLength(2))
+    resolvers[1]?.(second)
+    resolvers[0]?.(first)
+
+    expect(await secondSelect).toEqual({ fileName: 'second.db' })
+    expect(await firstSelect).toEqual({ cancelled: true })
+    await overlapping.confirm()
+    expect(apply).toHaveBeenCalledExactlyOnceWith(second)
+  })
+
+  it('looks the migration level up lazily, not at construction', async () => {
+    const lookup = vi.fn<() => number>().mockImplementation(() => {
+      throw new Error('migrations folder missing')
+    })
+    const lazy = createRestoreSession({
+      dialogs,
+      settings: backupSettings(createFakeGateway()),
+      liveDbPath,
+      getLatestMigrationMillis: lookup,
+      documentsPath: join(dir, 'docs'),
+      apply
+    })
+    expect(lookup).not.toHaveBeenCalled()
+    picked = join(dir, 'a.db')
+    makeValidBackup(picked)
+
+    await expect(lazy.select()).rejects.toThrow('migrations folder missing')
   })
 })

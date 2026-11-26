@@ -8,7 +8,7 @@ export interface RestoreSessionDeps {
   dialogs: BackupDialogs
   settings: BackupSettings
   liveDbPath: string
-  latestMigrationMillis: number
+  getLatestMigrationMillis: () => number
   documentsPath: string
   apply: (sourcePath: string) => Promise<void>
 }
@@ -20,22 +20,33 @@ export interface RestoreSession {
 
 // The renderer never sends a path: the main process remembers the file it validated
 export function createRestoreSession(deps: RestoreSessionDeps): RestoreSession {
-  const { dialogs, settings, liveDbPath, latestMigrationMillis, documentsPath, apply } = deps
+  const { dialogs, settings, liveDbPath, getLatestMigrationMillis, documentsPath, apply } = deps
   let selectedPath: string | null = null
+  let latestSelectRequest = 0
 
   function validate(filePath: string): void {
-    validateBackupFile({ filePath, liveDbPath, latestMigrationMillis })
+    validateBackupFile({
+      filePath,
+      liveDbPath,
+      latestMigrationMillis: getLatestMigrationMillis()
+    })
   }
 
   return {
     async select() {
       selectedPath = null
+      latestSelectRequest += 1
+      const request = latestSelectRequest
       const defaultPath = (await settings.getLastDirectory()) ?? documentsPath
       const filePath = await dialogs.pickOpenPath({ defaultPath })
       if (filePath === null) {
         return { cancelled: true }
       }
       validate(filePath)
+      // A newer select superseded this one while its dialog was open
+      if (request !== latestSelectRequest) {
+        return { cancelled: true }
+      }
       selectedPath = filePath
       return { fileName: basename(filePath) }
     },

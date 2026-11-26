@@ -34,7 +34,7 @@ export function initializeBackupModule(
     dialogs,
     settings,
     liveDbPath,
-    latestMigrationMillis: getLatestMigrationMillis(MIGRATIONS_FOLDER),
+    getLatestMigrationMillis: () => getLatestMigrationMillis(MIGRATIONS_FOLDER),
     documentsPath,
     apply: (sourcePath) =>
       applyRestore({
