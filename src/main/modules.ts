@@ -1,8 +1,12 @@
-import type { IpcMain } from 'electron'
+import { createWriteStream } from 'node:fs'
+import { rename, rm } from 'node:fs/promises'
+import { app, BrowserWindow, dialog, type IpcMain } from 'electron'
 import { getDb } from '@shared/db/connection'
 import { initializeStudentModule } from '@student/index'
 import { initializeFrequentationModule } from '@frequentation/index'
 import { initializeStatisticsModule } from '@statistics/index'
+import { initializeExportModule } from '@export/index'
+import { createElectronExportFileAdapter } from '@export/adapters/electronExportFileAdapter'
 import { initializeSettingsModule } from '@settings/index'
 import { createAutomaticBackup } from '@backup/use-cases/createAutomaticBackup'
 import { initializeBackupModule, type BackupModuleDeps } from '@backup/index'
@@ -15,6 +19,21 @@ export async function initializeModules(
   const studentGateway = initializeStudentModule(db, ipcMain, { createAutomaticBackup })
   const frequentationGateway = initializeFrequentationModule(db, ipcMain, studentGateway)
   initializeStatisticsModule(ipcMain, frequentationGateway)
+  // dialog.* and BrowserWindow.* are reached through their objects at call time so tests can stub them
+  const exportFileAdapter = createElectronExportFileAdapter({
+    dialog: {
+      showSaveDialog: (parent, options) =>
+        parent ? dialog.showSaveDialog(parent, options) : dialog.showSaveDialog(options)
+    },
+    fs: {
+      createWriteStream: (path) => createWriteStream(path, { flags: 'wx' }),
+      rename,
+      rm
+    },
+    getParentWindow: () => BrowserWindow.getFocusedWindow(),
+    getDefaultDirectory: () => app.getPath('documents')
+  })
+  initializeExportModule(ipcMain, frequentationGateway, studentGateway, exportFileAdapter)
   initializeSettingsModule(db, ipcMain)
   initializeBackupModule(db, ipcMain, backupDeps)
 }
