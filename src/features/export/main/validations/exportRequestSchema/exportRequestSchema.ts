@@ -46,7 +46,7 @@ export const exportRequestSchema = z
     if (value.kind === 'students') {
       return {
         kind: value.kind,
-        includeNames: value.includeNames,
+        includeNames: true,
         acknowledgedPersonalData: true
       }
     }

@@ -78,6 +78,26 @@ describe('exportRequestSchema', () => {
     expect(result.acknowledgedPersonalData).toBe(true)
   })
 
+  it('defaults includeNames to false for journal when omitted', () => {
+    const result = exportRequestSchema.parse({ kind: 'journal', period: PERIOD })
+    expect(result.includeNames).toBe(false)
+  })
+
+  it('normalises includeNames to true for students, whatever is sent', () => {
+    const base = { kind: 'students', acknowledgedPersonalData: true }
+    expect(exportRequestSchema.parse(base).includeNames).toBe(true)
+    expect(exportRequestSchema.parse({ ...base, includeNames: false }).includeNames).toBe(true)
+  })
+
+  it('rejects a malformed endDate', () => {
+    const result = exportRequestSchema.safeParse({
+      kind: 'journal',
+      period: { startDate: '2026-01-01', endDate: '2026-02-30' },
+      includeNames: false
+    })
+    expect(result.success).toBe(false)
+  })
+
   it('rejects an unknown kind', () => {
     expect(
       exportRequestSchema.safeParse({ kind: 'nope', period: PERIOD, includeNames: false }).success
