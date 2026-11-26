@@ -141,7 +141,7 @@ export const RemovalSection = styled(Box, {
 export const RemovalNote = styled(Typography, {
   shouldForwardProp: shouldForwardStyledProp
 })(({ theme }) => ({
-  color: theme.palette.text.disabled,
+  color: theme.palette.text.secondary,
   marginLeft: theme.spacing(4),
   marginBottom: theme.spacing(1)
 }))
@@ -177,3 +177,7 @@ export const RemovalConfirmField = styled(TextField, {
 })(({ theme }) => ({
   marginTop: theme.spacing(1.5)
 }))
+
+export const RemovalLiveRegion = styled(Box, {
+  shouldForwardProp: shouldForwardStyledProp
+})({})

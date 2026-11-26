@@ -33,6 +33,7 @@ function renderPresenter(overrides: Partial<PresenterProps> = {}) {
     updateExisting: false,
     removeAbsent: false,
     removalPreview: null,
+    handleRetryPreview: vi.fn(),
     isPreviewPending: false,
     previewError: null,
     confirmationText: '',
@@ -176,5 +177,27 @@ describe('StudentCsvImportButtonPresenter removal option', () => {
       }
     )
     expect(screen.getByText(/2 anonymisé\(s\), 3 supprimé\(s\) sans visite/)).toBeInTheDocument()
+  })
+
+  it('shows a loading message while the preview is pending', () => {
+    renderPresenter({ removeAbsent: true, updateExisting: true, isPreviewPending: true })
+    expect(screen.getByText('Analyse du fichier…')).toBeInTheDocument()
+  })
+
+  it('offers a retry after a preview failure', async () => {
+    const props = renderPresenter({ removeAbsent: true, updateExisting: true, previewError: 'x' })
+    await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }))
+    expect(props.handleRetryPreview).toHaveBeenCalledOnce()
+  })
+
+  it('announces the preview politely and focuses the confirmation field', () => {
+    withPreview(
+      { toRemove: TWELVE, total: TOTAL, sample: buildNames(3) },
+      { needsConfirmation: true, confirmationPhrase: 'RETIRER 12', canSubmit: false }
+    )
+    expect(
+      screen.getByText('12 élèves sur 100 seront retirés :').closest('[aria-live]')
+    ).toHaveAttribute('aria-live', 'polite')
+    expect(screen.getByLabelText('Pour confirmer, tapez RETIRER 12')).toHaveFocus()
   })
 })

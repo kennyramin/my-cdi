@@ -46,6 +46,7 @@ export interface CsvImportButtonActions {
   handleSubmit: () => void
   handleToggleUpdateExisting: () => void
   handleToggleRemoveAbsent: () => void
+  handleRetryPreview: () => void
   handleConfirmationChange: (value: string) => void
   handleDownloadReport: () => void
   dismissToast: () => void
@@ -63,7 +64,7 @@ export function useCsvImportButton(): CsvImportButtonState & CsvImportButtonActi
   const [updateExisting, setUpdateExisting] = useState(false)
   const [removeAbsent, setRemoveAbsent] = useState(false)
   const [confirmationText, setConfirmationText] = useState('')
-  const previewTargetRef = useRef<File | null>(null)
+  const previewRequestRef = useRef(0)
   const {
     mutate: requestPreview,
     reset: resetPreview,
@@ -78,18 +79,19 @@ export function useCsvImportButton(): CsvImportButtonState & CsvImportButtonActi
   const effectiveUpdateExisting = updateExisting || removeAbsent
 
   function cancelPreview() {
-    previewTargetRef.current = null
+    previewRequestRef.current += 1
     resetPreview()
     setConfirmationText('')
   }
 
   async function loadPreview(file: File) {
-    previewTargetRef.current = file
+    previewRequestRef.current += 1
+    const requestId = previewRequestRef.current
     resetPreview()
     setConfirmationText('')
     try {
       const csv = decodeText(await readFileBuffer(file))
-      if (previewTargetRef.current === file) {
+      if (previewRequestRef.current === requestId) {
         requestPreview({ csv })
       }
     } catch {
@@ -155,6 +157,12 @@ export function useCsvImportButton(): CsvImportButtonState & CsvImportButtonActi
     }
   }
 
+  function handleRetryPreview() {
+    if (removeAbsent && pendingFile) {
+      void loadPreview(pendingFile)
+    }
+  }
+
   function handleConfirmationChange(value: string) {
     setConfirmationText(value)
   }
@@ -176,9 +184,11 @@ export function useCsvImportButton(): CsvImportButtonState & CsvImportButtonActi
   }
 
   async function handleSubmit() {
-    if (!pendingFile) {
+    if (!canSubmit || !pendingFile) {
       return
     }
+    const removalRequested = removeAbsent
+    const submittedFile = pendingFile
 
     try {
       const buffer = await readFileBuffer(pendingFile)
@@ -196,21 +206,36 @@ export function useCsvImportButton(): CsvImportButtonState & CsvImportButtonActi
         {
           onSuccess: (data) => {
             setResult(data)
+            if (removalRequested) {
+              setRemoveAbsent(false)
+              cancelPreview()
+            }
             if (data.errors === 0) {
               closeModal()
               show(
-                [
-                  tStudent('csvImport.summary', {
-                    count: data.created,
-                    updated: data.updated,
-                    errors: 0
-                  }),
-                  ...(removeAbsent ? [formatRemovalSummary(data)] : [])
-                ].join(' · ')
+                removalRequested
+                  ? tStudent('csvImport.summaryWithRemoval', {
+                      summary: tStudent('csvImport.summary', {
+                        count: data.created,
+                        updated: data.updated,
+                        errors: 0
+                      }),
+                      removal: formatRemovalSummary(data)
+                    })
+                  : tStudent('csvImport.summary', {
+                      count: data.created,
+                      updated: data.updated,
+                      errors: 0
+                    })
               )
             }
           },
           onError: (err) => {
+            if (removalRequested) {
+              setError(tStudent('csvImport.removalStale'))
+              void loadPreview(submittedFile)
+              return
+            }
             setError(err instanceof Error ? err.message : tCommon('app.unknownError'))
           }
         }
@@ -270,6 +295,7 @@ export function useCsvImportButton(): CsvImportButtonState & CsvImportButtonActi
     handleSubmit,
     handleToggleUpdateExisting,
     handleToggleRemoveAbsent,
+    handleRetryPreview,
     handleConfirmationChange,
     handleDownloadReport,
     dismissToast: dismiss

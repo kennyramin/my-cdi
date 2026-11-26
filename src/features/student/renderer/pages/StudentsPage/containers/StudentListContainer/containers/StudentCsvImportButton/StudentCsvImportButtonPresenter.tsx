@@ -55,6 +55,7 @@ interface StudentCsvImportButtonPresenterProps {
   handleSubmit: () => void
   handleToggleUpdateExisting: () => void
   handleToggleRemoveAbsent: () => void
+  handleRetryPreview: () => void
   handleConfirmationChange: (value: string) => void
   handleDownloadReport: () => void
   dismissToast: () => void
@@ -77,6 +78,7 @@ export function StudentCsvImportButtonPresenter(props: StudentCsvImportButtonPre
     updateExisting,
     removeAbsent,
     removalPreview,
+    isPreviewPending,
     previewError,
     confirmationText,
     confirmationPhrase,
@@ -90,10 +92,19 @@ export function StudentCsvImportButtonPresenter(props: StudentCsvImportButtonPre
     handleSubmit,
     handleToggleUpdateExisting,
     handleToggleRemoveAbsent,
+    handleRetryPreview,
     handleConfirmationChange,
     handleDownloadReport,
     dismissToast
   } = props
+
+  const summaryText = result
+    ? t('csvImport.summary', {
+        count: result.created,
+        updated: result.updated,
+        errors: result.errors
+      })
+    : ''
 
   return (
     <>
@@ -165,7 +176,9 @@ export function StudentCsvImportButtonPresenter(props: StudentCsvImportButtonPre
         <RemovalSectionPresenter
           removeAbsent={removeAbsent}
           removalPreview={removalPreview}
+          isPreviewPending={isPreviewPending}
           previewError={previewError}
+          onRetryPreview={handleRetryPreview}
           confirmationText={confirmationText}
           confirmationPhrase={confirmationPhrase}
           needsConfirmation={needsConfirmation}
@@ -178,17 +191,15 @@ export function StudentCsvImportButtonPresenter(props: StudentCsvImportButtonPre
 
         {result && result.errors > 0 ? (
           <ResultAlert severity="warning">
-            {t('csvImport.summary', {
-              count: result.created,
-              updated: result.updated,
-              errors: result.errors
-            })}
             {result.anonymized !== undefined
-              ? ` · ${t('csvImport.removalSummary', {
-                  anonymized: result.anonymized,
-                  deletedWithoutVisits: result.deletedWithoutVisits ?? 0
-                })}`
-              : ''}
+              ? t('csvImport.summaryWithRemoval', {
+                  summary: summaryText,
+                  removal: t('csvImport.removalSummary', {
+                    anonymized: result.anonymized,
+                    deletedWithoutVisits: result.deletedWithoutVisits ?? 0
+                  })
+                })
+              : summaryText}
           </ResultAlert>
         ) : null}
 

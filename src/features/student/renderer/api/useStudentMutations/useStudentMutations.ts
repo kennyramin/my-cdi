@@ -94,6 +94,7 @@ export function useImportStudentsCsv() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.all })
       queryClient.invalidateQueries({ queryKey: statisticsKeys.all })
+      queryClient.invalidateQueries({ queryKey: frequentationKeys.all })
     }
   })
 }

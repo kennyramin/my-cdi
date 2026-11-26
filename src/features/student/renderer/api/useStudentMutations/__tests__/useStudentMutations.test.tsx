@@ -209,6 +209,25 @@ describe('useImportStudentsCsv', () => {
   })
 })
 
+describe('useImportStudentsCsv invalidation', () => {
+  it('also invalidates the frequentation queries so the journal shows current names', async () => {
+    vi.stubGlobal('electronAPI', {
+      student: {
+        importCsv: vi.fn().mockResolvedValue({ success: true, data: { created: 1, errors: 0 } })
+      }
+    })
+    const { wrapper, invalidateSpy } = createInvalidationSpiedWrapper()
+    const { result } = renderHook(() => useImportStudentsCsv(), { wrapper })
+
+    act(() => {
+      result.current.mutate({ csv: 'a' })
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: frequentationKeys.all })
+  })
+})
+
 describe('useAnonymizeStudents', () => {
   const IDS = [1, 2]
   const RESULT = { anonymized: 1, deletedWithoutVisits: 1, ignored: 0 }

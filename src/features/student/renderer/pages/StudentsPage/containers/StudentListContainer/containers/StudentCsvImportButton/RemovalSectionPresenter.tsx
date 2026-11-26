@@ -1,10 +1,12 @@
 import type { ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@ui/components/Button'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import type { CsvRemovalPreview } from '@student-shared'
 import {
   RemovalConfirmField,
+  RemovalLiveRegion,
   RemovalMoreText,
   RemovalNameList,
   RemovalNote,
@@ -19,7 +21,9 @@ const MAX_LISTED_NAMES = 20
 interface RemovalSectionPresenterProps {
   removeAbsent: boolean
   removalPreview: CsvRemovalPreview | null
+  isPreviewPending: boolean
   previewError: string | null
+  onRetryPreview: () => void
   confirmationText: string
   confirmationPhrase: string
   needsConfirmation: boolean
@@ -31,7 +35,9 @@ interface RemovalSectionPresenterProps {
 export function RemovalSectionPresenter({
   removeAbsent,
   removalPreview,
+  isPreviewPending,
   previewError,
+  onRetryPreview,
   confirmationText,
   confirmationPhrase,
   needsConfirmation,
@@ -64,45 +70,63 @@ export function RemovalSectionPresenter({
           <RemovalNote variant="body2">{t('anonymize.backupNote')}</RemovalNote>
 
           {previewError !== null ? (
-            <ResultAlert severity="error">{previewError}</ResultAlert>
-          ) : null}
-
-          {blockedReason !== undefined ? (
-            <ResultAlert severity="warning">
-              {t(`csvImport.removalBlocked.${blockedReason}`)}
+            <ResultAlert
+              severity="error"
+              action={
+                <Button variant="secondary" onClick={onRetryPreview}>
+                  {t('csvImport.retryPreview')}
+                </Button>
+              }
+            >
+              {previewError}
             </ResultAlert>
           ) : null}
 
-          {removalPreview !== null && blockedReason === undefined && !hasNamesToRemove ? (
-            <RemovalPreviewHeading variant="body2">
-              {t('csvImport.removalNone')}
-            </RemovalPreviewHeading>
-          ) : null}
-
-          {removalPreview !== null && hasNamesToRemove ? (
-            <>
+          <RemovalLiveRegion aria-live="polite">
+            {isPreviewPending ? (
               <RemovalPreviewHeading variant="body2">
-                {t('csvImport.removalPreview', {
-                  count: removalPreview.toRemove,
-                  total: removalPreview.total
-                })}
+                {t('csvImport.removalLoading')}
               </RemovalPreviewHeading>
-              <RemovalNameList>
-                {listedNames.map((name, index) => (
-                  <li key={`${name}-${index}`}>{name}</li>
-                ))}
-              </RemovalNameList>
-              {hiddenCount > NONE ? (
-                <RemovalMoreText variant="body2">
-                  {t('csvImport.removalMore', { count: hiddenCount })}
-                </RemovalMoreText>
-              ) : null}
-            </>
-          ) : null}
+            ) : null}
+
+            {blockedReason !== undefined ? (
+              <ResultAlert severity="warning">
+                {t(`csvImport.removalBlocked.${blockedReason}`)}
+              </ResultAlert>
+            ) : null}
+
+            {removalPreview !== null && blockedReason === undefined && !hasNamesToRemove ? (
+              <RemovalPreviewHeading variant="body2">
+                {t('csvImport.removalNone')}
+              </RemovalPreviewHeading>
+            ) : null}
+
+            {removalPreview !== null && hasNamesToRemove ? (
+              <>
+                <RemovalPreviewHeading variant="body2">
+                  {t('csvImport.removalPreview', {
+                    count: removalPreview.toRemove,
+                    total: removalPreview.total
+                  })}
+                </RemovalPreviewHeading>
+                <RemovalNameList>
+                  {listedNames.map((name, index) => (
+                    <li key={`${name}-${index}`}>{name}</li>
+                  ))}
+                </RemovalNameList>
+                {hiddenCount > NONE ? (
+                  <RemovalMoreText variant="body2">
+                    {t('csvImport.removalMore', { count: hiddenCount })}
+                  </RemovalMoreText>
+                ) : null}
+              </>
+            ) : null}
+          </RemovalLiveRegion>
 
           {hasNamesToRemove && needsConfirmation ? (
             <RemovalConfirmField
               fullWidth
+              autoFocus
               size="small"
               label={t('csvImport.removalConfirmLabel', { phrase: confirmationPhrase })}
               value={confirmationText}
