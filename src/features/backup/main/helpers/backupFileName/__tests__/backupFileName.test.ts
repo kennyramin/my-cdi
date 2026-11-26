@@ -26,4 +26,9 @@ describe('backupFileName', () => {
   ])('rejects non-matching name %s', (name) => {
     expect(parseAutomaticBackupName(name)).toBeNull()
   })
+
+  it('rolls a non-existent local time (DST gap) forward and therefore rejects it', () => {
+    // 2026-03-29 02:30 does not exist in Europe/Paris: the Date constructor shifts it to 03:30
+    expect(parseAutomaticBackupName('auto-20260329-023000-restore.db')).toBeNull()
+  })
 })

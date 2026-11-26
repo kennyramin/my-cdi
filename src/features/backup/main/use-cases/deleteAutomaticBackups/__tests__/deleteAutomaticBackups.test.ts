@@ -1,8 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { listAutomaticBackups } from '../../listAutomaticBackups'
 import { deleteAutomaticBackups } from '../deleteAutomaticBackups'
+
+vi.mock('../../listAutomaticBackups', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../listAutomaticBackups')>()
+  return { ...actual, listAutomaticBackups: vi.fn(actual.listAutomaticBackups) }
+})
 
 describe('deleteAutomaticBackups', () => {
   let dir: string
@@ -12,6 +18,7 @@ describe('deleteAutomaticBackups', () => {
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     rmSync(dir, { recursive: true, force: true })
   })
 
@@ -38,5 +45,23 @@ describe('deleteAutomaticBackups', () => {
 
   it('returns 0 when the folder does not exist', async () => {
     expect(await deleteAutomaticBackups(join(dir, 'missing'))).toEqual({ deleted: 0 })
+  })
+
+  it('continues past an entry that cannot be removed and counts only removed ones', async () => {
+    // rm without `recursive` rejects on a directory, standing in for EPERM/EBUSY
+    const stuck = join(dir, 'auto-20261125-143007-migration.db')
+    const removable = join(dir, 'auto-20261124-143007-restore.db')
+    mkdirSync(join(stuck, 'child'), { recursive: true })
+    writeFileSync(removable, '')
+    vi.mocked(listAutomaticBackups).mockResolvedValueOnce([
+      { name: 'stuck', path: stuck, date: new Date(2) },
+      { name: 'removable', path: removable, date: new Date(1) }
+    ])
+
+    const result = await deleteAutomaticBackups(dir)
+
+    expect(result).toEqual({ deleted: 1 })
+    expect(existsSync(stuck)).toBe(true)
+    expect(existsSync(removable)).toBe(false)
   })
 })

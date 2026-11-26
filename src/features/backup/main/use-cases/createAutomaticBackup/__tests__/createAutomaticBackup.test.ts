@@ -1,17 +1,28 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { buildAutomaticBackupName } from '../../../helpers/backupFileName'
 import { configureBackupRuntime } from '../../../runtime'
+import { listAutomaticBackups } from '../../listAutomaticBackups'
 import {
   AUTOMATIC_BACKUP_MAX_AGE_DAYS,
   AUTOMATIC_BACKUP_MAX_COUNT,
   createAutomaticBackup
 } from '../createAutomaticBackup'
 
+vi.mock('../../listAutomaticBackups', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../listAutomaticBackups')>()
+  return { ...actual, listAutomaticBackups: vi.fn(actual.listAutomaticBackups) }
+})
+
+const { listAutomaticBackups: realList } = await vi.importActual<
+  typeof import('../../listAutomaticBackups')
+>('../../listAutomaticBackups')
+
 const NOW = new Date('2026-11-25T14:30:07')
+const STUCK_AGE_DAYS = 35
 const MS_PER_MINUTE = 60_000
 const SEED_ROWS = 3
 const EXTRA_RECENT_FILES = 12
@@ -32,8 +43,7 @@ function seed(dir: string, date: Date): string {
 function countStudents(path: string): number {
   const db = new Database(path, { readonly: true })
   try {
-    const row = db.prepare('SELECT COUNT(*) AS n FROM students').get() as { n: number }
-    return row.n
+    return db.prepare<[], { n: number }>('SELECT COUNT(*) AS n FROM students').get()?.n ?? 0
   } finally {
     db.close()
   }
@@ -56,6 +66,7 @@ describe('createAutomaticBackup', () => {
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     db.close()
     rmSync(root, { recursive: true, force: true })
   })
@@ -112,14 +123,69 @@ describe('createAutomaticBackup', () => {
 
   it('never deletes the file it just wrote', async () => {
     mkdirSync(backupsDir)
-    // Newer than "now": the new file sorts below the cap but must survive
     for (let i = 1; i <= AUTOMATIC_BACKUP_MAX_COUNT; i += 1) {
-      seed(backupsDir, new Date(NOW.getTime() + i * MS_PER_MINUTE))
+      seed(backupsDir, new Date(NOW.getTime() - i * MS_PER_MINUTE))
     }
 
     const path = await createAutomaticBackup('migration')
 
     expect(existsSync(path)).toBe(true)
+  })
+
+  it('ignores future-dated files when applying the count cap', async () => {
+    mkdirSync(backupsDir)
+    const future = Array.from({ length: AUTOMATIC_BACKUP_MAX_COUNT }, (_, index) =>
+      seed(backupsDir, new Date(NOW.getTime() + (index + 1) * MS_PER_MINUTE))
+    )
+    const recent = seed(backupsDir, new Date(NOW.getTime() - MS_PER_MINUTE))
+
+    const path = await createAutomaticBackup('migration')
+
+    expect(existsSync(path)).toBe(true)
+    expect(existsSync(recent)).toBe(true)
+    for (const file of future) {
+      expect(existsSync(file)).toBe(true)
+    }
+  })
+
+  it('resolves with the new path when an old entry cannot be removed', async () => {
+    mkdirSync(backupsDir)
+    // rm without `recursive` rejects on a directory, standing in for EPERM/EBUSY
+    const stuck = join(
+      backupsDir,
+      buildAutomaticBackupName(daysBefore(NOW, STUCK_AGE_DAYS), 'restore')
+    )
+    mkdirSync(join(stuck, 'child'), { recursive: true })
+    const removable = seed(backupsDir, daysBefore(NOW, STUCK_AGE_DAYS + 1))
+    vi.mocked(listAutomaticBackups).mockImplementationOnce(async (dir) => [
+      ...(await realList(dir)),
+      { name: 'stuck', path: stuck, date: daysBefore(NOW, STUCK_AGE_DAYS) }
+    ])
+
+    const path = await createAutomaticBackup('migration')
+
+    expect(existsSync(path)).toBe(true)
+    expect(existsSync(stuck)).toBe(true)
+    expect(existsSync(removable)).toBe(false)
+  })
+
+  it('resolves with the new path when the backups folder cannot be listed', async () => {
+    vi.mocked(listAutomaticBackups).mockRejectedValueOnce(new Error('EIO'))
+
+    const path = await createAutomaticBackup('migration')
+
+    expect(existsSync(path)).toBe(true)
+  })
+
+  it('serializes concurrent calls so they write distinct files', async () => {
+    const [first, second] = await Promise.all([
+      createAutomaticBackup('migration'),
+      createAutomaticBackup('migration')
+    ])
+
+    expect(first).not.toBe(second)
+    expect(existsSync(first)).toBe(true)
+    expect(existsSync(second)).toBe(true)
   })
 
   it('ignores files and directories not matching the pattern', async () => {
@@ -135,7 +201,7 @@ describe('createAutomaticBackup', () => {
     expect(existsSync(join(backupsDir, 'auto-20200101-000000-restore.db'))).toBe(true)
   })
 
-  it('throws when the backup cannot be written and prunes nothing', async () => {
+  it('throws when the backup cannot be written', async () => {
     const blocker = join(root, 'blocker')
     writeFileSync(blocker, 'file')
     configureBackupRuntime({

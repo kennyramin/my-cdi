@@ -1,1 +1,6 @@
-export { configureBackupRuntime, getBackupRuntime, type BackupRuntime } from './backupRuntime'
+export {
+  configureBackupRuntime,
+  getBackupRuntime,
+  runExclusive,
+  type BackupRuntime
+} from './backupRuntime'

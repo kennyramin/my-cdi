@@ -18,3 +18,12 @@ export function getBackupRuntime(): BackupRuntime {
   }
   return current
 }
+
+let queue: Promise<unknown> = Promise.resolve()
+
+// Runs tasks one after the other so concurrent callers never pick the same backup path
+export function runExclusive<T>(task: () => Promise<T>): Promise<T> {
+  const result = queue.then(task, task)
+  queue = result.catch(() => undefined)
+  return result
+}

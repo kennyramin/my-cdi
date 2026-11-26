@@ -3,7 +3,7 @@ import { mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { AutomaticBackupReason } from '@backup-shared'
 import { buildAutomaticBackupName } from '../../helpers/backupFileName'
-import { getBackupRuntime } from '../../runtime'
+import { getBackupRuntime, runExclusive } from '../../runtime'
 import { createBackup } from '../createBackup'
 import { listAutomaticBackups, type AutomaticBackupFile } from '../listAutomaticBackups'
 
@@ -22,6 +22,15 @@ function pickFreshPath(backupsDir: string, now: Date, reason: AutomaticBackupRea
   return path
 }
 
+// Pruning is best effort: a stuck old file must never fail a backup that was written
+function ignorePruneFailure(): void {
+  return undefined
+}
+
+async function removeQuietly(path: string): Promise<void> {
+  await rm(path, { force: true }).catch(ignorePruneFailure)
+}
+
 async function pruneAutomaticBackups(
   backupsDir: string,
   now: Date,
@@ -31,29 +40,33 @@ async function pruneAutomaticBackups(
   cutoff.setDate(cutoff.getDate() - AUTOMATIC_BACKUP_MAX_AGE_DAYS)
 
   const backups = await listAutomaticBackups(backupsDir)
-  const recent: AutomaticBackupFile[] = []
+  const kept: AutomaticBackupFile[] = []
   for (const backup of backups) {
     if (backup.date < cutoff && backup.path !== keepPath) {
-      await rm(backup.path, { force: true })
+      await removeQuietly(backup.path)
     } else {
-      recent.push(backup)
+      kept.push(backup)
     }
   }
 
-  for (const backup of recent.slice(AUTOMATIC_BACKUP_MAX_COUNT)) {
+  // Future-dated files (clock skew) are left alone and never count towards the cap
+  const counted = kept.filter((backup) => backup.date <= now || backup.path === keepPath)
+  for (const backup of counted.slice(AUTOMATIC_BACKUP_MAX_COUNT)) {
     if (backup.path !== keepPath) {
-      await rm(backup.path, { force: true })
+      await removeQuietly(backup.path)
     }
   }
 }
 
-export async function createAutomaticBackup(reason: AutomaticBackupReason): Promise<string> {
-  const runtime = getBackupRuntime()
-  const now = runtime.now()
+export function createAutomaticBackup(reason: AutomaticBackupReason): Promise<string> {
+  return runExclusive(async () => {
+    const runtime = getBackupRuntime()
+    const now = runtime.now()
 
-  await mkdir(runtime.backupsDir, { recursive: true })
-  const path = pickFreshPath(runtime.backupsDir, now, reason)
-  await createBackup(runtime.getSqlite(), path)
-  await pruneAutomaticBackups(runtime.backupsDir, now, path)
-  return path
+    await mkdir(runtime.backupsDir, { recursive: true })
+    const path = pickFreshPath(runtime.backupsDir, now, reason)
+    await createBackup(runtime.getSqlite(), path)
+    await pruneAutomaticBackups(runtime.backupsDir, now, path).catch(ignorePruneFailure)
+    return path
+  })
 }

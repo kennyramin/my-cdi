@@ -4,7 +4,7 @@ import { AUTOMATIC_BACKUP_REASONS, type AutomaticBackupReason } from '@backup-sh
 const NAME_PREFIX = 'auto-'
 const NAME_EXTENSION = '.db'
 const NAME_PATTERN = new RegExp(
-  `^${NAME_PREFIX}(\\d{4})(\\d{2})(\\d{2})-(\\d{2})(\\d{2})(\\d{2})-(${AUTOMATIC_BACKUP_REASONS.join('|')})\\${NAME_EXTENSION}$`
+  `^${NAME_PREFIX}(?<year>\\d{4})(?<month>\\d{2})(?<day>\\d{2})-(?<hours>\\d{2})(?<minutes>\\d{2})(?<seconds>\\d{2})-(?<reason>${AUTOMATIC_BACKUP_REASONS.join('|')})\\${NAME_EXTENSION}$`
 )
 const MONTH_OFFSET = 1
 const DECIMAL_RADIX = 10
@@ -21,14 +21,23 @@ export function parseAutomaticBackupName(
   if (!match) {
     return null
   }
-  const [year = 0, month = 0, day = 0, hours = 0, minutes = 0, seconds = 0] = match
-    .slice(1, 7)
-    .map((part) => Number.parseInt(part, DECIMAL_RADIX))
-  const reason = AUTOMATIC_BACKUP_REASONS.find((candidate) => candidate === match[7])
+  const groups = match.groups
+  if (!groups) {
+    return null
+  }
+  const toNumber = (key: string): number => Number.parseInt(groups[key] ?? '', DECIMAL_RADIX)
+  const reason = AUTOMATIC_BACKUP_REASONS.find((candidate) => candidate === groups.reason)
   if (!reason) {
     return null
   }
-  const date = new Date(year, month - MONTH_OFFSET, day, hours, minutes, seconds)
+  const date = new Date(
+    toNumber('year'),
+    toNumber('month') - MONTH_OFFSET,
+    toNumber('day'),
+    toNumber('hours'),
+    toNumber('minutes'),
+    toNumber('seconds')
+  )
   // Reject impossible dates that the Date constructor would silently roll over
   if (buildAutomaticBackupName(date, reason) !== name) {
     return null
