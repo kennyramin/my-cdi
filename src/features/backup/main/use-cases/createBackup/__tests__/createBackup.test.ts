@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import {
   existsSync,
@@ -150,6 +150,18 @@ describe('createBackup', () => {
 
     it('for the -shm sidecar', async () => {
       await expectRefused(`${livePath}-shm`)
+    })
+
+    it.each(['-wal', '-shm'])('for a %s sidecar that does not exist yet', async (suffix) => {
+      const ghostLive = join(dir, 'ghost-live.db')
+      const sidecar = `${ghostLive}${suffix}`
+      const backup = vi.fn<Pick<Database.Database, 'backup'>['backup']>()
+      await expectAppError(
+        createBackup({ name: ghostLive, backup }, sidecar),
+        ErrorCode.BACKUP_PATH_IS_LIVE_DB
+      )
+      expect(backup).not.toHaveBeenCalled()
+      expect(existsSync(sidecar)).toBe(false)
     })
   })
 
