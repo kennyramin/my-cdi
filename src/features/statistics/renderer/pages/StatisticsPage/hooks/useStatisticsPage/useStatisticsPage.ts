@@ -6,6 +6,15 @@ import { useStatsForPeriod } from '@statistics/api/useStatisticsQueries'
 import { buildPeriodRange } from '../../helpers/buildPeriodRange'
 import { validateCustomRange } from '../../helpers/validateCustomRange'
 
+interface RetriedFailure {
+  range: PeriodRangeDto
+  message: string
+}
+
+function isSameRange(left: PeriodRangeDto, right: PeriodRangeDto) {
+  return left.startDate === right.startDate && left.endDate === right.endDate
+}
+
 export function useStatisticsPage() {
   const { t } = useTranslation('common')
   const [period, setPeriod] = useState<PeriodKey>('month')
@@ -16,16 +25,20 @@ export function useStatisticsPage() {
   const query = useStatsForPeriod(range, customRangeError === null)
 
   // A refetch of a failed query without data resets it to "pending" and clears
-  // its error, so the failure being retried is kept here to hold the error
-  // state (and its disabled button) on screen until the retry settles.
-  const [failureBeingRetried, setFailureBeingRetried] = useState<string | null>(null)
+  // its error, so the failure being retried is kept here (scoped to the range
+  // it belongs to) to hold the error state and its disabled button on screen
+  // until the retry settles.
+  const [retried, setRetried] = useState<RetriedFailure | null>(null)
   const queryErrorMessage = query.isError ? query.error.message || t('app.unknownError') : null
-  const isRetrying = failureBeingRetried !== null
-  const errorMessage = queryErrorMessage ?? (query.data === undefined ? failureBeingRetried : null)
+  const isRetryingHere = retried !== null && isSameRange(retried.range, range)
+  const isRetrying = isRetryingHere && query.data === undefined
+  const errorMessage = queryErrorMessage ?? (isRetrying ? retried.message : null)
 
   function retry() {
-    setFailureBeingRetried(errorMessage)
-    void query.refetch().finally(() => setFailureBeingRetried(null))
+    if (query.data === undefined && errorMessage !== null) {
+      setRetried({ range, message: errorMessage })
+    }
+    void query.refetch().finally(() => setRetried(null))
   }
 
   function selectPeriod(next: PeriodKey) {

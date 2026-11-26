@@ -245,5 +245,65 @@ describe('useStatisticsPage', () => {
       })
       await waitFor(() => expect(result.current.isRetrying).toBe(false))
     })
+
+    it('does not leak a pending retry onto another period', async () => {
+      const getStats = vi.mocked(window.electronAPI.statistics.getStats)
+      getStats.mockResolvedValueOnce(failure)
+      const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
+      await waitFor(() => expect(result.current.errorMessage).toBe('boom'))
+      let resolveRetry: (value: unknown) => void = () => undefined
+      getStats.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveRetry = resolve
+        })
+      )
+      act(() => {
+        result.current.retry()
+      })
+      await waitFor(() => expect(result.current.isRetrying).toBe(true))
+      getStats.mockReturnValueOnce(new Promise(() => undefined))
+      act(() => {
+        result.current.selectPeriod('week')
+      })
+      expect(result.current.isRetrying).toBe(false)
+      expect(result.current.errorMessage).toBeNull()
+      expect(result.current.isLoading).toBe(true)
+      await act(async () => {
+        resolveRetry(failure)
+      })
+      expect(result.current.isRetrying).toBe(false)
+      expect(result.current.isLoading).toBe(true)
+    })
+
+    it('shows the normal state when switching back after a retry settled elsewhere', async () => {
+      const getStats = vi.mocked(window.electronAPI.statistics.getStats)
+      getStats.mockResolvedValueOnce(failure)
+      const { result } = renderHook(() => useStatisticsPage(), { wrapper: createWrapper() })
+      await waitFor(() => expect(result.current.errorMessage).toBe('boom'))
+      let resolveRetry: (value: unknown) => void = () => undefined
+      getStats.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveRetry = resolve
+        })
+      )
+      act(() => {
+        result.current.retry()
+      })
+      await waitFor(() => expect(result.current.isRetrying).toBe(true))
+      getStats.mockResolvedValueOnce({ success: true, data: sampleStats })
+      act(() => {
+        result.current.selectPeriod('week')
+      })
+      await waitFor(() => expect(result.current.stats).toBeDefined())
+      await act(async () => {
+        resolveRetry({ success: true, data: sampleStats })
+      })
+      act(() => {
+        result.current.selectPeriod('month')
+      })
+      await waitFor(() => expect(result.current.stats).toBeDefined())
+      expect(result.current.isRetrying).toBe(false)
+      expect(result.current.errorMessage).toBeNull()
+    })
   })
 })

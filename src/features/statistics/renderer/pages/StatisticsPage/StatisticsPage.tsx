@@ -45,9 +45,12 @@ export function StatisticsPage() {
   if (!stats) {
     if (isLoading) {
       return (
-        <StatisticsLoadingShell>
-          <Loader message={t('loading')} />
-        </StatisticsLoadingShell>
+        <StatisticsLayout>
+          {periodFilter}
+          <StatisticsLoadingShell>
+            <Loader message={t('loading')} />
+          </StatisticsLoadingShell>
+        </StatisticsLayout>
       )
     }
     return (

@@ -203,13 +203,49 @@ describe('StatisticsPage', () => {
       // a valid range without data would show the loader, as for any first load.
       fireEvent.change(screen.getByLabelText('Date de début'), { target: { value: '2026-12-05' } })
       fireEvent.change(screen.getByLabelText('Date de fin'), { target: { value: '2026-11-10' } })
-      expect(screen.queryByText('Chargement…')).toBeNull()
+      await waitFor(() => expect(screen.queryByText('Chargement…')).toBeNull())
       expect(screen.queryByRole('button', { name: 'Réessayer' })).toBeNull()
       expect(screen.getByLabelText('Date de début')).toBeInTheDocument()
       expect(getStats).not.toHaveBeenCalledWith({
         startDate: '2026-12-05',
         endDate: '2026-11-10'
       })
+    })
+
+    it('keeps the period filter mounted when Personnalisé is clicked after a failure', async () => {
+      getStats.mockResolvedValueOnce(failure)
+      render(<StatisticsPage />, { wrapper: createWrapper() })
+      await screen.findByRole('button', { name: 'Réessayer' })
+      getStats.mockReturnValue(new Promise(() => undefined))
+      fireEvent.click(screen.getByText('Personnalisé'))
+      expect(screen.getByLabelText('Date de début')).toBeInTheDocument()
+      expect(screen.getByText('Ce mois')).toBeInTheDocument()
+    })
+
+    it('keeps the date input mounted and focused while a valid custom range loads', async () => {
+      getStats.mockResolvedValueOnce(failure)
+      render(<StatisticsPage />, { wrapper: createWrapper() })
+      await screen.findByRole('button', { name: 'Réessayer' })
+      getStats.mockReturnValue(new Promise(() => undefined))
+      fireEvent.click(screen.getByText('Personnalisé'))
+      const start = screen.getByLabelText('Date de début')
+      start.focus()
+      fireEvent.change(start, { target: { value: '2026-11-20' } })
+      await waitFor(() => expect(screen.getByText('Chargement…')).toBeInTheDocument())
+      expect(screen.getByLabelText('Date de début')).toBe(start)
+      expect(document.activeElement).toBe(start)
+    })
+
+    it('shows the loader, not the old failure, when the period changes during a retry', async () => {
+      getStats.mockResolvedValueOnce(failure)
+      render(<StatisticsPage />, { wrapper: createWrapper() })
+      fireEvent.click(await screen.findByRole('button', { name: 'Réessayer' }))
+      getStats.mockReturnValue(new Promise(() => undefined))
+      getStats.mockReturnValueOnce(new Promise(() => undefined))
+      fireEvent.click(screen.getByText('Cette semaine'))
+      await waitFor(() => expect(screen.getByText('Chargement…')).toBeInTheDocument())
+      expect(screen.queryByRole('alert')).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Réessayer' })).toBeNull()
     })
   })
 })
