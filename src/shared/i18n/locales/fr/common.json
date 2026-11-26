@@ -36,7 +36,7 @@
     },
     "settings": {
       "title": "Paramètres",
-      "subtitle": "Personnalisez l'apparence de l'application"
+      "subtitle": "Personnalisez l'apparence et gérez les données de l'application"
     }
   },
   "pageTitles": {
@@ -52,6 +52,32 @@
       "description": "Choisissez la couleur d'accent et le mode d'affichage de l'application.",
       "accent": "Couleur d'accent",
       "mode": "Mode d'affichage"
+    },
+    "data": {
+      "title": "Données",
+      "status": {
+        "never": "Dernière sauvegarde : jamais",
+        "today": "Dernière sauvegarde : aujourd'hui",
+        "days_one": "Dernière sauvegarde : il y a {{count}} jour",
+        "days_other": "Dernière sauvegarde : il y a {{count}} jours",
+        "days_many": "Dernière sauvegarde : il y a {{count}} jours"
+      },
+      "backup": "Sauvegarder maintenant",
+      "restore": "Restaurer une sauvegarde…",
+      "deleteAutomatic": "Supprimer les sauvegardes automatiques ({{count}})",
+      "privacy": "Les fichiers de sauvegarde contiennent les noms des élèves et ne sont pas chiffrés : conservez-les en lieu sûr.",
+      "backupSuccess": "Sauvegarde enregistrée",
+      "restoreDialog": {
+        "title": "Restaurer cette sauvegarde ?",
+        "message": "Les données actuelles (élèves, passages) seront remplacées par celles de « {{fileName}} ». Une copie de sécurité est créée avant la restauration, puis l'application redémarre.",
+        "confirm": "Restaurer"
+      },
+      "deleteDialog": {
+        "title": "Supprimer les sauvegardes automatiques ?",
+        "message": "Les copies créées automatiquement par l'application seront supprimées définitivement. Vos sauvegardes manuelles ne sont pas concernées.",
+        "confirm": "Supprimer"
+      },
+      "deleteSuccess": "Sauvegardes automatiques supprimées"
     },
     "color": {
       "purple": "Violet",

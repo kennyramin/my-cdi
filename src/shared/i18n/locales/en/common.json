@@ -36,7 +36,7 @@
     },
     "settings": {
       "title": "Settings",
-      "subtitle": "Personalize the application appearance"
+      "subtitle": "Personalize the appearance and manage the application data"
     }
   },
   "pageTitles": {
@@ -52,6 +52,31 @@
       "description": "Choose the accent color and the display mode of the application.",
       "accent": "Accent color",
       "mode": "Display mode"
+    },
+    "data": {
+      "title": "Data",
+      "status": {
+        "never": "Last backup: never",
+        "today": "Last backup: today",
+        "days_one": "Last backup: {{count}} day ago",
+        "days_other": "Last backup: {{count}} days ago"
+      },
+      "backup": "Back up now",
+      "restore": "Restore a backup…",
+      "deleteAutomatic": "Delete automatic backups ({{count}})",
+      "privacy": "Backup files contain student names and are not encrypted: keep them somewhere safe.",
+      "backupSuccess": "Backup saved",
+      "restoreDialog": {
+        "title": "Restore this backup?",
+        "message": "The current data (students, visits) will be replaced by the contents of \"{{fileName}}\". A safety copy is made before restoring, then the application restarts.",
+        "confirm": "Restore"
+      },
+      "deleteDialog": {
+        "title": "Delete automatic backups?",
+        "message": "The copies the application created automatically will be permanently deleted. Your manual backups are not affected.",
+        "confirm": "Delete"
+      },
+      "deleteSuccess": "Automatic backups deleted"
     },
     "color": {
       "purple": "Purple",
