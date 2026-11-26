@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { I18nextProvider } from 'react-i18next'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -113,5 +114,49 @@ describe('JournalEntryFormContainer', () => {
   it('shows no future warning for today', () => {
     render(withProviders(<JournalEntryFormContainer selectedDate={formatLocalDate(new Date())} />))
     expect(screen.queryByText(/dans le futur/)).toBeNull()
+  })
+
+  describe('duplicate warning', () => {
+    async function submitWithDuplicates(selectedDate: string) {
+      window.electronAPI.frequentation.createBatch = vi.fn().mockResolvedValue({
+        success: true,
+        data: {
+          created: 0,
+          duplicates: [
+            {
+              studentId: FIRST_ID,
+              studentName: 'Jean Dupont',
+              existingStartsAt: `${selectedDate}T10:15:00`,
+              existingActivity: 'WORK'
+            }
+          ]
+        }
+      })
+      const user = userEvent.setup()
+      render(withProviders(<JournalEntryFormContainer selectedDate={selectedDate} />))
+      await user.type(screen.getByRole('combobox'), 'Dup')
+      await user.click(await screen.findByRole('option', { name: /Dupont/ }))
+      const submit = screen.getByRole('button', { name: 'Enregistrer' })
+      await waitFor(() => {
+        expect(submit).toBeEnabled()
+      })
+      await user.click(submit)
+      return { user, submit }
+    }
+
+    it('shows the dialog, and cancelling returns focus to the sticky submit button', async () => {
+      const { user, submit } = await submitWithDuplicates('2026-04-01')
+      const dialog = await screen.findByRole('dialog')
+      expect(dialog).toHaveTextContent('Jean Dupont')
+      await user.click(screen.getByRole('button', { name: 'Annuler' }))
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).toBeNull()
+      })
+      await waitFor(() => {
+        expect(document.activeElement).toBe(submit)
+      })
+      expect(submit).toBeEnabled()
+      expect(window.electronAPI.frequentation.createBatch).toHaveBeenCalledOnce()
+    })
   })
 })

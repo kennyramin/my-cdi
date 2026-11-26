@@ -26,7 +26,9 @@ describe('useJournalEntryForm', () => {
         list: vi.fn().mockResolvedValue({ success: true, data: { students: [] } })
       },
       frequentation: {
-        createBatch: vi.fn().mockResolvedValue({ success: true, data: { created: SECOND_ID } })
+        createBatch: vi
+          .fn()
+          .mockResolvedValue({ success: true, data: { created: SECOND_ID, errors: [] } })
       }
     })
   })
@@ -88,5 +90,160 @@ describe('useJournalEntryForm', () => {
       expect(onSubmitted).toHaveBeenCalled()
     })
     expect(window.electronAPI.frequentation.createBatch).toHaveBeenCalledOnce()
+  })
+
+  describe('duplicate warning', () => {
+    const FORM_VALUES = {
+      studentIds: [FIRST_ID, SECOND_ID],
+      activity: ActivityType.READING,
+      time: '10:30'
+    }
+    const DUPLICATE = {
+      studentId: FIRST_ID,
+      studentName: 'Jean Dupont',
+      existingStartsAt: '2026-04-01T10:15:00',
+      existingActivity: ActivityType.WORK
+    }
+
+    function mockDuplicatesThen(second: unknown) {
+      window.electronAPI.frequentation.createBatch = vi
+        .fn()
+        .mockResolvedValueOnce({ success: true, data: { created: 0, duplicates: [DUPLICATE] } })
+        .mockResolvedValueOnce(second)
+    }
+
+    async function submitWithDuplicates(
+      second: unknown = { success: true, data: { created: 2, errors: [] } }
+    ) {
+      mockDuplicatesThen(second)
+      const hook = renderHook(() => useJournalEntryForm({ selectedDate: '2026-04-01' }), {
+        wrapper: createWrapper()
+      })
+      act(() => {
+        hook.result.current.form.reset(FORM_VALUES)
+      })
+      act(() => {
+        hook.result.current.handleSubmit(FORM_VALUES)
+      })
+      await waitFor(() => {
+        expect(hook.result.current.pendingDuplicates).toEqual([DUPLICATE])
+      })
+      return hook
+    }
+
+    it('keeps the form and shows no success toast when duplicates are found', async () => {
+      const { result } = await submitWithDuplicates()
+      expect(result.current.form.getValues()).toEqual(FORM_VALUES)
+      expect(result.current.toast).toBeNull()
+    })
+
+    it('cancel clears the warning, keeps the form and sends nothing', async () => {
+      const { result } = await submitWithDuplicates()
+      act(() => {
+        result.current.cancelDuplicates()
+      })
+      expect(result.current.pendingDuplicates).toEqual([])
+      expect(result.current.form.getValues()).toEqual(FORM_VALUES)
+      expect(window.electronAPI.frequentation.createBatch).toHaveBeenCalledOnce()
+    })
+
+    it('confirm resends the same payload with allowDuplicates, resets and toasts success', async () => {
+      const onSubmitted = vi.fn()
+      mockDuplicatesThen({ success: true, data: { created: 2, errors: [] } })
+      const { result } = renderHook(
+        () => useJournalEntryForm({ selectedDate: '2026-04-01', onSubmitted }),
+        { wrapper: createWrapper() }
+      )
+      act(() => {
+        result.current.handleSubmit(FORM_VALUES)
+      })
+      await waitFor(() => {
+        expect(result.current.pendingDuplicates).toHaveLength(1)
+      })
+      act(() => {
+        result.current.confirmDuplicates()
+      })
+      expect(result.current.pendingDuplicates).toEqual([])
+      await waitFor(() => {
+        expect(result.current.toast).toMatchObject({ severity: 'success' })
+      })
+      const calls = vi.mocked(window.electronAPI.frequentation.createBatch).mock.calls
+      expect(calls).toHaveLength(2)
+      expect(calls[1]?.[0]).toEqual({ ...calls[0]?.[0], allowDuplicates: true })
+      expect(onSubmitted).toHaveBeenCalledOnce()
+      expect(result.current.form.getValues().studentIds).toEqual([])
+    })
+
+    it('sends a single request when confirm is triggered twice quickly', async () => {
+      const { result } = await submitWithDuplicates()
+      act(() => {
+        result.current.confirmDuplicates()
+        result.current.confirmDuplicates()
+      })
+      await waitFor(() => {
+        expect(result.current.toast).not.toBeNull()
+      })
+      expect(window.electronAPI.frequentation.createBatch).toHaveBeenCalledTimes(2)
+    })
+
+    it('shows an error toast and keeps the form when the confirmed save fails', async () => {
+      const { result } = await submitWithDuplicates({
+        success: false,
+        error: 'boom',
+        code: 'DATABASE_ERROR'
+      })
+      act(() => {
+        result.current.confirmDuplicates()
+      })
+      await waitFor(() => {
+        expect(result.current.toast).toMatchObject({ severity: 'error' })
+      })
+      expect(result.current.form.getValues()).toEqual(FORM_VALUES)
+    })
+  })
+
+  describe('batch item errors', () => {
+    it('reports an all-failed batch as an error and keeps the form', async () => {
+      window.electronAPI.frequentation.createBatch = vi.fn().mockResolvedValue({
+        success: true,
+        data: { created: 0, errors: [{ index: 0, error: 'Item 0: Student not found' }] }
+      })
+      const onSubmitted = vi.fn()
+      const { result } = renderHook(
+        () => useJournalEntryForm({ selectedDate: '2026-04-01', onSubmitted }),
+        { wrapper: createWrapper() }
+      )
+      const values = { studentIds: [FIRST_ID], activity: ActivityType.WORK, time: '10:30' }
+      act(() => {
+        result.current.form.reset(values)
+        result.current.handleSubmit(values)
+      })
+      await waitFor(() => {
+        expect(result.current.toast).toMatchObject({ severity: 'error' })
+      })
+      expect(result.current.toast?.message).toContain('Aucune présence enregistrée')
+      expect(result.current.form.getValues()).toEqual(values)
+      expect(onSubmitted).not.toHaveBeenCalled()
+    })
+
+    it('warns when only some items were saved', async () => {
+      window.electronAPI.frequentation.createBatch = vi.fn().mockResolvedValue({
+        success: true,
+        data: { created: 1, errors: [{ index: 1, error: 'Item 1: Student not found' }] }
+      })
+      const { result } = renderHook(() => useJournalEntryForm({ selectedDate: '2026-04-01' }), {
+        wrapper: createWrapper()
+      })
+      act(() => {
+        result.current.handleSubmit({
+          studentIds: [FIRST_ID, SECOND_ID],
+          activity: ActivityType.WORK,
+          time: '10:30'
+        })
+      })
+      await waitFor(() => {
+        expect(result.current.toast).toMatchObject({ severity: 'warning' })
+      })
+    })
   })
 })

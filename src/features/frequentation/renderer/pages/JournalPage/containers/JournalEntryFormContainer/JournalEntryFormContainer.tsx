@@ -7,6 +7,7 @@ import { Button } from '@ui/components/Button'
 import { Icon } from '@ui/components/Icon'
 import { Toast } from '@ui/components/Toast'
 import { useTypeToSearch } from '@ui/hooks/useTypeToSearch'
+import { DuplicateWarningDialogPresenter } from '@frequentation/presenters/DuplicateWarningDialogPresenter'
 import { ActivityGridPresenter } from '@frequentation/presenters/ActivityGridPresenter'
 import { buildActivityTiles } from '@frequentation/presenters/ActivityGridPresenter/helpers/buildActivityTiles'
 import { buildActivityTileNodes } from '@frequentation/presenters/ActivityGridPresenter/helpers/buildActivityTileNodes'
@@ -60,6 +61,10 @@ export function JournalEntryFormContainer({
     isStudentLoading,
     isFutureDate,
     isSubmitting,
+    pendingDuplicates,
+    confirmDuplicates,
+    cancelDuplicates,
+    getActivityLabel,
     toast,
     dismissToast
   } = useJournalEntryForm({ selectedDate, onSubmitted })
@@ -165,6 +170,12 @@ export function JournalEntryFormContainer({
           )}
         </SubmitBar>
       </EntryForm>
+      <DuplicateWarningDialogPresenter
+        duplicates={pendingDuplicates}
+        onConfirm={confirmDuplicates}
+        onCancel={cancelDuplicates}
+        getActivityLabel={getActivityLabel}
+      />
       <Toast toast={toast} onClose={dismissToast} />
     </FormCard>
   )

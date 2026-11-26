@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import dayjs from 'dayjs'
@@ -9,6 +9,7 @@ import { useActivityLabels } from '@frequentation/hooks/useActivityLabels'
 import { useStudentList } from '@student/api/useStudentQueries'
 import { buildActivityOptions } from '@frequentation/helpers/buildActivityOptions'
 import { isDuplicatesFound } from '@frequentation-shared'
+import type { CreateFrequentationBatchDto, DuplicateWarningDto } from '@frequentation-shared'
 import { ActivityType } from '@types'
 import { isFutureLocalDate, isFutureLocalDateTime } from '@lib/localDateTime'
 import { journalEntryFormSchema } from '../../validations/journalEntryFormSchema'
@@ -22,6 +23,12 @@ interface UseJournalEntryFormOptions {
 
 const TIME_FORMAT = 'HH:mm'
 const SECONDS_SUFFIX = ':00'
+const NONE_CREATED = 0
+
+interface PendingDuplicates {
+  dto: CreateFrequentationBatchDto
+  duplicates: DuplicateWarningDto[]
+}
 
 function buildDefaultTime(): string {
   return dayjs().format(TIME_FORMAT)
@@ -42,6 +49,9 @@ export function useJournalEntryForm({ selectedDate, onSubmitted }: UseJournalEnt
   const { data: students, isLoading: isStudentLoading } = useStudentList()
   const { toast, show, dismiss } = useToast()
   const [studentInputValue, setStudentInputValue] = useState('')
+  const [pending, setPending] = useState<PendingDuplicates | null>(null)
+  // Source of truth for confirm: a double activation before re-render must send once.
+  const pendingRef = useRef<PendingDuplicates | null>(null)
 
   const form = useForm<JournalEntryFormData>({
     resolver: zodResolver(journalEntryFormSchema),
@@ -64,9 +74,35 @@ export function useJournalEntryForm({ selectedDate, onSubmitted }: UseJournalEnt
       show(t('form.futureNotAllowed'), 'error')
       return
     }
-    mutate(mapFormToBatchDto(values, selectedDate), {
+    send(mapFormToBatchDto(values, selectedDate))
+  }
+
+  function storePending(next: PendingDuplicates | null) {
+    pendingRef.current = next
+    setPending(next)
+  }
+
+  function reportBatchErrors(created: number, failed: number) {
+    if (created === NONE_CREATED) {
+      show(t('form.allFailed', { count: failed }), 'error')
+      return
+    }
+    form.reset(buildDefaultValues())
+    show(t('form.partialSuccess', { created, failed }), 'warning')
+    if (onSubmitted) {
+      onSubmitted()
+    }
+  }
+
+  function send(dto: CreateFrequentationBatchDto) {
+    mutate(dto, {
       onSuccess: (data) => {
         if (isDuplicatesFound(data)) {
+          storePending({ dto, duplicates: data.duplicates })
+          return
+        }
+        if (data.errors.length > NONE_CREATED) {
+          reportBatchErrors(data.created, data.errors.length)
           return
         }
         form.reset(buildDefaultValues())
@@ -79,6 +115,19 @@ export function useJournalEntryForm({ selectedDate, onSubmitted }: UseJournalEnt
         show(error.message, 'error')
       }
     })
+  }
+
+  function confirmDuplicates() {
+    const current = pendingRef.current
+    if (current === null) {
+      return
+    }
+    storePending(null)
+    send({ ...current.dto, allowDuplicates: true })
+  }
+
+  function cancelDuplicates() {
+    storePending(null)
   }
 
   function handleStudentSelect(currentIds: number[], nextId: number) {
@@ -109,6 +158,10 @@ export function useJournalEntryForm({ selectedDate, onSubmitted }: UseJournalEnt
     isStudentLoading,
     isFutureDate,
     isSubmitting: isPending,
+    pendingDuplicates: pending?.duplicates ?? [],
+    confirmDuplicates,
+    cancelDuplicates,
+    getActivityLabel: getLabel,
     toast,
     dismissToast: dismiss
   } as const

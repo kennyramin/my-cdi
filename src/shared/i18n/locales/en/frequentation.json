@@ -19,7 +19,9 @@
     "futureNotAllowed": "A visit cannot be recorded in the future",
     "submit": "Save",
     "cancel": "Cancel",
-    "successMessage": "Attendance(s) saved"
+    "successMessage": "Attendance(s) saved",
+    "allFailed": "No visit saved: {{count}} student not found or entry invalid.",
+    "partialSuccess": "{{created}} visit(s) saved, {{failed}} skipped (student not found or entry invalid)."
   },
   "anonymizedStudent": "Anonymized student",
   "loading": "Loading…",
